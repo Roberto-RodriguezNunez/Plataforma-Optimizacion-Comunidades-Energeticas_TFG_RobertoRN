@@ -1,0 +1,12 @@
+# Datos pesados
+data/raw/
+data/processed/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Entornos virtuales
+venv/
+.env
+.DS_Store
