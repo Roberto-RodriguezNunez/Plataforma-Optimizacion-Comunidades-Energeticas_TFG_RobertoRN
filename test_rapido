@@ -1,0 +1,37 @@
+from src.envs.energy_env import EnergyEnv
+from stable_baselines3.common.env_checker import check_env
+
+print("--- INICIANDO TEST DEL ENTORNO ---")
+
+# 1. Instanciar el entorno
+try:
+    env = EnergyEnv()
+    print("✅ Clase EnergyEnv instanciada correctamente.")
+except Exception as e:
+    print(f"❌ Error al crear el entorno: {e}")
+    exit()
+
+# 2. Comprobar compatibilidad con Stable-Baselines3
+print("\n--- CHEQUEO DE GYMNASIUM ---")
+try:
+    check_env(env)
+    print("✅ ¡El entorno cumple el estándar de Gymnasium!")
+except Exception as e:
+    print(f"❌ El entorno no cumple las reglas: {e}")
+    exit()
+
+# 3. Simular un paso manual
+print("\n--- SIMULACIÓN DE UN PASO ---")
+obs, info = env.reset()
+print(f"Estado Inicial (SoC): {obs[0]*100:.1f}%")
+
+# Elegimos la acción 2 (CARGAR_SOLAR al 66% de potencia)
+action = 2
+obs, reward, terminated, truncated, info = env.step(action)
+
+print(f"Acción tomada: {action} (CARGAR_SOLAR 66%)")
+print(f"Nuevo SoC: {obs[0]*100:.1f}%")
+print(f"Recompensa (Beneficio): {reward:.4f} €")
+print(f"Info extra: {info}")
+
+print("\n🎉 ¡ENHORABUENA! Tu TFG ya tiene un motor funcional.")
