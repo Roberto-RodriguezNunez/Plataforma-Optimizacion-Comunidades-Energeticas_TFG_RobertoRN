@@ -1,0 +1,99 @@
+@startuml secuencia_ciclo_dqn
+!theme plain
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign center
+
+title Diagrama de Secuencia — Ciclo de Decisión del Agente DQN
+
+participant "main.py\n(Orquestador)" as MAIN
+participant "DQN Agent\n(Stable Baselines3)" as DQN
+participant "EnergyEnv\n(gymnasium.Env)" as ENV
+participant "ComunidadSimulador\n(Motor Físico)" as SIM
+database   "dataset_final.csv" as DATA
+
+== Inicialización ==
+
+MAIN -> ENV : EnergyEnv()
+activate ENV
+ENV -> SIM : ComunidadSimulador('data/processed/dataset_final.csv')
+activate SIM
+SIM -> DATA : pd.read_csv()
+DATA --> SIM : DataFrame (8760 × 3)
+SIM --> ENV : instancia lista
+deactivate SIM
+ENV --> MAIN : entorno instanciado
+deactivate ENV
+
+MAIN -> DQN : DQN('MlpPolicy', env)
+activate DQN
+DQN --> MAIN : agente configurado
+deactivate DQN
+
+== Inicio de Episodio (reset) ==
+
+MAIN -> DQN : model.learn(total_timesteps)
+activate DQN
+
+DQN -> ENV : env.reset()
+activate ENV
+ENV -> SIM : current_step = random_start\nsoc = 0.5
+ENV -> ENV : _get_obs()
+activate ENV
+ENV -> SIM : get_data_window(t, horizon=1)
+SIM -> DATA : iloc[t:t+1]
+DATA --> SIM : [consumo, generacion, precio]
+SIM --> ENV : datos actuales
+ENV -> SIM : get_data_window(t+1, horizon=24)
+SIM -> DATA : iloc[t+1:t+25]
+DATA --> SIM : matriz 24×3
+SIM --> ENV : pronóstico 24h
+ENV --> ENV : obs[76] = [SoC, precio, exc, def] + forecast.flatten()
+deactivate ENV
+ENV --> DQN : obs_0 (76,), info={}
+deactivate ENV
+
+== Bucle de Pasos (168 pasos = 1 semana) ==
+
+loop para cada paso del episodio
+
+    DQN -> DQN : predict(obs_t)\n→ ε-greedy sobre Q(s,a)
+    DQN -> ENV : env.step(action)
+    activate ENV
+
+    ENV -> SIM : ejecutar_accion_fisica(action, t)
+    activate SIM
+    SIM -> DATA : iloc[t] → gen, cons, precio
+    DATA --> SIM
+    SIM -> SIM : decodificar action_map[action]\n→ (estrategia, nivel_potencia)
+    SIM -> SIM : calcular flujos energéticos\n(comprado, vendido, cargado, descargado)
+    SIM -> SIM : actualizar SoC\n(soc_antes → soc_después)
+    SIM -> SIM : calcular_degradacion_no_lineal\n(energia_movida, soc_medio)
+    SIM -> SIM : beneficio = ingresos - gastos - coste_deg
+    SIM --> ENV : {beneficio, soc, comprado}
+    deactivate SIM
+
+    ENV -> SIM : current_step += 1
+    ENV -> ENV : _get_obs() → obs_t+1
+    ENV -> ENV : terminated = (steps >= 168)
+    ENV --> DQN : obs_t+1, reward, terminated, truncated, info
+    deactivate ENV
+
+    DQN -> DQN : almacenar transición\n(obs_t, action, reward, obs_t+1)\nen Replay Buffer
+    DQN -> DQN : actualizar red Q\n(si buffer suficientemente lleno)
+
+    alt episodio terminado
+        DQN -> ENV : env.reset() → nuevo episodio
+    end
+
+end
+
+DQN --> MAIN : modelo entrenado
+deactivate DQN
+
+== Exportación (post-entrenamiento) ==
+
+MAIN -> DQN : model.save('models/dqn_sgec')
+MAIN -> DQN : exportar a ONNX\n→ 'models/dqn_sgec.onnx'
+
+@enduml

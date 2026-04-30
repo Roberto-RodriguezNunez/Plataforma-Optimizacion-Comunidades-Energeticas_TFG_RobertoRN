@@ -1,0 +1,113 @@
+@startuml modelo_entidad_relacion
+!theme plain
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam linetype ortho
+
+title Modelo Entidad-Relación Conceptual — SGEC
+note as N1
+  Nota: El sistema no usa una base de datos relacional
+  clásica en tiempo de entrenamiento. Este MER modela
+  las entidades conceptuales del dominio y sus relaciones,
+  tal como se representan en el código y el dataset.
+end note
+
+' ─── ENTIDADES ──────────────────────────────────
+
+entity "COMUNIDAD" as COM {
+    *id_comunidad : INTEGER <<PK>>
+    --
+    nombre : VARCHAR
+    num_viviendas : INTEGER
+    bateria_capacidad_kwh : FLOAT
+    potencia_inversor_kw : FLOAT
+    precio_venta_excedente : FLOAT
+}
+
+entity "VIVIENDA" as VIV {
+    *id_vivienda : INTEGER <<PK>>
+    --
+    id_comunidad : INTEGER <<FK>>
+    factor_escala_alpha : FLOAT
+    consumo_anual_kwh : FLOAT
+}
+
+entity "SERIE_TEMPORAL" as ST {
+    *id_timestep : INTEGER <<PK>>
+    --
+    id_comunidad : INTEGER <<FK>>
+    datetime : TIMESTAMP
+    consumo_total_kwh : FLOAT
+    generacion_total_kwh : FLOAT
+    precio_kwh : FLOAT
+}
+
+entity "BATERIA" as BAT {
+    *id_bateria : INTEGER <<PK>>
+    --
+    id_comunidad : INTEGER <<FK>>
+    capacidad_kwh : FLOAT
+    potencia_max_kw : FLOAT
+    soc_inicial : FLOAT
+    coste_degradacion_base : FLOAT
+}
+
+entity "ACCION" as ACC {
+    *id_accion : INTEGER <<PK>>
+    --
+    nombre_estrategia : VARCHAR
+    nivel_potencia : FLOAT
+    descripcion : VARCHAR
+}
+
+entity "DECISION" as DEC {
+    *id_decision : INTEGER <<PK>>
+    --
+    id_timestep : INTEGER <<FK>>
+    id_accion : INTEGER <<FK>>
+    id_bateria : INTEGER <<FK>>
+    soc_antes : FLOAT
+    soc_despues : FLOAT
+    comprado_kwh : FLOAT
+    vendido_kwh : FLOAT
+    coste_degradacion : FLOAT
+    beneficio_eur : FLOAT
+}
+
+entity "EPISODIO" as EPI {
+    *id_episodio : INTEGER <<PK>>
+    --
+    id_comunidad : INTEGER <<FK>>
+    timestep_inicio : INTEGER
+    timestep_fin : INTEGER
+    num_pasos : INTEGER
+    reward_total : FLOAT
+    reward_medio : FLOAT
+}
+
+entity "MODELO_DQN" as MOD {
+    *id_modelo : INTEGER <<PK>>
+    --
+    id_comunidad : INTEGER <<FK>>
+    version : VARCHAR
+    total_timesteps : INTEGER
+    ruta_archivo : VARCHAR
+    formato : VARCHAR
+    fecha_entrenamiento : TIMESTAMP
+}
+
+' ─── RELACIONES ─────────────────────────────────
+
+COM ||--o{ VIV       : "tiene"
+COM ||--||  BAT      : "posee"
+COM ||--o{ ST        : "genera"
+COM ||--o{ EPI       : "entrena"
+COM ||--o{ MOD       : "produce"
+
+ST  ||--o{ DEC       : "registra"
+ACC ||--o{ DEC       : "ejecuta"
+BAT ||--o{ DEC       : "afecta a"
+
+EPI }o--o{ DEC       : "contiene"
+
+@enduml
