@@ -10,28 +10,18 @@
 
 ## Instalación
 
-Desde la raíz del proyecto (`TFG/`), crea un entorno virtual e instala las dependencias:
+El proyecto se ejecuta con el **Python de Windows desde PowerShell**. Las dependencias ya están instaladas en el Python de Windows. Si necesitas instalarlas en un equipo nuevo:
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
+```powershell
 pip install -r requirements.txt
 ```
 
-> **Nota (WSL en Ubuntu 22.04+):** Ubuntu bloquea instalar paquetes en el Python del sistema.
-> Si `python3 -m venv` falla, instala primero el paquete necesario:
-> ```bash
-> sudo apt install python3.12-venv -y
+> **Nota:** `stable-baselines3` depende de PyTorch. Para instalar la versión CPU
+> (más ligera, sin CUDA), usa:
+> ```powershell
+> pip install torch --index-url https://download.pytorch.org/whl/cpu
+> pip install stable-baselines3 gymnasium tensorboard pandas numpy matplotlib
 > ```
-> Luego vuelve a ejecutar los tres comandos de arriba.
-
-El entorno virtual solo hay que crearlo una vez. En sesiones posteriores, actívalo con:
-
-```bash
-source .venv/bin/activate
-```
-
-Sabrás que está activo porque el prompt cambia a `(.venv) roberto@...`.
 
 ---
 
@@ -39,7 +29,8 @@ Sabrás que está activo porque el prompt cambia a `(.venv) roberto@...`.
 
 ### Requisitos previos
 
-- Entorno virtual activo (`source .venv/bin/activate`)
+- **PowerShell** (no WSL)
+- Dependencias instaladas en el Python de Windows
 - Dataset en `data/processed/dataset_final.csv` (incluido en el repo)
 - Ejecutar siempre desde la raíz del proyecto (`TFG/`)
 
@@ -111,25 +102,53 @@ Usa siempre `best_model.zip` para análisis y despliegue.
 
 ### Visualización con TensorBoard
 
-Abre una **segunda terminal** en la carpeta `TFG/` mientras entrena (o después) y ejecuta:
+Abre una **segunda ventana de PowerShell** mientras entrena (o después) y ejecuta:
 
-```bash
+```powershell
+cd C:\Users\nicor\OneDrive\Documents\TFGyDocumentosTFG\TFG
 tensorboard --logdir logs
 ```
 
 Abre el navegador en **`http://localhost:6006`**.
 
-Métricas disponibles en TensorBoard:
+> **Aviso normal:** TensorBoard mostrará `TensorFlow installation not found - running with reduced feature set.`
+> Es esperado — TensorBoard funciona perfectamente sin TensorFlow para este proyecto.
 
-| Panel | Qué mirar |
-|---|---|
-| `rollout/ep_rew_mean` | Curva principal de aprendizaje — debe subir |
-| `rollout/exploration_rate` | Decaimiento de epsilon |
-| `train/loss` | Pérdida de la red Q |
-| `eval/mean_reward` | Recompensa en evaluación (más fiable que rollout) |
-| `custom/soc_medio` | SoC medio de la batería — debería estabilizarse en 0.4-0.6 |
-| `custom/comprado_medio` | Energía comprada a red — si baja, el agente usa mejor la batería |
-| `custom/accion_mas_freq` | Acción dominante del agente |
+---
+
+#### Qué mirar en TensorBoard
+
+TensorBoard muestra muchos paneles. Estos son los únicos que importan, en orden de importancia:
+
+**1. `rollout/ep_rew_mean` — LA curva principal**
+La recompensa media por episodio. Es el indicador de que el agente está aprendiendo.
+- Al principio estará en torno a -100 (el agente no sabe nada)
+- Debe subir progresivamente hacia 0 o positivo
+- Si sube = el agente aprende. Si se queda plana = problema con hiperparámetros
+
+**2. `eval/mean_reward` — Recompensa de evaluación**
+Igual que la anterior pero medida en episodios de test separados (más fiable).
+Cada vez que aparece un punto nuevo aquí y es el mejor hasta ahora, se guarda `best_model.zip`.
+
+**3. `rollout/exploration_rate` — Decaimiento de epsilon**
+Baja de 1.0 a 0.05 a lo largo del entrenamiento.
+- Al principio (ε=1.0): el agente elige acciones al azar, explorando
+- Al final (ε=0.05): el agente usa casi siempre su red neuronal
+
+**4. `train/loss` — Pérdida de la red Q**
+Mide cuánto se equivoca la red al predecir los Q-values.
+- Oscila bastante, es normal
+- No debe dispararse a valores muy altos ni quedarse en 0
+
+**5. `custom/soc_medio` — Estado de carga de la batería**
+SoC medio de la batería por paso. Debería estabilizarse en 0.3-0.7.
+Si se queda en 0 o en 1 constantemente, el agente está haciendo algo mal.
+
+**6. `custom/comprado_medio` — Energía comprada a red**
+Si baja con el tiempo, el agente está aprendiendo a usar mejor la batería (comprando menos a red).
+
+> El resto de paneles que aparecen (`time/`, `train/n_updates`, etc.) son métricas
+> internas de SB3 que no necesitas monitorizar.
 
 ---
 
