@@ -177,7 +177,7 @@ TFG/
 | ETL pipeline (`generar_dataset_final.py`) | ✅ Completo y validado |
 | Motor físico (`simulador.py`) | ✅ Completo — 13 acciones, degradación no lineal |
 | Entorno RL (`energy_env.py`) | ✅ Completo — validado con `env_checker` |
-| Script entrenamiento (`main.py`) | ⏳ PENDIENTE — instanciar DQN con SB3 y entrenar |
+| Script entrenamiento (`main.py`) | ✅ Implementado — DQN SB3, EvalCallback, MetricasCallback, TensorBoard |
 | Exportación a ONNX | ⏳ PENDIENTE |
 | Script de inferencia (Docker/Edge) | ⏳ PENDIENTE |
 | SaaS — Streamlit + PostgreSQL (secundario) | ⏳ PENDIENTE (componente secundario para cierre de ciclo ante el tribunal) |

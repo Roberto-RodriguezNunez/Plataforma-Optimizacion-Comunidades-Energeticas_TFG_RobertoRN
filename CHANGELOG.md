@@ -73,13 +73,29 @@ Continuar con el resto de diagramas pendientes (secuencia, casos de uso, MER, et
 
 ---
 
-## [Próxima sesión] — FASE 3: Entrenamiento del Agente DQN
+## [2026-05-01] — FASE 3 INICIADA: main.py con entrenamiento DQN + callbacks (HU-12, HU-13)
 
-### Por hacer
-- [ ] Escribir `src/main.py` con DQN de SB3 (configurar `learning_rate`, `buffer_size`, `batch_size`, `exploration_fraction`).
-- [ ] Añadir `EvalCallback` para guardar el mejor modelo.
-- [ ] Entrenar el agente (~500k-1M timesteps según capacidad del hardware).
-- [ ] Guardar modelo entrenado en `models/dqn_comunidad_energia.zip`.
+### Rama
+`feature/entrenamiento-dqn` (creada desde `develop`)
+
+### Implementado
+- **`src/main.py`**: orquestador completo del entrenamiento DQN.
+  - Hiperparámetros: lr=1e-4, buffer=100k, learning_starts=10k, batch=64, gamma=0.99,
+    exploration 1.0→0.05 en el 40% del entrenamiento, target_update=1000, train_freq=4.
+  - `EvalCallback`: evalúa cada 10k pasos en entorno separado, guarda `models/best_model.zip`.
+  - `MetricasCallback` (personalizado): loguea en TensorBoard SoC medio, energía comprada
+    media y acción más frecuente cada 1000 pasos.
+  - Entornos envueltos con `Monitor` → genera `logs/train.monitor.csv` y `logs/eval.monitor.csv`.
+  - `sys.path` configurado para ejecutarse desde cualquier ubicación.
+- **`requirements.txt`**: añadido `tensorboard` (necesario para el logging de SB3).
+
+### Verificado
+Test de 20.000 pasos: recompensa media mejora de -95.9 (primera mitad) a -44.8 (segunda mitad).
+`best_model.zip` y `dqn_sgec.zip` generados correctamente. TensorBoard operativo.
+
+### Siguiente paso lógico
+Ejecutar entrenamiento real completo (300k pasos): `python src/main.py` desde la carpeta TFG/.
+Después: HU-28 — notebook de análisis de resultados (curva de aprendizaje, comparación con baselines).
 
 ---
 <!-- Añadir nuevas entradas ARRIBA de esta línea, en orden cronológico inverso -->
