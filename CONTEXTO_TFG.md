@@ -180,5 +180,6 @@ TFG/
 | Script entrenamiento (`main.py`) | ⏳ PENDIENTE — instanciar DQN con SB3 y entrenar |
 | Exportación a ONNX | ⏳ PENDIENTE |
 | Script de inferencia (Docker/Edge) | ⏳ PENDIENTE |
+| SaaS — Streamlit + PostgreSQL (secundario) | ⏳ PENDIENTE (componente secundario para cierre de ciclo ante el tribunal) |
 | Dashboard de monitorización | ⏳ PENDIENTE (opcional, Flask básico) |
 | Análisis de resultados (notebook) | ⏳ PENDIENTE |

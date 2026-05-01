@@ -54,6 +54,25 @@ Implementar `src/main.py` con entrenamiento DQN (Stable Baselines3).
 
 ---
 
+## [2026-05-01] — Diagrama Arquitectura por Capas: añadida Capa 5 SaaS
+
+### Implementado
+- **`doc/diagramas/arquitectura_capas.drawio`**: añadida **Capa 5 · SaaS** sin tocar capas existentes.
+  - Bloque `Base de Datos PostgreSQL` (cilindro): almacena perfiles de vecinos e historial de resultados.
+  - Bloque `Motor Post-Procesado (Determinista)`: cálculo `ahorro_total × cuota_vecino`.
+  - Sub-contenedor `Frontend Multi-Rol (Streamlit)` con dos salidas: Dashboard Admin y Dashboard Vecino.
+  - Flecha **Capa 4 → PostgreSQL**: "Envío de métricas (Ahorro global, SoC)".
+  - Flecha **dataset_final.csv → Streamlit**: "Lectura de perfiles de consumo".
+  - Flecha interna: PostgreSQL → Motor → Streamlit.
+
+### Nota
+El SaaS (Streamlit + PostgreSQL) es un componente **secundario** del TFG añadido para cerrar el ciclo de vida del dato ante el tribunal. El núcleo del proyecto sigue siendo el agente DQN y el Gemelo Digital.
+
+### Siguiente paso lógico
+Continuar con el resto de diagramas pendientes (secuencia, casos de uso, MER, etc.) o implementar `src/main.py`.
+
+---
+
 ## [Próxima sesión] — FASE 3: Entrenamiento del Agente DQN
 
 ### Por hacer

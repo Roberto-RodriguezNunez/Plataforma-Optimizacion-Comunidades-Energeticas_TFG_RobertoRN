@@ -4,10 +4,10 @@
 
 | Archivo | Tipo | Herramienta |
 |---|---|---|
-| `arquitectura_sistema.puml` | Diagrama de componentes | PlantUML |
+| `arquitectura_sistema.drawio` | Diagrama de componentes | PlantUML |
 | `casos_de_uso.puml` | Diagrama de casos de uso | PlantUML |
 | `secuencia_ciclo_dqn.puml` | Diagrama de secuencia | PlantUML |
-| `modelo_entidad_relacion.puml` | MER conceptual | PlantUML |
+| `modelo_entidad_relacion.drawio` | MER conceptual | PlantUML |
 | `historias_usuario.md` | Historias de usuario | Markdown |
 
 ## Cómo renderizar los archivos .puml

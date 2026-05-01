@@ -3,69 +3,45 @@
 skinparam defaultFontName Arial
 skinparam defaultFontSize 12
 skinparam actorStyle awesome
+skinparam linetype polyline
+skinparam ArrowColor #333333
+skinparam usecaseBorderColor #555555
 
+!pragma layout smetana
 left to right direction
 
 title Diagrama de Casos de Uso — SGEC
 
-' ─── ACTORES ───────────────────────────────────
-actor "Administrador" as ADMIN
-actor "Vecino" as VECINO
-actor "Red Eléctrica\n(ESIOS)" as RED #LightYellow
-actor "Sistema DQN\n(Agente IA)" as DQN #LightBlue
+actor "Administrador"          as ADMIN  #LightGray
+actor "Red Eléctrica\n(ESIOS)" as RED    #LightYellow
 
-' ─── SISTEMA ────────────────────────────────────
 rectangle "Sistema de Gestión Energética Comunitaria (SGEC)" {
+    usecase "Proporcionar datos\nde consumo y precios"   as UC1
+    usecase "Ejecutar pipeline ETL"                      as UC2
+    usecase "Entrenar agente DQN"                        as UC3
+    usecase "Exportar y desplegar\nmodelo (ONNX / Edge)" as UC4
+    usecase "Configurar batería\ny comunidad"            as UC5
+    usecase "Ejecutar inferencia\nen tiempo real"        as UC6
+    usecase "Gestionar carga/descarga\nbatería"          as UC7
+    usecase "Consultar métricas\nglobales"               as UC8
+    usecase "Consultar ahorro\nindividual"               as UC9
 
-    ' Administrador
-    usecase "Ejecutar pipeline ETL\n(generar dataset)" as UC1
-    usecase "Iniciar entrenamiento\ndel agente DQN" as UC2
-    usecase "Evaluar rendimiento\ndel agente" as UC3
-    usecase "Exportar modelo\na ONNX" as UC4
-    usecase "Desplegar sistema\nen Docker/Edge" as UC5
-    usecase "Configurar parámetros\nfísicos de la batería" as UC6
-
-    ' Vecino
-    usecase "Consultar ahorro\nenergético acumulado" as UC7
-    usecase "Consultar estado\nde la batería (SoC)" as UC8
-
-    ' Sistema DQN (actor automatizado)
-    usecase "Observar estado\ndel sistema (76 vars)" as UC9
-    usecase "Seleccionar acción\nmacro (0-12)" as UC10
-    usecase "Aplicar acción\nen simulador físico" as UC11
-    usecase "Recibir recompensa\n(cash flow neto)" as UC12
-
-    ' Red Eléctrica
-    usecase "Proporcionar datos\nde precios y consumo" as UC13
 }
 
-' ─── RELACIONES ACTOR → CASO DE USO ─────────────
-ADMIN --> UC1
-ADMIN --> UC2
-ADMIN --> UC3
-ADMIN --> UC4
-ADMIN --> UC5
-ADMIN --> UC6
+actor "Sistema Edge\n(Automático)" as EDGE   #LightGreen
+actor "Vecino"                     as VECINO #FFE6CC
 
-VECINO --> UC7
+RED    --> UC1
+ADMIN  --> UC2
+ADMIN  --> UC3
+ADMIN  --> UC4
+ADMIN  --> UC5
+ADMIN  --> UC8
+ADMIN  --> UC9
+EDGE   --> UC6
 VECINO --> UC8
+VECINO --> UC9
 
-DQN --> UC9
-DQN --> UC10
-DQN --> UC11
-DQN --> UC12
-
-RED --> UC13
-
-' ─── RELACIONES <<include>> / <<extend>> ─────────
-UC2 ..> UC1 : <<include>>
-UC4 ..> UC2 : <<include>>
-UC5 ..> UC4 : <<include>>
-
-UC10 ..> UC9  : <<include>>
-UC11 ..> UC10 : <<include>>
-UC12 ..> UC11 : <<include>>
-
-UC3 ..> UC7 : <<extend>>
+UC6 ..> UC7 : <<include>>
 
 @enduml
