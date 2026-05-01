@@ -189,7 +189,7 @@ TFG/
 | ETL pipeline (`generar_dataset_final.py`) | ✅ Completo y validado |
 | Motor físico (`simulador.py`) | ✅ Completo — 13 acciones, degradación no lineal |
 | Entorno RL (`energy_env.py`) | ✅ Completo — validado con `env_checker` |
-| Script entrenamiento (`main.py`) | ✅ v2 — red 256x256, VecNormalize, 1M pasos, EvalCallback, MetricasCallback, TensorBoard |
+| Script entrenamiento (`main.py`) | ✅ v3 — red 64x64, VecNormalize (solo obs), 500k pasos, EvalCallback, MetricasCallback |
 | Exportación a ONNX | ⏳ PENDIENTE |
 | Script de inferencia (Docker/Edge) | ⏳ PENDIENTE |
 | SaaS — Streamlit + PostgreSQL (secundario) | ⏳ PENDIENTE (componente secundario para cierre de ciclo ante el tribunal) |

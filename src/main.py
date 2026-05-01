@@ -1,14 +1,14 @@
 """
-main.py — Orquestador de entrenamiento del agente DQN (v2)
+main.py — Orquestador de entrenamiento del agente DQN (v3)
 ============================================================
 HU-12: Entrenar agente DQN con Stable Baselines3
 HU-13: Monitorizar el progreso del entrenamiento
 
-Cambios respecto a v1 (300k pasos, red 64x64, sin normalización):
-  - Red neuronal más grande: 256x256 (captura patrones estacionales complejos)
-  - VecNormalize: normaliza observaciones para igualar la escala de las 76 variables
-  - 1M de pasos (más tiempo para estabilizar la política)
-  - Exploración más larga (50% del entrenamiento) y learning rate más bajo (5e-5)
+Cambios respecto a v2:
+  - Revertir a red 64x64 (mejor con dataset pequeño de 8760 horas)
+  - Mantener VecNormalize solo para observaciones (quitar norm_reward)
+  - 500k pasos (suficiente para convergencia con 1 año de datos)
+  - Subir eval_episodes a 20 para medias de evaluación más fiables
 
 Ejecución desde la raíz del proyecto (carpeta TFG/):
     python src/main.py
@@ -35,26 +35,26 @@ from src.envs.energy_env import EnergyEnv
 
 
 # ──────────────────────────────────────────────────────────────────
-#  HIPERPARÁMETROS (v2)
+#  HIPERPARÁMETROS (v3)
 #  Para un test rápido: TOTAL_TIMESTEPS = 10_000, LEARNING_STARTS = 2_000
 # ──────────────────────────────────────────────────────────────────
 
-TOTAL_TIMESTEPS   = 1_000_000   # v1 era 300k — más tiempo para estabilizar
-LEARNING_RATE     = 5e-5        # v1 era 1e-4 — más lento pero más estable
-BUFFER_SIZE       = 200_000     # v1 era 100k — más experiencias en el buffer
-LEARNING_STARTS   = 20_000      # v1 era 10k — más exploración inicial
-BATCH_SIZE        = 128         # v1 era 64 — gradientes más suaves
-GAMMA             = 0.99        # Sin cambio — horizonte largo
-EXPLORATION_FRAC  = 0.5         # v1 era 0.4 — explora durante más tiempo
+TOTAL_TIMESTEPS   = 500_000     # 500k con dataset 2023 (subir a 1M-2M con multi-año)
+LEARNING_RATE     = 1e-4        # Revertido a v1 — funcionaba bien
+BUFFER_SIZE       = 100_000     # Revertido a v1
+LEARNING_STARTS   = 10_000      # Revertido a v1
+BATCH_SIZE        = 64          # Revertido a v1
+GAMMA             = 0.99        # Sin cambio
+EXPLORATION_FRAC  = 0.4         # Revertido a v1 — 50% era demasiado lento
 EXPLORATION_FINAL = 0.05        # Sin cambio
-TARGET_UPDATE     = 2_000       # v1 era 1k — actualiza red objetivo menos frecuente
+TARGET_UPDATE     = 1_000       # Revertido a v1
 TRAIN_FREQ        = 4           # Sin cambio
 
-# Red neuronal: 76 → 256 → 256 → 13 (v1 era 64x64)
-NET_ARCH          = [256, 256]
+# Red neuronal: 76 → 64 → 64 → 13 (revertido — 256x256 overfitteaba con 8760h)
+NET_ARCH          = [64, 64]
 
-EVAL_FREQ         = 20_000      # v1 era 10k — evaluaciones menos frecuentes (cada eval es lenta)
-EVAL_EPISODES     = 10          # v1 era 5 — más episodios por evaluación = media más fiable
+EVAL_FREQ         = 10_000      # Cada 10k pasos
+EVAL_EPISODES     = 20          # Subido de 5/10 a 20 — reduce varianza en la media de eval
 
 MODEL_DIR  = os.path.join(ROOT, "models")
 LOG_DIR    = os.path.join(ROOT, "logs")
@@ -124,39 +124,30 @@ def main():
     print("   Entorno OK.\n")
 
     # ── 2. Crear entornos con VecNormalize ────────────────────────
-    #
-    #  VecNormalize aplica normalización en línea (running mean/std)
-    #  a las observaciones. Esto iguala la escala de las 76 variables:
-    #    - SoC (0-1), precio (0.05-0.30), consumo (0-200 kWh)
-    #  todas pasan a tener media ~0 y desviación ~1.
-    #
-    #  norm_reward=True normaliza también la recompensa, lo que
-    #  estabiliza el entrenamiento cuando R_t varía mucho entre episodios.
-    #  clip_obs/clip_reward evitan outliers extremos.
-    #
-    print("2. Instanciando entornos con VecNormalize...")
+    #  Solo normaliza observaciones (norm_obs=True).
+    #  norm_reward=False: la recompensa NO se normaliza.
+    #  Razon: normalizar la recompensa distorsiona la señal de aprendizaje
+    #  y dificulta comparar evaluaciones entre entrenamientos.
+    print("2. Instanciando entornos con VecNormalize (solo observaciones)...")
     env = VecNormalize(
         make_env(),
         norm_obs=True,
-        norm_reward=True,
+        norm_reward=False,
         clip_obs=10.0,
-        clip_reward=10.0,
     )
 
     eval_env = VecNormalize(
         make_env(),
         norm_obs=True,
-        norm_reward=False,    # No normalizar recompensa en eval (queremos el valor real)
+        norm_reward=False,
         clip_obs=10.0,
     )
-    print("   Entornos listos (observaciones normalizadas).\n")
+    print("   Entornos listos.\n")
 
     # ── 3. Configurar agente DQN ──────────────────────────────────
     print("3. Configurando agente DQN...")
     print(f"   Red neuronal: 76 -> {NET_ARCH[0]} -> {NET_ARCH[1]} -> 13")
     print(f"   Total timesteps: {TOTAL_TIMESTEPS:,}")
-    print(f"   Learning rate: {LEARNING_RATE}")
-    print(f"   Exploration: {EXPLORATION_FRAC*100:.0f}% del entrenamiento")
 
     model = DQN(
         policy                 = "MlpPolicy",
@@ -203,9 +194,6 @@ def main():
     # ── 6. Guardar modelo y estadísticas de normalización ─────────
     model_path = os.path.join(MODEL_DIR, MODEL_NAME)
     model.save(model_path)
-
-    # Guardar las estadísticas de VecNormalize (media y std de las observaciones).
-    # Son necesarias para reproducir el comportamiento del modelo en inferencia.
     env.save(os.path.join(MODEL_DIR, "vec_normalize.pkl"))
 
     print(f"\nModelo final guardado en: {model_path}.zip")

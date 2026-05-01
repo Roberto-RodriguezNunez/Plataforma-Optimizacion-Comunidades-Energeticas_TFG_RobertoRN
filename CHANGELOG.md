@@ -73,6 +73,28 @@ Continuar con el resto de diagramas pendientes (secuencia, casos de uso, MER, et
 
 ---
 
+## [2026-05-01] — main.py v3: revertir a 64x64, quitar norm_reward (HU-12, HU-13)
+
+### Contexto
+La v2 (256x256, VecNormalize con norm_reward, 500k) fue PEOR que la v1:
+- v2 mejor eval: +10.3 vs v1 mejor eval: +27.1
+- Red grande overfitteaba con 8760 horas de datos
+- norm_reward distorsionaba la señal de aprendizaje
+
+### Cambios v3
+- **Revertir red a 64x64**: 3.8k params vs 88k — generaliza mejor con dataset pequeño
+- **Quitar norm_reward**: mantener solo VecNormalize para observaciones (norm_obs=True)
+- **eval_episodes subido a 20**: medias de evaluación más fiables (reduce ruido de semanas buenas/malas)
+- **Hiperparámetros revertidos a v1**: lr=1e-4, buffer=100k, batch=64, exploration=0.4
+- **500k pasos**: suficiente para convergencia con 1 año
+
+### Lección aprendida
+Con 8760 horas (1 año) de datos, la mejora real vendrá de añadir datos multi-año
+(2020-2023, 4x más datos), no de redes más grandes ni más pasos. Planificado para
+la próxima sesión: adaptar el ETL y descargar datos de ESIOS para 2020-2022.
+
+---
+
 ## [2026-05-01] — main.py v2: red 256x256, VecNormalize, 1M pasos (HU-12, HU-13)
 
 ### Contexto
