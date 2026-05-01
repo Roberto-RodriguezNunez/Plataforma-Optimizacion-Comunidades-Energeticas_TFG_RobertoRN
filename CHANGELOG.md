@@ -73,7 +73,31 @@ Continuar con el resto de diagramas pendientes (secuencia, casos de uso, MER, et
 
 ---
 
-## [2026-05-01] — FASE 3 INICIADA: main.py con entrenamiento DQN + callbacks (HU-12, HU-13)
+## [2026-05-01] — main.py v2: red 256x256, VecNormalize, 1M pasos (HU-12, HU-13)
+
+### Contexto
+La v1 (300k pasos, red 64x64, sin normalización) fue el primer intento de entrenamiento.
+Resultados de v1: recompensa subió de -139 a -7, mejor evaluación +27.1 en paso 200k,
+pero la política no estabilizó (oscilaba entre +27 y -40 en la segunda mitad).
+
+### Mejoras implementadas en v2
+- **Red neuronal más grande**: 76 -> 256 -> 256 -> 13 (era 64x64).
+  Permite capturar patrones estacionales complejos y arbitraje por hora del día.
+- **VecNormalize**: normalización en línea de observaciones (running mean/std).
+  Las 76 variables tenían escalas muy diferentes (SoC 0-1, consumo 0-200 kWh).
+  Ahora todas tienen media ~0 y desviación ~1. Se guarda `vec_normalize.pkl`.
+- **1M pasos** (era 300k): la v1 convergía en paso 200k pero necesitaba más tiempo.
+- **Learning rate 5e-5** (era 1e-4): más lento pero más estable.
+- **Exploración 50%** (era 40%): explora durante más tiempo antes de explotar.
+- **Buffer 200k, batch 128**: gradientes más suaves y experiencias más diversas.
+
+### Siguiente paso lógico
+Ejecutar entrenamiento v2 completo (~45-60 min con 1M pasos).
+Después: HU-28 — notebook de análisis de resultados.
+
+---
+
+## [2026-05-01] — main.py v1: primer entrenamiento DQN (HU-12, HU-13)
 
 ### Rama
 `feature/entrenamiento-dqn` (creada desde `develop`)

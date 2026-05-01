@@ -39,6 +39,24 @@ los cambios se aplican en la fuente original (Notion/Word/LaTeX) al redactar la 
 
 ---
 
+## Doc_Motor_de_Simulacin_y_Entorno_RL.pdf (adicional)
+
+### 4. VecNormalize — nueva sección a añadir
+- **Ubicación:** Sección "2. Espacio de Observación" (tras la descripción del vector de 76 variables)
+- **Contenido a añadir:** Documentar que las observaciones se normalizan en línea con `VecNormalize`
+  (running mean/std) antes de ser procesadas por la red Q. Las estadísticas se guardan en
+  `vec_normalize.pkl` y son necesarias para reproducir el comportamiento en inferencia.
+- **Justificación:** Las 76 variables tienen escalas muy diferentes (SoC: 0-1, consumo: 0-200 kWh).
+  Sin normalización la red da más peso a variables de mayor magnitud.
+
+### 5. Arquitectura de la red — actualizar
+- **Ubicación:** Sección "4. Hiperparámetros del DQN" (si existe) o nueva sección
+- **Texto actual:** Puede referir a una red 64x64 (la primera versión)
+- **Corrección:** La red final es `76 -> 256 -> 256 -> 13` (88.845 parámetros).
+  Se amplió tras comprobar que la versión 64x64 no estabilizaba la política con 300k pasos.
+
+---
+
 ## Otros documentos — sin cambios requeridos
 
 | Documento | Estado |

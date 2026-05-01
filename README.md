@@ -42,8 +42,8 @@ Antes de lanzar el entrenamiento completo, verifica que todo funciona editando
 las dos primeras constantes de `src/main.py`:
 
 ```python
-TOTAL_TIMESTEPS = 5_000    # cambia de 300_000 a 5_000
-LEARNING_STARTS = 1_000    # cambia de 10_000 a 1_000
+TOTAL_TIMESTEPS = 10_000   # cambia de 1_000_000 a 10_000
+LEARNING_STARTS = 2_000    # cambia de 20_000 a 2_000
 ```
 
 Ejecuta:
@@ -57,9 +57,9 @@ Restaura los valores originales antes de entrenar de verdad.
 
 ---
 
-### Entrenamiento completo (~15-25 minutos)
+### Entrenamiento completo (~45-60 minutos)
 
-Con los valores por defecto de `src/main.py` (`TOTAL_TIMESTEPS = 300_000`):
+Con los valores por defecto de `src/main.py` (`TOTAL_TIMESTEPS = 1_000_000`):
 
 ```bash
 python src/main.py
@@ -88,15 +88,16 @@ New best mean reward!
 ```
 TFG/
 ├── models/
-│   ├── best_model.zip     <- mejor política encontrada durante el entrenamiento
-│   └── dqn_sgec.zip       <- modelo del último paso
+│   ├── best_model.zip      <- mejor política encontrada durante el entrenamiento
+│   ├── dqn_sgec.zip        <- modelo del último paso
+│   └── vec_normalize.pkl   <- estadísticas de normalización (imprescindible para inferencia)
 └── logs/
-    ├── train.monitor.csv  <- recompensa de cada episodio de entrenamiento
-    ├── eval.monitor.csv   <- recompensas de los episodios de evaluación
-    └── evaluations.npz    <- histórico de evaluaciones en formato numpy
+    ├── train.monitor.csv   <- recompensa de cada episodio de entrenamiento
+    ├── eval.monitor.csv    <- recompensas de los episodios de evaluación
+    └── evaluations.npz     <- histórico de evaluaciones en formato numpy
 ```
 
-Usa siempre `best_model.zip` para análisis y despliegue.
+Usa siempre `best_model.zip` + `vec_normalize.pkl` para análisis y despliegue.
 
 ---
 
@@ -156,14 +157,15 @@ Si baja con el tiempo, el agente está aprendiendo a usar mejor la batería (com
 
 Todos los hiperparámetros están al principio de `src/main.py` como constantes:
 
-| Constante | Valor por defecto | Descripción |
-|---|---|---|
-| `TOTAL_TIMESTEPS` | 300.000 | Pasos totales de entrenamiento (subir a 500k-1M para resultados más sólidos) |
-| `LEARNING_RATE` | 1e-4 | Tasa de aprendizaje de la red Q |
-| `BUFFER_SIZE` | 100.000 | Tamaño del replay buffer |
-| `LEARNING_STARTS` | 10.000 | Pasos de exploración pura antes de empezar a entrenar |
-| `BATCH_SIZE` | 64 | Muestras por actualización de gradiente |
-| `GAMMA` | 0.99 | Factor de descuento (horizonte largo, episodios de 168 pasos) |
-| `EXPLORATION_FRAC` | 0.4 | Fracción del entrenamiento con epsilon decreciente |
-| `EXPLORATION_FINAL` | 0.05 | Epsilon mínimo al final del entrenamiento |
-| `EVAL_FREQ` | 10.000 | Cada cuántos pasos evaluar y guardar el mejor modelo |
+| Constante | Valor v2 | v1 | Descripción |
+|---|---|---|---|
+| `TOTAL_TIMESTEPS` | 1.000.000 | 300k | Pasos totales de entrenamiento |
+| `LEARNING_RATE` | 5e-5 | 1e-4 | Tasa de aprendizaje de la red Q |
+| `BUFFER_SIZE` | 200.000 | 100k | Tamaño del replay buffer |
+| `LEARNING_STARTS` | 20.000 | 10k | Pasos de exploración pura antes de entrenar |
+| `BATCH_SIZE` | 128 | 64 | Muestras por actualización de gradiente |
+| `GAMMA` | 0.99 | 0.99 | Factor de descuento (horizonte largo) |
+| `EXPLORATION_FRAC` | 0.5 | 0.4 | Fracción del entrenamiento con epsilon decreciente |
+| `EXPLORATION_FINAL` | 0.05 | 0.05 | Epsilon mínimo al final |
+| `NET_ARCH` | [256, 256] | [64, 64] | Capas ocultas de la red neuronal |
+| `EVAL_FREQ` | 20.000 | 10k | Cada cuántos pasos evaluar y guardar el mejor modelo |

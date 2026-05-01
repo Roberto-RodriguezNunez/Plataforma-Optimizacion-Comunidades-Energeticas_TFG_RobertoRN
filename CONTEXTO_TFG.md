@@ -88,6 +88,18 @@ El término de degradación es **no lineal**: penaliza más el ciclado a potenci
 
 > **Nota para la memoria:** Los PDFs de `doc/foundation/` documentan la fórmula antigua con término `ahorro`. Actualizar en la redacción final de la memoria.
 
+### Normalización de Observaciones (VecNormalize)
+
+Las 76 variables del vector de observación tienen escalas muy diferentes:
+- SoC: 0–1, Precio: 0.05–0.30 €/kWh, Consumo/Generación: 0–200 kWh
+
+`VecNormalize` aplica normalización en línea (running mean/std) para que todas
+tengan media ~0 y desviación ~1. Esto permite que la red aprenda qué variable es
+importante en vez de dejarse llevar por la magnitud numérica.
+
+Las estadísticas de normalización se guardan en `models/vec_normalize.pkl` y son
+**imprescindibles para inferencia**: el modelo ONNX espera la entrada normalizada.
+
 ### Episodio
 - Duración: 24 × 7 = 168 pasos (1 semana)
 - Inicio: aleatorio con margen suficiente para el horizonte de pronóstico (+25 pasos)
@@ -177,7 +189,7 @@ TFG/
 | ETL pipeline (`generar_dataset_final.py`) | ✅ Completo y validado |
 | Motor físico (`simulador.py`) | ✅ Completo — 13 acciones, degradación no lineal |
 | Entorno RL (`energy_env.py`) | ✅ Completo — validado con `env_checker` |
-| Script entrenamiento (`main.py`) | ✅ Implementado — DQN SB3, EvalCallback, MetricasCallback, TensorBoard |
+| Script entrenamiento (`main.py`) | ✅ v2 — red 256x256, VecNormalize, 1M pasos, EvalCallback, MetricasCallback, TensorBoard |
 | Exportación a ONNX | ⏳ PENDIENTE |
 | Script de inferencia (Docker/Edge) | ⏳ PENDIENTE |
 | SaaS — Streamlit + PostgreSQL (secundario) | ⏳ PENDIENTE (componente secundario para cierre de ciclo ante el tribunal) |
