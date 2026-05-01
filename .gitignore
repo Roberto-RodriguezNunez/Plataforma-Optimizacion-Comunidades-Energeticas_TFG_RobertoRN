@@ -8,5 +8,11 @@ __pycache__/
 
 # Entornos virtuales
 venv/
+.venv/
+source/
 .env
+
+# Modelos entrenados y logs (generados al entrenar, no versionar)
+models/
+logs/
 .DS_Store

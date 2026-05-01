@@ -1,0 +1,12 @@
+# Normalizar saltos de línea a LF en el repositorio
+# independientemente del sistema operativo del desarrollador
+
+* text=auto eol=lf
+
+# Archivos binarios — no tocar
+*.zip    binary
+*.npz    binary
+*.onnx   binary
+*.png    binary
+*.jpg    binary
+*.drawio binary

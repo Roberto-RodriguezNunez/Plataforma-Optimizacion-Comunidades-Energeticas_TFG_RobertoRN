@@ -10,11 +10,28 @@
 
 ## Instalación
 
-Instala las dependencias desde la raíz del proyecto (`TFG/`):
+Desde la raíz del proyecto (`TFG/`), crea un entorno virtual e instala las dependencias:
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+> **Nota (WSL en Ubuntu 22.04+):** Ubuntu bloquea instalar paquetes en el Python del sistema.
+> Si `python3 -m venv` falla, instala primero el paquete necesario:
+> ```bash
+> sudo apt install python3.12-venv -y
+> ```
+> Luego vuelve a ejecutar los tres comandos de arriba.
+
+El entorno virtual solo hay que crearlo una vez. En sesiones posteriores, actívalo con:
+
+```bash
+source .venv/bin/activate
+```
+
+Sabrás que está activo porque el prompt cambia a `(.venv) roberto@...`.
 
 ---
 
@@ -22,17 +39,9 @@ pip install -r requirements.txt
 
 ### Requisitos previos
 
-- Python 3.10 o superior
-- Dependencias instaladas (`pip install -r requirements.txt`)
-- Dataset generado en `data/processed/dataset_final.csv` (incluido en el repo)
+- Entorno virtual activo (`source .venv/bin/activate`)
+- Dataset en `data/processed/dataset_final.csv` (incluido en el repo)
 - Ejecutar siempre desde la raíz del proyecto (`TFG/`)
-
-> **Nota (Windows con WSL):** los paquetes están instalados en el Python de Windows,
-> no en el de WSL. Usa **PowerShell o CMD** en lugar de la terminal WSL, o ejecuta
-> el Python de Windows explícitamente desde WSL:
-> ```bash
-> /mnt/c/Users/nicor/AppData/Local/Programs/Python/Python314/python.exe src/main.py
-> ```
 
 ---
 
