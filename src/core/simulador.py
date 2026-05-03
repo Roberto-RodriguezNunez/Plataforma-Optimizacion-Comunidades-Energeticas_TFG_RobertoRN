@@ -16,16 +16,24 @@ class ComunidadSimulador:
         self.max_steps = len(self.df)
         
         # 2. Configuración Física
-        self.BATERIA_CAPACIDAD = 100.0 # kWh
-        self.POTENCIA_INVERSOR = 50.0  # kW
+        self.BATERIA_CAPACIDAD = 100.0    # kWh
+        self.POTENCIA_INVERSOR = 50.0     # kW
         self.SOC_INICIAL = 0.5
-        
+        self.SOC_MIN = 0.10               # Límite operativo inferior (protección batería)
+        self.SOC_MAX = 0.90               # Límite operativo superior (protección batería)
+        self.EFICIENCIA_CARGA = 0.95      # 95% — pérdidas AC→DC al cargar
+        self.EFICIENCIA_DESCARGA = 0.95   # 95% — pérdidas DC→AC al descargar (round-trip ~90%)
+        self.AUTODESCARGA_POR_HORA = 0.00004  # ~3% mensual, típico Li-ion
+
         # Configuración Económica
-        self.PRECIO_VENTA_EXCEDENTE = 0.05 
+        # Modelo asimétrico real (regulación española):
+        # - Compra de red: precio PVPC completo (ind. ESIOS 1001) → precio_kwh
+        # - Venta excedentes: precio compensación simplificada (ind. ESIOS 1739) → precio_excedente
+        # RD 244/2019 Art.14: excedentes se valoran a Pmh - CDSVh (≈ precio mayorista OMIE)
         self.COSTE_DEGRADACION_BASE = 0.005
-        
+
         # Estado interno
-        self.soc = self.SOC_INICIAL 
+        self.soc = self.SOC_INICIAL
         self.current_step = 0
 
         # --- DEFINICIÓN DE ACCIONES (EL MAPA) ---
@@ -51,12 +59,13 @@ class ComunidadSimulador:
         # Total acciones: 1 + (4 estrategias * 3 niveles) = 13
 
     def get_data_window(self, step, horizon=24):
+        cols = ['consumo_total', 'generacion_total', 'precio_kwh', 'precio_excedente']
         end = step + horizon
         if end > self.max_steps:
             padding = end - self.max_steps
-            real_data = self.df.iloc[step : self.max_steps][['consumo_total', 'generacion_total', 'precio_kwh']].values
+            real_data = self.df.iloc[step : self.max_steps][cols].values
             return np.pad(real_data, ((0, padding), (0, 0)), mode='constant')
-        return self.df.iloc[step : end][['consumo_total', 'generacion_total', 'precio_kwh']].values
+        return self.df.iloc[step : end][cols].values
 
     def calcular_degradacion_no_lineal(self, energia_kwh, soc_actual):
         if energia_kwh == 0: return 0.0
@@ -78,68 +87,82 @@ class ComunidadSimulador:
         """
         # 1. Leer datos
         row = self.df.iloc[step]
-        gen, cons, precio = row['generacion_total'], row['consumo_total'], row['precio_kwh']
+        gen, cons = row['generacion_total'], row['consumo_total']
+        precio_compra = row['precio_kwh']           # PVPC (ind. 1001)
+        precio_venta = row['precio_excedente']       # Compensación simplificada (ind. 1739)
         
         balance = gen - cons
         exc_disp = max(0, balance)
         def_cub = abs(min(0, balance))
-        
+
+        # Autodescarga (pérdida natural de la batería, ~3% mensual)
+        self.soc *= (1 - self.AUTODESCARGA_POR_HORA)
+
         bateria_kwh = self.soc * self.BATERIA_CAPACIDAD
-        espacio_libre = self.BATERIA_CAPACIDAD - bateria_kwh
-        
+        # Límites operativos: solo operar entre SOC_MIN y SOC_MAX
+        espacio_libre = max(0, self.SOC_MAX * self.BATERIA_CAPACIDAD - bateria_kwh)
+        bateria_disponible = max(0, bateria_kwh - self.SOC_MIN * self.BATERIA_CAPACIDAD)
+
         # 2. DECODIFICAR ACCIÓN
         estrategia, nivel_potencia = self.action_map[action_idx]
-        
+
         # Calcular potencia objetivo en kW (ej: 0.33 * 50 = 16.5 kW)
         potencia_obj = nivel_potencia * self.POTENCIA_INVERSOR
-        
+
         # Flujos
         comprado, vendido, cargado, descargado = 0.0, 0.0, 0.0, 0.0
 
         # --- LÓGICA GENERALIZADA ---
+        # Eficiencia: cargar pierde 5% (AC→DC), descargar pierde 5% (DC→AC)
+        # Round-trip: 0.95 × 0.95 = 90.25%
 
         if estrategia == "IDLE":
             vendido += exc_disp
             comprado += def_cub
 
         elif estrategia == "CARGAR_SOLAR":
-            # Cargar solo con lo que sobre (limitado por potencia obj)
-            carga = min(exc_disp, espacio_libre, potencia_obj)
-            bateria_kwh += carga
+            # Cargar solo con lo que sobre del sol
+            # espacio_libre / eficiencia = máx energía de fuente que cabe en batería
+            max_entrada = espacio_libre / self.EFICIENCIA_CARGA
+            carga = min(exc_disp, max_entrada, potencia_obj)
+            bateria_kwh += carga * self.EFICIENCIA_CARGA
             cargado += carga
             vendido += (exc_disp - carga)
             comprado += def_cub
 
         elif estrategia == "CARGAR_MIXTA":
             # Cargar hasta el objetivo SÍ O SÍ (usando red si hace falta)
-            carga_real = min(espacio_libre, potencia_obj)
-            
-            de_sol = min(exc_disp, carga_real)
-            de_red = carga_real - de_sol
-            
-            bateria_kwh += carga_real
-            cargado += carga_real
+            max_entrada = espacio_libre / self.EFICIENCIA_CARGA
+            carga_total = min(max_entrada, potencia_obj)
+
+            de_sol = min(exc_disp, carga_total)
+            de_red = carga_total - de_sol
+
+            bateria_kwh += carga_total * self.EFICIENCIA_CARGA
+            cargado += carga_total
             vendido += (exc_disp - de_sol)
             comprado += (def_cub + de_red)
 
         elif estrategia == "DESCARGAR_CASA":
-            # Descargar solo lo necesario para la casa (limitado por potencia obj)
-            descarga = min(def_cub, bateria_kwh, potencia_obj)
+            # Descargar solo lo necesario para cubrir déficit de las casas
+            # Para entregar X kWh útiles, la batería pierde X kWh (entrega X * eficiencia)
+            descarga = min(def_cub / self.EFICIENCIA_DESCARGA, bateria_disponible, potencia_obj)
+            energia_util = descarga * self.EFICIENCIA_DESCARGA
             bateria_kwh -= descarga
             descargado += descarga
-            comprado += (def_cub - descarga)
+            comprado += (def_cub - energia_util)
             vendido += exc_disp
 
         elif estrategia == "DESCARGAR_RED":
-            # Descargar a tope hacia la red (Cascada: Casa -> Red)
-            # Limitado por la potencia objetivo (ej: 33%)
-            descarga_total = min(bateria_kwh, potencia_obj)
+            # Descargar a tope (Cascada: Casa → Red)
+            descarga_total = min(bateria_disponible, potencia_obj)
+            energia_util = descarga_total * self.EFICIENCIA_DESCARGA
             bateria_kwh -= descarga_total
             descargado += descarga_total
-            
-            para_casa = min(descarga_total, def_cub)
-            para_red = descarga_total - para_casa
-            
+
+            para_casa = min(energia_util, def_cub)
+            para_red = energia_util - para_casa
+
             comprado += (def_cub - para_casa)
             vendido += (para_red + exc_disp)
 
@@ -147,10 +170,11 @@ class ComunidadSimulador:
         soc_antes = self.soc
         self.soc = np.clip(bateria_kwh / self.BATERIA_CAPACIDAD, 0.0, 1.0)
 
-        # 4. Calcular Economía
-        # Beneficio = cash flow neto: ingresos por venta - gastos por compra - degradación
-        ingresos = vendido * self.PRECIO_VENTA_EXCEDENTE
-        gastos = comprado * precio
+        # 4. Calcular Economia
+        # Modelo asimétrico real: compra a PVPC (retail), venta a precio excedentaria (mayorista)
+        # RD 244/2019 Art.14: excedentes valorados a Pmh - CDSVh (ind. ESIOS 1739)
+        ingresos = vendido * precio_venta
+        gastos = comprado * precio_compra
 
         # Degradación calculada con SoC medio del ciclo (más fiel al stress real)
         energia_movida = cargado + descargado
@@ -158,5 +182,15 @@ class ComunidadSimulador:
         coste_deg = self.calcular_degradacion_no_lineal(energia_movida, soc_medio)
 
         beneficio = ingresos - gastos - coste_deg
-        
-        return {"beneficio": beneficio, "soc": self.soc, "comprado": comprado}
+
+        # Baseline IDLE: qué pasaría sin batería esta hora (reward shaping)
+        # Es stateless: solo depende de los datos de la hora actual
+        beneficio_idle = exc_disp * precio_venta - def_cub * precio_compra
+        beneficio_marginal = beneficio - beneficio_idle
+
+        return {
+            "beneficio": beneficio,
+            "beneficio_marginal": beneficio_marginal,
+            "soc": self.soc,
+            "comprado": comprado,
+        }
