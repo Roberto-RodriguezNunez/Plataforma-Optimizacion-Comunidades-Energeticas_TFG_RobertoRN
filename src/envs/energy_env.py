@@ -17,11 +17,11 @@ class EnergyEnv(gym.Env):
         # --- ACCIONES: 9 Botones (Eco/Turbo/Mixtas) ---
         self.action_space = spaces.Discrete(13)
         
-        # --- ESTADO: 76 Variables ---
-        # 4 actuales (SoC, Precio, Excedente, Deficit)
-        # + 72 futuras (24h * 3 variables: Precio, Gen, Cons)
+        # --- ESTADO: 101 Variables ---
+        # 5 actuales (SoC, Precio_compra, Precio_venta, Excedente, Deficit)
+        # + 96 futuras (24h * 4 variables: Consumo, Generacion, Precio_compra, Precio_venta)
         self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(76,), dtype=np.float32
+            low=-np.inf, high=np.inf, shape=(101,), dtype=np.float32
         )
         
         # Configuración del Episodio
@@ -45,31 +45,31 @@ class EnergyEnv(gym.Env):
     def _get_obs(self):
         """Construye el vector de estado completo."""
         t = self.simulador.current_step
-        
+
         # 1. Datos Actuales
         datos_hoy = self.simulador.get_data_window(t, horizon=1)[0]
-        # [consumo, generacion, precio]
-        cons, gen, precio = datos_hoy
-        
+        # [consumo, generacion, precio_compra, precio_venta]
+        cons, gen, precio_compra, precio_venta = datos_hoy
+
         balance = gen - cons
         exc = max(0, balance)
         def_ = abs(min(0, balance))
-        
+
         # 2. Pronóstico (24 horas futuras)
         window_future = self.simulador.get_data_window(t+1, horizon=24)
-        forecast_flat = window_future.flatten() # Aplanar matriz a vector
-        
-        # 3. Concatenar todo (4 + 72 = 76)
-        obs = np.concatenate(([self.simulador.soc, precio, exc, def_], forecast_flat))
-        
+        forecast_flat = window_future.flatten()  # 24 * 4 = 96 valores
+
+        # 3. Concatenar todo (5 + 96 = 101)
+        obs = np.concatenate(([self.simulador.soc, precio_compra, precio_venta, exc, def_], forecast_flat))
+
         return obs.astype(np.float32)
 
     def step(self, action):
         # 1. Ejecutar en el simulador
         resultado = self.simulador.ejecutar_accion_fisica(action, self.simulador.current_step)
         
-        # 2. Obtener Recompensa
-        reward = resultado["beneficio"]
+        # 2. Obtener Recompensa (marginal vs IDLE para reducir varianza)
+        reward = resultado["beneficio_marginal"]
         
         # 3. Avanzar tiempo
         self.simulador.current_step += 1
