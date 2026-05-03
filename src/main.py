@@ -1,19 +1,24 @@
 """
-main.py — Orquestador de entrenamiento del agente DQN (v3)
+main.py -- Orquestador de entrenamiento del agente DQN (v7)
 ============================================================
 HU-12: Entrenar agente DQN con Stable Baselines3
 HU-13: Monitorizar el progreso del entrenamiento
 
-Cambios respecto a v2:
-  - Revertir a red 64x64 (mejor con dataset pequeño de 8760 horas)
-  - Mantener VecNormalize solo para observaciones (quitar norm_reward)
-  - 500k pasos (suficiente para convergencia con 1 año de datos)
-  - Subir eval_episodes a 20 para medias de evaluación más fiables
+Cambios respecto a v6:
+  - Fisica realista de bateria en simulador.py:
+    * Eficiencia carga/descarga: 95% cada direccion (round-trip 90.25%)
+    * Limites operativos SoC: 10% - 90% (80 kWh utiles de 100 kWh)
+    * Autodescarga: ~3% mensual (0.004%/hora, tipico Li-ion)
+  - Modelo de precios asimetrico real (sin cambios respecto a v6):
+    * Compra: PVPC completo (ind. ESIOS 1001)
+    * Venta: compensacion simplificada (ind. ESIOS 1739, RD 244/2019)
+  - Observacion: 101 dimensiones (5 actuales + 24h x 4 vars)
+  - Red 64x64 mantenida (101 -> 64 -> 64 -> 13)
 
-Ejecución desde la raíz del proyecto (carpeta TFG/):
+Ejecucion desde la raiz del proyecto (carpeta TFG/):
     python src/main.py
 
-Para ver las curvas en TensorBoard (mientras entrena o después):
+Para ver las curvas en TensorBoard (mientras entrena o despues):
     tensorboard --logdir logs/
 """
 
@@ -34,27 +39,29 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from src.envs.energy_env import EnergyEnv
 
 
-# ──────────────────────────────────────────────────────────────────
-#  HIPERPARÁMETROS (v3)
-#  Para un test rápido: TOTAL_TIMESTEPS = 10_000, LEARNING_STARTS = 2_000
-# ──────────────────────────────────────────────────────────────────
+# ------------------------------------------------------------------
+#  HIPERPARAMETROS (v5)
+#  Para un test rapido: TOTAL_TIMESTEPS = 10_000, LEARNING_STARTS = 2_000
+# ------------------------------------------------------------------
 
-TOTAL_TIMESTEPS   = 500_000     # 500k con dataset 2023 (subir a 1M-2M con multi-año)
-LEARNING_RATE     = 1e-4        # Revertido a v1 — funcionaba bien
-BUFFER_SIZE       = 100_000     # Revertido a v1
-LEARNING_STARTS   = 10_000      # Revertido a v1
-BATCH_SIZE        = 64          # Revertido a v1
-GAMMA             = 0.99        # Sin cambio
-EXPLORATION_FRAC  = 0.4         # Revertido a v1 — 50% era demasiado lento
-EXPLORATION_FINAL = 0.05        # Sin cambio
-TARGET_UPDATE     = 1_000       # Revertido a v1
+TOTAL_TIMESTEPS   = 1_500_000   # 1.5M — 2.6x mas datos permite mas pasos sin overfitting
+LEARNING_RATE     = 1e-4        # Validado: mejor que 5e-5 (v2 fue peor)
+BUFFER_SIZE       = 200_000     # Subido: 2.6x mas datos -> mas diversidad en buffer
+LEARNING_STARTS   = 10_000      # Sin cambio — suficiente exploracion inicial
+BATCH_SIZE        = 64          # Validado: mejor que 128 (mas actualizaciones)
+GAMMA             = 0.99        # Horizonte ~100 pasos (~4 dias). Cubre ciclos dia/noche
+EXPLORATION_FRAC  = 0.4         # Validado: 40% del training explorando (50% fue peor)
+EXPLORATION_FINAL = 0.05        # Estandar DQN
+TARGET_UPDATE     = 1_000       # Sin cambio
 TRAIN_FREQ        = 4           # Sin cambio
 
-# Red neuronal: 76 → 64 → 64 → 13 (revertido — 256x256 overfitteaba con 8760h)
+# Red neuronal: 101 -> 64 -> 64 -> 13
+# Params: 101*64+64 + 64*64+64 + 64*13+13 = 6593+4160+845 = ~11598? No...
+# (101+1)*64 + (64+1)*64 + (64+1)*13 = 6528+4160+845 = 11533 — ok para 22646 datos
 NET_ARCH          = [64, 64]
 
-EVAL_FREQ         = 10_000      # Cada 10k pasos
-EVAL_EPISODES     = 20          # Subido de 5/10 a 20 — reduce varianza en la media de eval
+EVAL_FREQ         = 15_000      # Cada 15k pasos (100 evals en 1.5M)
+EVAL_EPISODES     = 20          # 20 episodios por eval — reduce varianza estacional
 
 MODEL_DIR  = os.path.join(ROOT, "models")
 LOG_DIR    = os.path.join(ROOT, "logs")
@@ -146,7 +153,7 @@ def main():
 
     # ── 3. Configurar agente DQN ──────────────────────────────────
     print("3. Configurando agente DQN...")
-    print(f"   Red neuronal: 76 -> {NET_ARCH[0]} -> {NET_ARCH[1]} -> 13")
+    print(f"   Red neuronal: 101 -> {NET_ARCH[0]} -> {NET_ARCH[1]} -> 13")
     print(f"   Total timesteps: {TOTAL_TIMESTEPS:,}")
 
     model = DQN(
