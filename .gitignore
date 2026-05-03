@@ -16,3 +16,6 @@ source/
 models/
 logs/
 .DS_Store
+
+# Notas personales
+anotaciones_para_mi/

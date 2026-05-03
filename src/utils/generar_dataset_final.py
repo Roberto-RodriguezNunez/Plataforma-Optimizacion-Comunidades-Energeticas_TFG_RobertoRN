@@ -2,89 +2,104 @@ import pandas as pd
 import numpy as np
 import os
 
-# --- CONFIGURACIÓN ---
-RUTA_CONSUMO = 'data/raw/consumo_esios_2023.csv'
-RUTA_PRECIOS = 'data/raw/precios_esios_2023.csv'
-RUTA_SOLAR = 'data/raw/solar_pvgis_2023.csv'
-RUTA_SALIDA = 'data/processed/dataset_final.csv'
+# --- CONFIGURACION ---
+# Datos multi-anio: jun-2021 a dic-2023 (~22.656 horas, ~31 meses)
+RUTA_CONSUMO    = 'data/raw/consumo_esios_2021_2023.csv'
+RUTA_PRECIOS    = 'data/raw/precios_esios_2021_2023.csv'
+RUTA_EXCEDENTE  = 'data/raw/compensacion_autoconsumo_esios_2021_2023.csv'
+RUTA_SOLAR      = 'data/raw/solar_pvgis_2021_2023.csv'
+RUTA_SALIDA     = 'data/processed/dataset_final.csv'
 
 NUM_VECINOS = 15
-POTENCIA_SOLAR_TOTAL = 50.0  # kWp
-CONSUMO_ANUAL_CASA = 3500.0  # kWh
+POTENCIA_SOLAR_TOTAL = 50.0   # kWp
+CONSUMO_ANUAL_CASA   = 3500.0 # kWh
+
+# Semilla fija para reproducibilidad de los perfiles de vecinos
+SEED = 42
+
 
 def generar():
-    print("🚀 INICIANDO GENERACIÓN DEL DATASET MAESTRO ...")
+    print("INICIANDO GENERACION DEL DATASET MULTI-ANIO ...")
     os.makedirs(os.path.dirname(RUTA_SALIDA), exist_ok=True)
+    rng = np.random.default_rng(SEED)
 
     # 1. PROCESAR CONSUMO
     print("   -> 1. Procesando Consumo (ESIOS)...")
     try:
-        # CORRECCIÓN: Quitamos decimal=',' porque tu archivo usa puntos.
         df_cons = pd.read_csv(RUTA_CONSUMO, sep=';', encoding='utf-8')
-        
-        # Tu columna de datos es la 'value' (índice 4)
-        perfil_base = df_cons['value'].values 
-        
-        # Convertir Coeficiente a kWh
+        perfil_base = df_cons['value'].values
+        n_horas = len(perfil_base)
+
+        # Convertir coeficiente PVPC a kWh
         perfil_kwh = perfil_base * CONSUMO_ANUAL_CASA
-        perfil_kwh = perfil_kwh[:8760] # Recortar a 1 año
-        
-        # Generar 15 vecinos
-        consumo_total = np.zeros(8760)
+
+        # Generar 15 vecinos con perturbacion estocastica
+        consumo_total = np.zeros(n_horas)
         for i in range(NUM_VECINOS):
-            factor = np.random.uniform(0.8, 1.2)
-            ruido = np.random.normal(1.0, 0.1, 8760)
+            factor = rng.uniform(0.8, 1.2)
+            ruido = rng.normal(1.0, 0.1, n_horas)
             vecino = perfil_kwh * factor * ruido
             consumo_total += np.maximum(vecino, 0)
-            
-        print(f"      - Generados {NUM_VECINOS} vecinos agregados.")
+
+        print(f"      - {n_horas} horas, {NUM_VECINOS} vecinos agregados.")
 
     except Exception as e:
-        print(f"❌ ERROR EN CONSUMO: {e}")
+        print(f"ERROR EN CONSUMO: {e}")
         return
 
     # 2. PROCESAR SOLAR
     print("   -> 2. Procesando Solar (PVGIS)...")
     try:
         df_sol = pd.read_csv(RUTA_SOLAR, skiprows=10, skipfooter=10, engine='python')
-        solar_unitario = df_sol['P'].values / 1000.0
-        solar_total = solar_unitario[:8760] * POTENCIA_SOLAR_TOTAL
-        print(f"      - Solar escalada a {POTENCIA_SOLAR_TOTAL} kWp.")
+        solar_unitario = df_sol['P'].values / 1000.0  # W -> kW (1 kWp)
+        solar_total = solar_unitario * POTENCIA_SOLAR_TOTAL
+        print(f"      - {len(solar_total)} horas, escalada a {POTENCIA_SOLAR_TOTAL} kWp.")
 
     except Exception as e:
-        print(f"❌ ERROR EN SOLAR: {e}")
+        print(f"ERROR EN SOLAR: {e}")
         return
 
-    # 3. PROCESAR PRECIOS
-    print("   -> 3. Procesando Precios (ESIOS)...")
+    # 3. PROCESAR PRECIOS PVPC (compra de red)
+    print("   -> 3. Procesando Precios PVPC (ESIOS ind. 1001)...")
     try:
-        # CORRECCIÓN: Quitamos decimal=','
         df_prec = pd.read_csv(RUTA_PRECIOS, sep=';', encoding='utf-8')
-        
-        # Tu columna de precio también se llama 'value'
         precios = df_prec['value'].values
-        
-        # Convertir €/MWh a €/kWh
-        precios_kwh = precios[:8760] / 1000.0
-        print(f"      - Precios convertidos a €/kWh.")
+        precios_kwh = precios / 1000.0  # EUR/MWh -> EUR/kWh
+        print(f"      - {len(precios_kwh)} horas, convertidos a EUR/kWh.")
 
     except Exception as e:
-        print(f"❌ ERROR EN PRECIOS: {e}")
+        print(f"ERROR EN PRECIOS: {e}")
         return
 
-    # 4. FUSIÓN Y GUARDADO
-    print("   -> 4. Fusionando...")
-    min_len = min(len(consumo_total), len(solar_total), len(precios_kwh))
-    
+    # 4. PROCESAR PRECIO EXCEDENTARIA (venta de excedentes, RD 244/2019)
+    print("   -> 4. Procesando Precio Excedentaria (ESIOS ind. 1739)...")
+    try:
+        df_exc = pd.read_csv(RUTA_EXCEDENTE, sep=';', encoding='utf-8')
+        precio_exc = df_exc['value'].values
+        precio_exc_kwh = precio_exc / 1000.0  # EUR/MWh -> EUR/kWh
+        print(f"      - {len(precio_exc_kwh)} horas, convertidos a EUR/kWh.")
+
+    except Exception as e:
+        print(f"ERROR EN PRECIO EXCEDENTARIA: {e}")
+        return
+
+    # 5. FUSION Y GUARDADO
+    min_len = min(len(consumo_total), len(solar_total), len(precios_kwh), len(precio_exc_kwh))
+    print(f"   -> 5. Fusionando ({min_len} horas)...")
+
     df_final = pd.DataFrame({
         'consumo_total': consumo_total[:min_len],
         'generacion_total': solar_total[:min_len],
-        'precio_kwh': precios_kwh[:min_len]
+        'precio_kwh': precios_kwh[:min_len],
+        'precio_excedente': precio_exc_kwh[:min_len]
     })
-    
+
     df_final.to_csv(RUTA_SALIDA, index=False)
-    print(f"\n✅ ¡ÉXITO TOTAL! Dataset creado en: {RUTA_SALIDA}")
-    print(df_final.head(24))
+    print(f"\nDataset creado: {RUTA_SALIDA}")
+    print(f"Shape: {df_final.shape}")
+    print(f"\nEstadisticas:")
+    print(df_final.describe().round(4))
+
 
 if __name__ == "__main__":
     generar()

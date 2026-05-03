@@ -5,6 +5,162 @@
 
 ---
 
+## [2026-05-03] — v8: reward shaping (baseline IDLE) para eliminar ruido meteorológico
+
+### Problema detectado en DQN_7
+
+El DQN_7 (1.5M pasos, config validada) NO convergió:
+- Media final: +10 EUR/semana (inestable, oscila entre -200 y +190)
+- Ratio señal/ruido: **0.15** — la varianza del clima (±68 EUR/sem) ahogaba
+  la contribución marginal del agente (~10 EUR/sem)
+
+**Causa raíz:** La recompensa `R_t = vendido*precio_venta - comprado*precio_compra - degradación`
+incluye el coste/ingreso de fondo de la comunidad (que depende del clima, NO del agente).
+El DQN no puede separar su contribución del ruido incontrolable con una red 64x64.
+
+### Solución: Reward shaping con baseline IDLE
+
+Nueva recompensa: `R_t = beneficio_accion - beneficio_IDLE`
+- `beneficio_IDLE = excedente * precio_venta - deficit * precio_compra`
+- Es stateless (no tiene batería → no tiene SoC → cálculo exacto)
+- NO cambia la política óptima (restar constante independiente de acción)
+- Elimina 100% de la varianza meteorológica
+
+### Verificación (200 episodios)
+
+| Métrica | Antes (reward absoluta) | Después (reward marginal) |
+|---|---|---|
+| Std episodio IDLE | 68 EUR/sem | **0.00 EUR/sem** |
+| Std episodio random | 74 EUR/sem | **27 EUR/sem** |
+| Ratio señal/ruido estimado | 0.15 | **3–5** |
+
+### Cambios en archivos
+
+- **`src/core/simulador.py`**: `ejecutar_accion_fisica()` ahora calcula y devuelve
+  `beneficio_marginal = beneficio - beneficio_idle` además de `beneficio` (absoluto).
+- **`src/envs/energy_env.py`**: `reward = resultado["beneficio_marginal"]` (antes: `resultado["beneficio"]`).
+
+### Modelos invalidados
+
+DQN_7 es INVÁLIDO (entrenado con reward ruidosa). Todos los modelos DQN_1 a DQN_7 descartados.
+
+### Siguiente paso lógico
+1. Ejecutar entrenamiento v8 definitivo (1.5M pasos): `python src/main.py`
+2. HU-28: notebook análisis de resultados
+3. HU-14: exportar modelo a ONNX
+
+---
+
+## [2026-05-03] — v7: fisica realista de bateria (eficiencia, limites SoC, autodescarga)
+
+### Mejoras en el motor fisico (`simulador.py`)
+
+**1. Eficiencia de carga/descarga**
+- Carga: 95% (de 10 kWh de solar/red, la bateria almacena 9.5 kWh)
+- Descarga: 95% (la bateria pierde 10 kWh, entrega 9.5 kWh utiles)
+- Round-trip: 0.95 x 0.95 = 90.25% (estandar Li-ion)
+- Antes: 100% (irreal, sin perdidas)
+- Impacto: ciclar la bateria innecesariamente tiene un coste real adicional a la degradacion
+
+**2. Limites operativos de SoC**
+- SOC_MIN = 10%, SOC_MAX = 90%
+- La bateria solo opera entre 10 y 90 kWh de los 100 kWh fisicos (80 kWh utiles)
+- Antes: 0-100% (irreal, acorta vida util de la bateria)
+- Impacto: el agente no puede vaciar ni llenar completamente la bateria
+
+**3. Autodescarga**
+- 0.004% por hora (~3% mensual, tipico Li-ion)
+- Se aplica al inicio de cada paso, antes de la accion
+- Antes: 0% (irreal pero efecto pequeno: ~0.67% por semana)
+
+**4. Adaptacion de la logica de acciones**
+- `espacio_libre` ahora respeta SOC_MAX (antes usaba capacidad total)
+- `bateria_disponible` ahora respeta SOC_MIN (antes podia llegar a 0)
+- Carga limitada por `espacio_libre / eficiencia` (necesitas mas energia de entrada para llenar el mismo espacio)
+- Descarga entrega `descargado * eficiencia` kWh utiles (se pierde un 5%)
+
+### Verificacion (20 semanas aleatorias)
+
+| Estrategia | Antes (sin perdidas) | Ahora (con perdidas) |
+|---|---|---|
+| IDLE | -5.84 EUR/sem | -54.73 EUR/sem |
+| Autoconsumo simple | +40.12 EUR/sem | -0.84 EUR/sem |
+| Mejora autoconsumo vs IDLE | +45.96 EUR/sem | **+53.89 EUR/sem** |
+
+La bateria sigue aportando valor (+54 EUR/sem vs IDLE). Los valores absolutos bajan
+porque la eficiencia < 100% encarece los ciclos.
+
+### Siguiente paso logico
+1. Ejecutar entrenamiento v7 definitivo (1.5M pasos): `python src/main.py`
+2. HU-28: notebook analisis de resultados
+
+---
+
+## [2026-05-03] — v6: modelo de precios asimetrico REAL (regulacion espanola)
+
+### Bug critico corregido — modelo simetrico era INCORRECTO
+
+**Problema:** La v5 usaba `ingresos = vendido * precio_kwh` (modelo simetrico: compra = venta).
+Esto era incorrecto porque `precio_kwh` es el PVPC completo (ind. ESIOS 1001), que incluye
+energia + peajes + cargos. Un vendedor de excedentes NO recibe todo eso, solo el componente
+mayorista. El modelo simetrico permitia al agente explotar la bateria (dump DESCARGAR_RED 100%
+desde SoC 0.5 y ganar dinero gratis).
+
+**Solucion:** Modelo asimetrico con datos REALES de ESIOS:
+- **Compra de red**: `precio_kwh` — PVPC completo (ind. 1001). Media: 0.217 EUR/kWh
+- **Venta excedentes**: `precio_excedente` — compensacion simplificada (ind. 1739,
+  RD 244/2019 Art.14: Pmh - CDSVh). Media: 0.132 EUR/kWh (~60% del PVPC)
+- Spread medio compra-venta: 0.085 EUR/kWh (peajes+cargos que paga el consumidor)
+- En NINGUNA hora del dataset el precio de venta supera al de compra
+
+### Cambios en archivos
+
+**1. Nuevo dato raw: `data/raw/compensacion_autoconsumo_esios_2021_2023.csv`**
+- Indicador ESIOS 1739 (precio energia excedentaria autoconsumo, compensacion simplificada)
+- 22.657 filas, mismo periodo jun-2021 a dic-2023, Espana
+
+**2. ETL (`generar_dataset_final.py`)**
+- Añadido procesamiento de `compensacion_autoconsumo_esios_2021_2023.csv`
+- Dataset ahora tiene 4 columnas: `[consumo_total, generacion_total, precio_kwh, precio_excedente]`
+- Shape: 22.646 x 4
+
+**3. Simulador (`simulador.py`)**
+- `ejecutar_accion_fisica()`: lee `precio_compra` (PVPC) y `precio_venta` (excedentaria)
+- `ingresos = vendido * precio_venta` (antes: `vendido * precio`)
+- `gastos = comprado * precio_compra` (antes: `comprado * precio`)
+- `get_data_window()`: devuelve 4 columnas (antes 3)
+
+**4. Entorno (`energy_env.py`)**
+- Observacion ampliada: 76 -> **101 dimensiones**
+  - 5 actuales: SoC, precio_compra, precio_venta, excedente, deficit
+  - 96 pronostico: 24h x 4 vars (consumo, generacion, precio_compra, precio_venta)
+
+**5. Entrenamiento (`main.py`) — v6**
+- Docstring actualizado
+- Red: 101 -> 64 -> 64 -> 13
+
+### Verificacion de cordura economica (20 semanas aleatorias)
+
+| Estrategia | Recompensa media/semana |
+|---|---|
+| IDLE (sin bateria) | -5.84 EUR |
+| DESCARGAR_RED 100% (dump) | +0.23 EUR (ya NO es exploit) |
+| Autoconsumo simple (solar->casa) | **+40.12 EUR** |
+
+- Autoconsumo supera IDLE en +46 EUR/semana: correcto, la bateria aporta valor real
+- Dump apenas supera IDLE (+6 EUR): solo por el SoC inicial de 0.5, se agota en 2 horas
+- El DQN debe superar el autoconsumo simple aprendiendo arbitraje temporal
+
+### Todos los modelos anteriores (DQN_1 a DQN_5) son INVALIDOS
+Entrenados con precios incorrectos. Necesario reentrenar desde cero.
+
+### Siguiente paso logico
+1. Ejecutar entrenamiento v6 definitivo (1.5M pasos): `python src/main.py`
+2. HU-28: notebook analisis de resultados
+3. HU-14: exportar modelo a ONNX
+
+---
+
 ## [2025-12-08] — FASE 2 COMPLETADA: Motor de Simulación y Entorno RL
 
 ### Implementado
@@ -70,6 +226,87 @@ El SaaS (Streamlit + PostgreSQL) es un componente **secundario** del TFG añadid
 
 ### Siguiente paso lógico
 Continuar con el resto de diagramas pendientes (secuencia, casos de uso, MER, etc.) o implementar `src/main.py`.
+
+---
+
+## [2026-05-02] — v5: datos multi-anio, fix precio venta a mercado, hiperparametros ajustados
+
+### Cambios criticos
+
+**1. Fix precio de venta en `simulador.py` (bug conceptual)**
+- ANTES: `ingresos = vendido * 0.05` (precio fijo, incorrecto)
+- DESPUES: `ingresos = vendido * precio` (precio horario de mercado)
+- Motivo: segun RD 244/2019, los excedentes se compensan al precio horario OMIE.
+  Para una VPP con bateria, el modelo simetrico (compra = venta = precio mercado)
+  es la simplificacion estandar en la literatura academica de DQN + bateria.
+- Eliminada constante `PRECIO_VENTA_EXCEDENTE`.
+- Consecuencia: todos los modelos anteriores (DQN_1 a DQN_4) son INVALIDOS.
+  DESCARGAR_RED ahora es rentable (vende a ~0.15 en vez de 0.05) y el agente
+  debe aprender arbitraje temporal (cargar barato, vender/descargar caro).
+
+**2. Dataset multi-anio en `generar_dataset_final.py`**
+- Nuevos datos raw: jun-2021 a dic-2023 (consumo, precios y solar de ESIOS/PVGIS)
+- Dataset: 22.646 horas x 3 columnas (era 8.760 horas, 2.6x mas datos)
+- Semilla fija (seed=42) para reproducibilidad de perfiles de vecinos
+- Eliminado hardcode de 8760 horas
+
+**3. Hiperparametros ajustados en `main.py` (v5)**
+- `TOTAL_TIMESTEPS = 1_500_000` (era 1M — mas datos + problema mas complejo)
+- `BUFFER_SIZE = 200_000` (era 100k — mas diversidad con 2.6x mas datos)
+- `EVAL_FREQ = 15_000` (era 10k — 100 evals en 1.5M pasos)
+- Resto mantenido: lr=1e-4, 64x64, gamma=0.99, exploration_frac=0.4, norm_obs=True
+
+### Modelo economico del simulador (documentacion)
+
+La comunidad energetica opera con estos precios:
+- **Compra de red**: precio_kwh horario del dataset (PVPC/OMIE)
+- **Venta a red**: mismo precio_kwh horario (modelo simetrico)
+- **P2P entre vecinos**: implicito en el modelo agregado (el DQN gestiona el balance
+  neto de la comunidad). El reparto individual se calcula en post-procesado (Capa 5 SaaS)
+  usando Mid-Market Rate.
+
+Formula de recompensa: `R_t = vendido * precio - comprado * precio - coste_degradacion`
+
+### Verificacion
+- `env_checker`: OK con nuevo dataset
+- Precio de venta verificado: excedente de 2.01 kWh a 0.1157 EUR/kWh = 0.2324 EUR
+  (antes con 0.05 fijo habria sido 0.1004 EUR)
+
+### Siguiente paso logico
+1. Ejecutar entrenamiento v5 definitivo (1.5M pasos, ~2-2.5 horas)
+2. HU-28: notebook analisis de resultados
+3. HU-14: exportar modelo a ONNX
+
+---
+
+## [2026-05-01] — main.py v4: subir a 1M pasos tras analisis cientifico (HU-12)
+
+### Contexto — Analisis cientifico de 4 entrenamientos
+Se analizaron los 4 runs (DQN_1 test, DQN_2 v1 300k, DQN_3 v2 500k, DQN_4 v3 500k):
+
+| Run | Config | Mejor Eval | Tendencia 2a mitad |
+|-----|--------|------------|---------------------|
+| DQN_2 (v1) | 64x64, sin norm | +27.1 (200k) | Inestable |
+| DQN_3 (v2) | 256x256, norm_obs+reward | +10.3 | Plana (overfitting) |
+| DQN_4 (v3) | 64x64, norm_obs only | +21.6 (240k) | **+3.8/100k, mejorando** |
+
+### Hallazgos clave
+- DQN_4 sigue mejorando a 500k pasos (pendiente positiva +3.8 reward/100k)
+- Proyeccion lineal: ~+35 de recompensa a 1M pasos
+- La config v3 (64x64, norm_obs, no norm_reward) es la mejor encontrada
+- Preocupacion: accion dominante DESCARGAR_CASA 100% — posible estrategia suboptima
+
+### Cambio
+- `TOTAL_TIMESTEPS` subido de 500k a **1M** en `src/main.py`
+
+### Leccion aprendida
+No asumir meseta sin evidencia cuantitativa. El analisis de pendiente en la 2a mitad
+del entrenamiento es critico para decidir si añadir mas pasos.
+
+### Siguiente paso logico
+1. Ejecutar entrenamiento v4 (1M pasos, ~90 min)
+2. Mañana: datos multi-año 2020-2023 (4x datos) → adaptar ETL y subir a 1.5M-2M pasos
+3. HU-28: notebook analisis de resultados
 
 ---
 
