@@ -90,6 +90,11 @@ La recompensa es la **contribución marginal** del agente vs no usar batería.
 Esto elimina la varianza meteorológica (±68 EUR/sem) sin cambiar la política óptima.
 Positivo = el agente mejora vs IDLE, negativo = empeora vs IDLE.
 
+**Simetría energética (valor terminal + coste inicial):**
+- Paso 0: se resta el valor de la energía inicial (SoC=0.5 → ~40 kWh útiles × precio × 0.95)
+- Paso final: se suma el valor de la energía restante (SoC_final - 0.10) × 100 × precio × 0.95
+- Efecto: episodio IDLE neto ≈ 0 EUR. Solo se gana con arbitraje temporal real.
+
 **Modelo de precios asimétrico (corregido 2026-05-03):**
 - **Compra de red:** `precio_kwh` — PVPC completo (ind. ESIOS 1001). Incluye coste de
   energía + peajes de transporte y distribución + cargos del sistema. Media: 0.217 €/kWh.

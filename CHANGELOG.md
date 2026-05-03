@@ -34,11 +34,21 @@ Nueva recompensa: `R_t = beneficio_accion - beneficio_IDLE`
 | Std episodio random | 74 EUR/sem | **27 EUR/sem** |
 | Ratio señal/ruido estimado | 0.15 | **3–5** |
 
+### Valor terminal y coste inicial (simetría energética)
+
+Para evitar que el agente vacíe la batería al final del episodio (energía perdida)
+o reciba un bonus gratis por la energía inicial:
+- **Paso 0**: se resta `energia_inicial * precio_compra * eficiencia` (~7 EUR)
+- **Paso 168 (terminal)**: se suma `energia_restante * precio_compra * eficiencia`
+- **Resultado IDLE neto**: ~0 EUR (solo pierde autodescarga: -0.17 EUR/semana)
+- El agente solo gana si hace arbitraje temporal real (cargar barato, descargar caro)
+
 ### Cambios en archivos
 
 - **`src/core/simulador.py`**: `ejecutar_accion_fisica()` ahora calcula y devuelve
   `beneficio_marginal = beneficio - beneficio_idle` además de `beneficio` (absoluto).
 - **`src/envs/energy_env.py`**: `reward = resultado["beneficio_marginal"]` (antes: `resultado["beneficio"]`).
+  Añadido valor terminal y coste inicial para simetría energética.
 
 ### Modelos invalidados
 

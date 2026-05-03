@@ -27,6 +27,7 @@ class EnergyEnv(gym.Env):
         # Configuración del Episodio
         self.EPISODE_LENGTH = 24 * 7  # Episodios de 1 semana
         self.steps_in_episode = 0
+        self._pendiente_coste_inicial = 0.0  # Se resta en el primer step
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -39,7 +40,14 @@ class EnergyEnv(gym.Env):
         self.simulador.current_step = start_step
         self.simulador.soc = self.simulador.SOC_INICIAL
         self.steps_in_episode = 0
-        
+
+        # Calcular coste de la energía inicial (se resta en el primer step)
+        soc_util = max(0, self.simulador.SOC_INICIAL - self.simulador.SOC_MIN)
+        energia_inicial = soc_util * self.simulador.BATERIA_CAPACIDAD
+        datos_hora = self.simulador.get_data_window(start_step, horizon=1)[0]
+        precio_compra = datos_hora[2]
+        self._pendiente_coste_inicial = energia_inicial * precio_compra * self.simulador.EFICIENCIA_DESCARGA
+
         return self._get_obs(), {}
 
     def _get_obs(self):
@@ -70,6 +78,10 @@ class EnergyEnv(gym.Env):
         
         # 2. Obtener Recompensa (marginal vs IDLE para reducir varianza)
         reward = resultado["beneficio_marginal"]
+
+        # Restar valor de la energía inicial en el primer paso (simetría con valor terminal)
+        if self.steps_in_episode == 0:
+            reward -= self._pendiente_coste_inicial
         
         # 3. Avanzar tiempo
         self.simulador.current_step += 1
@@ -78,14 +90,24 @@ class EnergyEnv(gym.Env):
         # 4. Comprobar fin
         terminated = (self.steps_in_episode >= self.EPISODE_LENGTH)
         truncated = False
-        
+
+        # 5. Valor terminal: la energía en batería al final no se pierde
+        # Valorada al precio medio de compra evitada (PVPC medio del dataset)
+        if terminated:
+            soc_util = max(0, self.simulador.soc - self.simulador.SOC_MIN)
+            energia_restante = soc_util * self.simulador.BATERIA_CAPACIDAD
+            # Valorar a precio de compra actual (lo que costaría recargarla)
+            datos_hora = self.simulador.get_data_window(self.simulador.current_step - 1, horizon=1)[0]
+            precio_compra_actual = datos_hora[2]
+            reward += energia_restante * precio_compra_actual * self.simulador.EFICIENCIA_DESCARGA
+
         # Info extra (útil para gráficas luego)
         info = {
             "soc": resultado["soc"],
             "beneficio": resultado["beneficio"],
             "comprado": resultado["comprado"]
         }
-        
+
         return self._get_obs(), reward, terminated, truncated, info
     
     def render(self):
