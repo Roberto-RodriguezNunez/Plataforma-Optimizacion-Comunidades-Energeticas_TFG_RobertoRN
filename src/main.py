@@ -1,19 +1,24 @@
 """
-main.py -- Orquestador de entrenamiento del agente DQN (v9 — DQN_11)
+main.py -- Orquestador de entrenamiento del agente DQN (v10 — DQN_12)
 ============================================================
 HU-12: Entrenar agente DQN con Stable Baselines3
 HU-13: Monitorizar el progreso del entrenamiento
 
-Cambios respecto a v8 (DQN_11):
-  - TOTAL_TIMESTEPS: 1.5M -> 2.0M (DQN_10 seguia mejorando a 960k, fase explotacion muy corta)
-  - EVAL_FREQ: 15k -> 20k (mantiene ~100 evals totales en 2M pasos)
+Cambios respecto a v9 (DQN_12):
+  - GAMMA: 0.99 -> 0.995 (causa raiz: credito tardio en ciclos carga/descarga 24-48h)
+      Con gamma=0.99 un ciclo 48h vale 61.7%; con 0.995 vale 78.6% (+27% de incentivo)
+      El terminal bonus sube de 18.7% a 43.2% -> sesgo contra mantener bateria se reduce
+  - TOTAL_TIMESTEPS: 2.0M -> 3.0M (gamma mas alto necesita mas explotacion para converger)
+  - EXPLORATION_FRAC: 0.6 -> 0.5 (exploracion acaba en 1.5M, explotacion=1.5M vs 800k antes)
+  - EVAL_FREQ: sin cambio (20k -> 150 evals en 3M, mas visibilidad de la curva)
+  - EVAL_EPISODES: 20 -> 50 (std del estimador se reduce ~40%; mejor trazabilidad del progreso)
 
-Sin cambios en arquitectura (heredados de v8):
+Sin cambios en arquitectura (heredados de v9):
   - 9 acciones (de 13): eliminados niveles redundantes en CARGAR_SOLAR y DESCARGAR_CASA
   - Ruido AR(1) en pronostico solar y consumo (precios sin ruido, publicados por REE)
   - SoC inicial aleatorio (SOC_MIN+5% a SOC_MAX-5%), simetria inicial/terminal de valor
   - MetricasCallback: distribucion completa de acciones por grupo e individual
-  - Red 64x64 (101 -> 64 -> 64 -> 9), EXPLORATION_FRAC=0.6
+  - Red 64x64 (101 -> 64 -> 64 -> 9)
 
 Ejecucion desde la raiz del proyecto (carpeta TFG/):
     python src/main.py
@@ -44,24 +49,23 @@ from src.envs.energy_env import EnergyEnv
 #  Para un test rapido: TOTAL_TIMESTEPS = 10_000, LEARNING_STARTS = 2_000
 # ------------------------------------------------------------------
 
-TOTAL_TIMESTEPS   = 2_000_000   # 2.0M — DQN_10 seguia mejorando a 960k, mas pasos de explotacion
+TOTAL_TIMESTEPS   = 3_000_000   # 3.0M — gamma=0.995 necesita mas explotacion para converger
 LEARNING_RATE     = 1e-4        # Validado: mejor que 5e-5 (v2 fue peor)
 BUFFER_SIZE       = 200_000     # Subido: 2.6x mas datos -> mas diversidad en buffer
 LEARNING_STARTS   = 10_000      # Sin cambio — suficiente exploracion inicial
 BATCH_SIZE        = 64          # Validado: mejor que 128 (mas actualizaciones)
-GAMMA             = 0.99        # Horizonte ~100 pasos (~4 dias). Cubre ciclos dia/noche
-EXPLORATION_FRAC  = 0.6         # Subido: agente plateau exactamente al acabar exploración (DQN_9)
+GAMMA             = 0.995       # Subido: credito 48h sube 61.7%->78.6%; terminal 18.7%->43.2%
+EXPLORATION_FRAC  = 0.5         # Exploracion acaba en 1.5M pasos; explotacion = 1.5M
 EXPLORATION_FINAL = 0.05        # Estandar DQN
 TARGET_UPDATE     = 1_000       # Sin cambio
 TRAIN_FREQ        = 4           # Sin cambio
 
-# Red neuronal: 101 -> 64 -> 64 -> 13
-# Params: 101*64+64 + 64*64+64 + 64*13+13 = 6593+4160+845 = ~11598? No...
-# (101+1)*64 + (64+1)*64 + (64+1)*13 = 6528+4160+845 = 11533 — ok para 22646 datos
+# Red neuronal: 101 -> 64 -> 64 -> 9
+# (101+1)*64 + (64+1)*64 + (64+1)*9 = 6528+4160+585 = 11273 params
 NET_ARCH          = [64, 64]
 
-EVAL_FREQ         = 20_000      # Cada 20k pasos (100 evals en 2.0M)
-EVAL_EPISODES     = 20          # 20 episodios por eval — reduce varianza estacional
+EVAL_FREQ         = 20_000      # Cada 20k pasos (150 evals en 3.0M — mas visibilidad)
+EVAL_EPISODES     = 50          # 50 episodios por eval — std estimador -40% vs 20 eps
 
 MODEL_DIR  = os.path.join(ROOT, "models")
 LOG_DIR    = os.path.join(ROOT, "logs")
@@ -217,7 +221,7 @@ def main():
 
     # ── 3. Configurar agente DQN ──────────────────────────────────
     print("3. Configurando agente DQN...")
-    print(f"   Red neuronal: 101 -> {NET_ARCH[0]} -> {NET_ARCH[1]} -> 9")
+    print(f"   Red neuronal: 101 -> {NET_ARCH[0]} -> {NET_ARCH[1]} -> 9  (~11273 params)")
     print(f"   Total timesteps: {TOTAL_TIMESTEPS:,}")
 
     model = DQN(
