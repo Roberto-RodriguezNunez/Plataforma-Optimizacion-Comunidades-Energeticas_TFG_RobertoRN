@@ -48,12 +48,31 @@ def generar():
         return
 
     # 2. PROCESAR SOLAR
-    print("   -> 2. Procesando Solar (PVGIS)...")
+    print("   -> 2. Procesando Solar (PVGIS) — instalaciones individuales por vivienda...")
     try:
         df_sol = pd.read_csv(RUTA_SOLAR, skiprows=10, skipfooter=10, engine='python')
-        solar_unitario = df_sol['P'].values / 1000.0  # W -> kW (1 kWp)
-        solar_total = solar_unitario * POTENCIA_SOLAR_TOTAL
-        print(f"      - {len(solar_total)} horas, escalada a {POTENCIA_SOLAR_TOTAL} kWp.")
+        solar_unitario = df_sol['P'].values / 1000.0  # W -> kW (perfil para 1 kWp)
+        n_horas_solar = len(solar_unitario)
+
+        # Distribuir la potencia total entre las 15 viviendas de forma aleatoria.
+        # Cada casa tiene su propia instalación con capacidad y rendimiento distintos.
+        caps = rng.uniform(2.0, 5.0, NUM_VECINOS)          # kWp por vivienda (2-5 kWp)
+        caps = caps / caps.sum() * POTENCIA_SOLAR_TOTAL    # normalizar a 50 kWp total
+
+        generacion_total = np.zeros(n_horas_solar)
+        for i in range(NUM_VECINOS):
+            # Factor de rendimiento: orientación, inclinación, sombras parciales
+            # Valores reales: sur perfecto ~1.0, sureste/suroeste ~0.90, sombras ~0.80
+            perf = rng.uniform(0.80, 1.0)
+            # Ruido horario pequeño: suciedad puntual, sombras de nubes locales
+            # Con 15 casas el ruido se atenúa por agregación (~3% individual)
+            ruido = rng.normal(1.0, 0.03, n_horas_solar)
+            casa_solar = solar_unitario * caps[i] * perf * ruido
+            generacion_total += np.maximum(casa_solar, 0)
+
+        print(f"      - {n_horas_solar} horas, {NUM_VECINOS} instalaciones individuales.")
+        print(f"      - Capacidades (kWp): min={caps.min():.2f}, max={caps.max():.2f}, "
+              f"total={caps.sum():.2f}")
 
     except Exception as e:
         print(f"ERROR EN SOLAR: {e}")
