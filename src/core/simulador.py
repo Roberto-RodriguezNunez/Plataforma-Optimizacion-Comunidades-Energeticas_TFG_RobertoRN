@@ -36,27 +36,31 @@ class ComunidadSimulador:
         self.soc = self.SOC_INICIAL
         self.current_step = 0
 
-        # --- DEFINICIÓN DE ACCIONES (EL MAPA) ---
-        # Definimos 3 niveles de potencia: Bajo (33%), Medio (66%), Alto (100%)
-        self.NIVELES = [0.33, 0.66, 1.0]
-        
-        # Creamos el mapa de acciones: ID -> (Estrategia, Nivel)
-        # 0: IDLE
-        # 1-3: CARGAR_SOLAR (Nivel 1, 2, 3)
-        # 4-6: CARGAR_MIXTA (Nivel 1, 2, 3)
-        # 7-9: DESCARGAR_CASA (Nivel 1, 2, 3)
-        # 10-12: DESCARGAR_RED (Nivel 1, 2, 3)
-        
-        self.action_map = {0: ("IDLE", 0.0)}
-        idx = 1
-        estrategias = ["CARGAR_SOLAR", "CARGAR_MIXTA", "DESCARGAR_CASA", "DESCARGAR_RED"]
-        
-        for estrat in estrategias:
-            for nivel in self.NIVELES:
-                self.action_map[idx] = (estrat, nivel)
-                idx += 1
-        
-        # Total acciones: 1 + (4 estrategias * 3 niveles) = 13
+        # --- DEFINICIÓN DE ACCIONES (9 acciones) ---
+        #
+        # Diseño v2 (2026-05-17): eliminados los niveles de potencia de
+        # CARGAR_SOLAR y DESCARGAR_CASA por degeneración estructural.
+        #
+        # Justificación completa: anotaciones_para_mi/justificacion_9_acciones.md
+        #
+        # 0        : IDLE
+        # 1        : CARGAR_SOLAR  (nivel único — limitada por exc_disp, no por inversor)
+        # 2, 3, 4  : CARGAR_MIXTA  33% / 66% / 100%  (inversor = cuello de botella)
+        # 5        : DESCARGAR_CASA (nivel único — limitada por def_cub, no por inversor)
+        # 6, 7, 8  : DESCARGAR_RED  33% / 66% / 100%  (inversor = cuello de botella)
+
+        self.action_map = {
+            0: ("IDLE",           0.0),
+            1: ("CARGAR_SOLAR",   1.0),   # nivel ignorado en la lógica
+            2: ("CARGAR_MIXTA",   0.33),
+            3: ("CARGAR_MIXTA",   0.66),
+            4: ("CARGAR_MIXTA",   1.0),
+            5: ("DESCARGAR_CASA", 1.0),   # nivel ignorado en la lógica
+            6: ("DESCARGAR_RED",  0.33),
+            7: ("DESCARGAR_RED",  0.66),
+            8: ("DESCARGAR_RED",  1.0),
+        }
+        # Total acciones: 9
 
     def get_data_window(self, step, horizon=24):
         cols = ['consumo_total', 'generacion_total', 'precio_kwh', 'precio_excedente']
@@ -121,10 +125,13 @@ class ComunidadSimulador:
             comprado += def_cub
 
         elif estrategia == "CARGAR_SOLAR":
-            # Cargar solo con lo que sobre del sol
-            # espacio_libre / eficiencia = máx energía de fuente que cabe en batería
+            # Carga TODO el excedente solar disponible (sin comprar red).
+            # No se aplica potencia_obj: el cuello de botella es siempre exc_disp
+            # o el espacio libre de la batería, nunca el inversor.
+            # Con niveles de potencia, las 3 acciones eran idénticas cuando
+            # exc_disp < 16.5 kWh (la mayoría de horas) → degeneración eliminada.
             max_entrada = espacio_libre / self.EFICIENCIA_CARGA
-            carga = min(exc_disp, max_entrada, potencia_obj)
+            carga = min(exc_disp, max_entrada)
             bateria_kwh += carga * self.EFICIENCIA_CARGA
             cargado += carga
             vendido += (exc_disp - carga)
@@ -144,9 +151,12 @@ class ComunidadSimulador:
             comprado += (def_cub + de_red)
 
         elif estrategia == "DESCARGAR_CASA":
-            # Descargar solo lo necesario para cubrir déficit de las casas
-            # Para entregar X kWh útiles, la batería pierde X kWh (entrega X * eficiencia)
-            descarga = min(def_cub / self.EFICIENCIA_DESCARGA, bateria_disponible, potencia_obj)
+            # Cubre TODO el déficit de las casas desde la batería (sin vender a red).
+            # No se aplica potencia_obj: el cuello de botella es siempre def_cub
+            # o la batería disponible, nunca el inversor.
+            # Con niveles de potencia, las 3 acciones eran idénticas cuando
+            # def_cub < 15.7 kWh (la mayoría de horas) → degeneración eliminada.
+            descarga = min(def_cub / self.EFICIENCIA_DESCARGA, bateria_disponible)
             energia_util = descarga * self.EFICIENCIA_DESCARGA
             bateria_kwh -= descarga
             descargado += descarga
@@ -189,8 +199,10 @@ class ComunidadSimulador:
         beneficio_marginal = beneficio - beneficio_idle
 
         return {
-            "beneficio": beneficio,
+            "beneficio":          beneficio,
             "beneficio_marginal": beneficio_marginal,
-            "soc": self.soc,
-            "comprado": comprado,
+            "soc":                self.soc,
+            "comprado":           comprado,
+            "cargado":            cargado,
+            "descargado":         descargado,
         }

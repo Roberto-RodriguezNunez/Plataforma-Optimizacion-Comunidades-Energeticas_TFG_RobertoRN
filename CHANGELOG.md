@@ -5,6 +5,55 @@
 
 ---
 
+## [2026-05-17] — v9: espacio de acciones reducido de 13 a 9 (eliminación de degeneración)
+
+### Problema detectado en DQN_9
+
+Con 13 acciones (4 estrategias × 3 niveles + IDLE), el DQN sufría **degeneración
+estructural**: múltiples acciones producían resultados físicos idénticos en la mayoría
+de los estados, lo que ralentizaba el aprendizaje y generaba ruido en los Q-values.
+
+Casos concretos:
+- **CARGAR_SOLAR 33%/66%/100%:** idénticas cuando `exc_disp < 16.5 kWh` (mayoría de horas).
+  El sol, no el inversor, es el cuello de botella.
+- **DESCARGAR_CASA 33%/66%/100%:** idénticas cuando `def_cub < 15.7 kWh` (la mayoría
+  de horas con déficit) e idénticas a IDLE cuando `def_cub = 0` (horas con excedente).
+  El déficit, no el inversor, es el cuello de botella.
+
+### Solución: niveles solo donde el inversor es el cuello de botella
+
+**Regla:** los niveles de potencia tienen sentido únicamente cuando el inversor es
+el factor limitante. CARGAR_MIXTA y DESCARGAR_RED tienen la red/batería como fuente
+ilimitada → el inversor siempre manda → niveles siempre distintos.
+
+Nuevo espacio: **9 acciones**
+
+| ID | Acción | Niveles |
+|---|---|---|
+| 0 | IDLE | — |
+| 1 | CARGAR_SOLAR (max solar, sin red) | único |
+| 2-4 | CARGAR_MIXTA | 33% / 66% / 100% |
+| 5 | DESCARGAR_CASA (cubre déficit, sin vender) | único |
+| 6-8 | DESCARGAR_RED | 33% / 66% / 100% |
+
+La **degradación no lineal** sigue controlable: los 3 niveles se mantienen en
+CARGAR_MIXTA y DESCARGAR_RED, que son las estrategias donde el agente decide
+activamente cuánta potencia comprometer.
+
+Justificación completa: `anotaciones_para_mi/justificacion_9_acciones.md`
+
+### Archivos modificados
+- `src/core/simulador.py`: nuevo `action_map` con 9 entradas; CARGAR_SOLAR y
+  DESCARGAR_CASA sin `potencia_obj` en su lógica.
+- `src/envs/energy_env.py`: `spaces.Discrete(9)`.
+- `src/main.py`: callback actualizado para 9 acciones y grupos correctos.
+
+### Siguiente paso
+Entrenar DQN_10 con el nuevo espacio de acciones y comparar curva de aprendizaje
+con DQN_9. Se espera convergencia más limpia y menos variance en los Q-values.
+
+---
+
 ## [2026-05-03] — v8: reward shaping (baseline IDLE) para eliminar ruido meteorológico
 
 ### Problema detectado en DQN_7

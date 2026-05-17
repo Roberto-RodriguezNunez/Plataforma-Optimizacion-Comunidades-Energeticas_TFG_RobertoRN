@@ -1,10 +1,19 @@
 """
-main.py -- Orquestador de entrenamiento del agente DQN (v7)
+main.py -- Orquestador de entrenamiento del agente DQN (v8)
 ============================================================
 HU-12: Entrenar agente DQN con Stable Baselines3
 HU-13: Monitorizar el progreso del entrenamiento
 
-Cambios respecto a v6:
+Cambios respecto a v7 (callback v2):
+  - MetricasCallback extendido con distribución completa de acciones:
+    * % por grupo: IDLE, CARGAR_SOLAR, CARGAR_MIXTA, DESCARGAR_CASA, DESCARGAR_RED
+    * % por accion individual (0-12) — permite ver que nivel de potencia se elige
+    * Accion dominante y su % (diagnostico rapido de colapso de politica)
+    * Epsilon actual (curva de exploracion)
+  - Nuevas metricas de bateria: soc_minimo, soc_maximo, cargado_medio, descargado_medio
+  - Requiere energy_env.py con campos 'cargado' y 'descargado' en info
+
+Fisica realista de bateria (sin cambios respecto a v7):
   - Fisica realista de bateria en simulador.py:
     * Eficiencia carga/descarga: 95% cada direccion (round-trip 90.25%)
     * Limites operativos SoC: 10% - 90% (80 kWh utiles de 100 kWh)
@@ -75,16 +84,38 @@ MODEL_NAME = "dqn_sgec"
 class MetricasCallback(BaseCallback):
     """
     Registra en TensorBoard métricas que SB3 no loguea por defecto:
-    - SoC medio de los últimos episodios
-    - Energía comprada a red media
-    - Distribución de acciones (acción más frecuente)
+
+    Física / batería:
+    - SoC medio, mínimo y máximo del intervalo
+    - Energía media cargada y descargada por paso
+
+    Economía:
+    - Energía media comprada a red
+
+    Distribución de acciones (cada 1k pasos):
+    - % IDLE, % CARGAR_SOLAR, % CARGAR_MIXTA, % DESCARGAR_CASA, % DESCARGAR_RED
+    - % de cada acción individual (0-12) para máximo detalle
+
+    Exploración:
+    - epsilon actual del agente
     """
+
+    # Agrupación de las 9 acciones por estrategia
+    _GRUPOS = {
+        "IDLE":           [0],
+        "CARGAR_SOLAR":   [1],
+        "CARGAR_MIXTA":   [2, 3, 4],
+        "DESCARGAR_CASA": [5],
+        "DESCARGAR_RED":  [6, 7, 8],
+    }
 
     def __init__(self, verbose=0):
         super().__init__(verbose)
-        self._soc_buffer      = []
-        self._comprado_buffer = []
-        self._acciones        = np.zeros(13, dtype=int)
+        self._soc_buffer        = []
+        self._comprado_buffer   = []
+        self._cargado_buffer    = []
+        self._descargado_buffer = []
+        self._acciones          = np.zeros(9, dtype=np.int64)
 
     def _on_step(self) -> bool:
         for info in self.locals.get("infos", []):
@@ -92,17 +123,59 @@ class MetricasCallback(BaseCallback):
                 self._soc_buffer.append(info["soc"])
             if "comprado" in info:
                 self._comprado_buffer.append(info["comprado"])
+            if "cargado" in info:
+                self._cargado_buffer.append(info["cargado"])
+            if "descargado" in info:
+                self._descargado_buffer.append(info["descargado"])
 
         accion = self.locals.get("actions")
         if accion is not None:
             self._acciones[int(accion[0])] += 1
 
         if self.num_timesteps % 1_000 == 0 and self._soc_buffer:
+            # ── Física / batería ──────────────────────────────────
             self.logger.record("custom/soc_medio",      np.mean(self._soc_buffer))
+            self.logger.record("custom/soc_minimo",     np.min(self._soc_buffer))
+            self.logger.record("custom/soc_maximo",     np.max(self._soc_buffer))
+            self.logger.record("custom/cargado_medio",  np.mean(self._cargado_buffer)
+                               if self._cargado_buffer else 0.0)
+            self.logger.record("custom/descargado_medio", np.mean(self._descargado_buffer)
+                               if self._descargado_buffer else 0.0)
+
+            # ── Economía ──────────────────────────────────────────
             self.logger.record("custom/comprado_medio", np.mean(self._comprado_buffer))
-            self.logger.record("custom/accion_mas_freq", int(np.argmax(self._acciones)))
+
+            # ── Distribución de acciones por grupo ────────────────
+            total = self._acciones.sum()
+            if total > 0:
+                for grupo, indices in self._GRUPOS.items():
+                    pct = 100.0 * self._acciones[indices].sum() / total
+                    self.logger.record(f"acciones/{grupo}_pct", pct)
+
+                # Detalle por acción individual (0-8)
+                for i in range(9):
+                    pct_i = 100.0 * self._acciones[i] / total
+                    self.logger.record(f"acciones/accion_{i:02d}_pct", pct_i)
+
+                # Acción dominante (diagnóstico rápido)
+                self.logger.record("acciones/dominante_idx",
+                                   int(np.argmax(self._acciones)))
+                self.logger.record("acciones/dominante_pct",
+                                   100.0 * self._acciones.max() / total)
+
+            # ── Exploración ───────────────────────────────────────
+            try:
+                eps = self.model.exploration_rate
+                self.logger.record("custom/epsilon", eps)
+            except AttributeError:
+                pass
+
+            # Limpiar buffers (incluido conteo de acciones → % del intervalo, no acumulado)
             self._soc_buffer.clear()
             self._comprado_buffer.clear()
+            self._cargado_buffer.clear()
+            self._descargado_buffer.clear()
+            self._acciones[:] = 0
 
         return True
 
@@ -153,7 +226,7 @@ def main():
 
     # ── 3. Configurar agente DQN ──────────────────────────────────
     print("3. Configurando agente DQN...")
-    print(f"   Red neuronal: 101 -> {NET_ARCH[0]} -> {NET_ARCH[1]} -> 13")
+    print(f"   Red neuronal: 101 -> {NET_ARCH[0]} -> {NET_ARCH[1]} -> 9")
     print(f"   Total timesteps: {TOTAL_TIMESTEPS:,}")
 
     model = DQN(
