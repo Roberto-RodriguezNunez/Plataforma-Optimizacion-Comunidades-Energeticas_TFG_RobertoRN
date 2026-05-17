@@ -23,10 +23,19 @@ class EnergyEnv(gym.Env):
     _SIGMA_SOL_H1     = 0.05   # 5%  error en hora+1
     _SIGMA_SOL_H24    = 0.25   # 25% error en hora+24  (crece linealmente)
 
+    # Autocorrelación temporal del error de pronóstico (proceso AR(1))
+    # Solar: ρ=0.7 — las nubes persisten varias horas
+    # Consumo: ρ=0.3 — más variable, patron horario domina sobre inercia
+    _RHO_SOLAR = 0.7
+    _RHO_CONS  = 0.3
+
     def __init__(self, forecast_noise: bool = True):
         super(EnergyEnv, self).__init__()
 
         self.forecast_noise = forecast_noise
+        # Estados AR(1) del error de pronóstico (se resetean en cada episodio)
+        self._error_solar = 0.0
+        self._error_cons  = 0.0
 
         # Instanciar el motor físico
         # Asegúrate de haber ejecutado la Tarea 1 para tener este archivo
@@ -49,22 +58,36 @@ class EnergyEnv(gym.Env):
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
-        
+
         # Elegir inicio aleatorio con margen suficiente
         max_start = self.simulador.max_steps - self.EPISODE_LENGTH - 25
         start_step = np.random.randint(0, max_start)
-        
-        # Resetear simulador
+
+        # SoC inicial aleatorio entre SOC_MIN+5% y SOC_MAX-5%
+        # Evita extremos para no empezar con batería bloqueada
+        soc_inicial = np.random.uniform(
+            self.simulador.SOC_MIN + 0.05,
+            self.simulador.SOC_MAX - 0.05,
+        )
+
         self.simulador.current_step = start_step
-        self.simulador.soc = self.simulador.SOC_INICIAL
+        self.simulador.soc = soc_inicial
         self.steps_in_episode = 0
 
-        # Calcular coste de la energía inicial (se resta en el primer step)
-        soc_util = max(0, self.simulador.SOC_INICIAL - self.simulador.SOC_MIN)
+        # Calcular coste de la energía inicial usando el SoC sorteado real.
+        # Se resta en el primer step para que el agente no reciba un "regalo"
+        # por empezar con la batería cargada. Simétrico con el valor terminal.
+        soc_util = max(0, soc_inicial - self.simulador.SOC_MIN)
         energia_inicial = soc_util * self.simulador.BATERIA_CAPACIDAD
         datos_hora = self.simulador.get_data_window(start_step, horizon=1)[0]
         precio_compra = datos_hora[2]
-        self._pendiente_coste_inicial = energia_inicial * precio_compra * self.simulador.EFICIENCIA_DESCARGA
+        self._pendiente_coste_inicial = (
+            energia_inicial * precio_compra * self.simulador.EFICIENCIA_DESCARGA
+        )
+
+        # Resetear estados AR(1) del error de pronóstico
+        self._error_solar = 0.0
+        self._error_cons  = 0.0
 
         return self._get_obs(), {}
 
@@ -92,22 +115,19 @@ class EnergyEnv(gym.Env):
         window_future = self.simulador.get_data_window(t + 1, horizon=24).copy()
 
         if self.forecast_noise:
+            # _error_solar y _error_cons son estados AR(1) N(0,1) actualizados
+            # en step(). Aquí se escalan por el sigma de cada hora del horizonte.
             for h in range(24):
-                # sigma solar crece linealmente: 5% (h=0) → 25% (h=23)
                 sigma_sol = self._SIGMA_SOL_H1 + h * (
                     (self._SIGMA_SOL_H24 - self._SIGMA_SOL_H1) / 23
                 )
-                # Consumo: sigma fija (patrón agregado más estable)
-                sigma_cons = self._SIGMA_CONS_BASE
-
-                # Ruido multiplicativo; clip a 0 (no puede haber valores negativos)
-                window_future[h, 1] = max(  # generacion
-                    0.0, window_future[h, 1] * (1.0 + np.random.normal(0, sigma_sol))
+                window_future[h, 1] = max(  # generacion solar
+                    0.0, window_future[h, 1] * (1.0 + self._error_solar * sigma_sol)
                 )
                 window_future[h, 0] = max(  # consumo
-                    0.0, window_future[h, 0] * (1.0 + np.random.normal(0, sigma_cons))
+                    0.0, window_future[h, 0] * (1.0 + self._error_cons * self._SIGMA_CONS_BASE)
                 )
-                # columnas 2 y 3 (precios) — sin tocar
+                # columnas 2 y 3 (precios PVPC e ind.1739) — sin tocar
 
         forecast_flat = window_future.flatten()  # 24 * 4 = 96 valores
 
@@ -119,6 +139,18 @@ class EnergyEnv(gym.Env):
         return obs.astype(np.float32)
 
     def step(self, action):
+        # 0. Avanzar estado AR(1) del error de pronóstico antes de construir la obs
+        #    ε_t = ρ·ε_{t-1} + √(1-ρ²)·N(0,1)  →  varianza estacionaria = 1
+        if self.forecast_noise:
+            self._error_solar = (
+                self._RHO_SOLAR * self._error_solar
+                + np.sqrt(1 - self._RHO_SOLAR ** 2) * np.random.normal()
+            )
+            self._error_cons = (
+                self._RHO_CONS * self._error_cons
+                + np.sqrt(1 - self._RHO_CONS ** 2) * np.random.normal()
+            )
+
         # 1. Ejecutar en el simulador
         resultado = self.simulador.ejecutar_accion_fisica(action, self.simulador.current_step)
         

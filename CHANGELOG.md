@@ -5,6 +5,33 @@
 
 ---
 
+## [2026-05-17] — Limitaciones conocidas del modelo de simulación
+
+### Limitación L1: ruido de pronóstico simulado, no pronósticos históricos reales
+
+El entorno añade ruido AR(1) a los datos reales del dataset para simular el error
+de pronóstico (la diferencia entre lo que predice un servicio meteorológico y lo
+que ocurre en realidad). Esta es una aproximación estándar en la literatura de
+energy management con RL cuando no se dispone de pronósticos históricos archivados.
+
+**Por qué es una limitación:**
+Un servicio especializado (AEMET, Solargis) ya modela la persistencia de nubes,
+corrige sesgos conocidos y tiene calibración histórica propia. El error real de ese
+servicio tiene menos autocorrelación de la que modela el proceso AR(1) con ρ=0.7,
+porque el servicio ya "bake in" la inercia meteorológica en su predicción.
+
+**Alternativa correcta (no implementada por falta de datos):**
+Usar pronósticos históricos archivados del mismo período (AEMET o Solargis tienen
+series de predicciones day-ahead). Requeriría un nuevo ETL y alinear temporalmente
+pronóstico vs. medición real.
+
+**Impacto en los resultados:**
+El agente aprende bajo una incertidumbre ligeramente sobreestimada. Si la política
+aprendida es robusta con este nivel de ruido, funcionará mejor en producción (donde
+el error real es menor). Es un sesgo conservador: el modelo es más difícil de lo real.
+
+---
+
 ## [2026-05-17] — v9: espacio de acciones reducido de 13 a 9 (eliminación de degeneración)
 
 ### Problema detectado en DQN_9
