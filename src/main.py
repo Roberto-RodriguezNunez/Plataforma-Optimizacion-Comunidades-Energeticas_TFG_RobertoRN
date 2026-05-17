@@ -1,24 +1,23 @@
 """
-main.py -- Orquestador de entrenamiento del agente DQN (v10 — DQN_12)
+main.py -- Orquestador de entrenamiento del agente PPO (PPO_1)
 ============================================================
-HU-12: Entrenar agente DQN con Stable Baselines3
+HU-12: Entrenar agente RL con Stable Baselines3
 HU-13: Monitorizar el progreso del entrenamiento
 
-Cambios respecto a v9 (DQN_12):
-  - GAMMA: 0.99 -> 0.995 (causa raiz: credito tardio en ciclos carga/descarga 24-48h)
-      Con gamma=0.99 un ciclo 48h vale 61.7%; con 0.995 vale 78.6% (+27% de incentivo)
-      El terminal bonus sube de 18.7% a 43.2% -> sesgo contra mantener bateria se reduce
-  - TOTAL_TIMESTEPS: 2.0M -> 3.0M (gamma mas alto necesita mas explotacion para converger)
-  - EXPLORATION_FRAC: 0.6 -> 0.5 (exploracion acaba en 1.5M, explotacion=1.5M vs 800k antes)
-  - EVAL_FREQ: sin cambio (20k -> 150 evals en 3M, mas visibilidad de la curva)
-  - EVAL_EPISODES: 20 -> 50 (std del estimador se reduce ~40%; mejor trazabilidad del progreso)
+Cambio de algoritmo: DQN -> PPO con Discrete(9)
+  Motivacion: DQN lleva 12 iteraciones (DQN_1 a DQN_12) estancado en 34-39 EUR/sem.
+  El MPC con ruido da 48.46. El cuello de botella es el credito tardio: DQN propaga
+  valor paso a paso (1-step Bellman) y no consigue asignar credito a ciclos de
+  carga/descarga de 8-48h en episodios de 168h.
 
-Sin cambios en arquitectura (heredados de v9):
-  - 9 acciones (de 13): eliminados niveles redundantes en CARGAR_SOLAR y DESCARGAR_CASA
-  - Ruido AR(1) en pronostico solar y consumo (precios sin ruido, publicados por REE)
-  - SoC inicial aleatorio (SOC_MIN+5% a SOC_MAX-5%), simetria inicial/terminal de valor
-  - MetricasCallback: distribucion completa de acciones por grupo e individual
-  - Red 64x64 (101 -> 64 -> 64 -> 9)
+  PPO con Discrete(9) resuelve esto porque GAE calcula retornos multi-step
+  directamente. Mantiene las mismas 9 acciones bang-bang que DQN — sin clipping
+  en limites fisicos, sin convergencia conservadora a potencias intermedias.
+
+Sin cambios en entorno ni simulador:
+  - energy_env.py: action_space = Discrete(9), misma reward marginal
+  - simulador.py: misma fisica (bateria 100kWh, inversor 50kW, precios asimetricos)
+  - Correccion inicial/terminal: se mantiene (propiedad de la reward, no del algoritmo)
 
 Ejecucion desde la raiz del proyecto (carpeta TFG/):
     python src/main.py
@@ -35,7 +34,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 import numpy as np
-from stable_baselines3 import DQN
+from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import EvalCallback, BaseCallback
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
@@ -45,31 +44,31 @@ from src.envs.energy_env import EnergyEnv
 
 
 # ------------------------------------------------------------------
-#  HIPERPARAMETROS (v5)
-#  Para un test rapido: TOTAL_TIMESTEPS = 10_000, LEARNING_STARTS = 2_000
+#  HIPERPARAMETROS — PPO_1
+#  Para un test rapido: TOTAL_TIMESTEPS = 10_000
 # ------------------------------------------------------------------
 
-TOTAL_TIMESTEPS   = 3_000_000   # 3.0M — gamma=0.995 necesita mas explotacion para converger
-LEARNING_RATE     = 1e-4        # Validado: mejor que 5e-5 (v2 fue peor)
-BUFFER_SIZE       = 200_000     # Subido: 2.6x mas datos -> mas diversidad en buffer
-LEARNING_STARTS   = 10_000      # Sin cambio — suficiente exploracion inicial
-BATCH_SIZE        = 64          # Validado: mejor que 128 (mas actualizaciones)
-GAMMA             = 0.995       # Subido: credito 48h sube 61.7%->78.6%; terminal 18.7%->43.2%
-EXPLORATION_FRAC  = 0.5         # Exploracion acaba en 1.5M pasos; explotacion = 1.5M
-EXPLORATION_FINAL = 0.05        # Estandar DQN
-TARGET_UPDATE     = 1_000       # Sin cambio
-TRAIN_FREQ        = 4           # Sin cambio
+TOTAL_TIMESTEPS   = 3_000_000
+LEARNING_RATE     = 3e-4        # Default PPO (Adam)
+N_STEPS           = 2048        # ~12 episodios por rollout (2048/168)
+BATCH_SIZE        = 64          # Minibatches dentro de cada rollout
+N_EPOCHS          = 10          # Pasadas por rollout (estandar PPO)
+GAMMA             = 0.99        # GAE maneja horizonte largo; no necesita 0.995
+GAE_LAMBDA        = 0.95        # Balance sesgo/varianza en estimador de ventaja
+CLIP_RANGE        = 0.2         # Clipping PPO estandar
+ENT_COEF          = 0.01        # Entropia para mantener exploracion
+VF_COEF           = 0.5         # Peso del value loss (estandar)
 
-# Red neuronal: 101 -> 64 -> 64 -> 9
-# (101+1)*64 + (64+1)*64 + (64+1)*9 = 6528+4160+585 = 11273 params
-NET_ARCH          = [64, 64]
+# Redes actor/critic separadas: 101 -> 64 -> 64 -> 9 (actor) / 1 (critic)
+NET_ARCH_PI       = [64, 64]
+NET_ARCH_VF       = [64, 64]
 
-EVAL_FREQ         = 20_000      # Cada 20k pasos (150 evals en 3.0M — mas visibilidad)
-EVAL_EPISODES     = 50          # 50 episodios por eval — std estimador -40% vs 20 eps
+EVAL_FREQ         = 20_000      # Cada 20k pasos (150 evals en 3.0M)
+EVAL_EPISODES     = 50          # 50 episodios por eval
 
 MODEL_DIR  = os.path.join(ROOT, "models")
 LOG_DIR    = os.path.join(ROOT, "logs")
-MODEL_NAME = "dqn_sgec"
+MODEL_NAME = "ppo_sgec"
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -89,10 +88,7 @@ class MetricasCallback(BaseCallback):
 
     Distribución de acciones (cada 1k pasos):
     - % IDLE, % CARGAR_SOLAR, % CARGAR_MIXTA, % DESCARGAR_CASA, % DESCARGAR_RED
-    - % de cada acción individual (0-12) para máximo detalle
-
-    Exploración:
-    - epsilon actual del agente
+    - % de cada acción individual (0-8) para máximo detalle
     """
 
     # Agrupación de las 9 acciones por estrategia
@@ -158,13 +154,6 @@ class MetricasCallback(BaseCallback):
                 self.logger.record("acciones/dominante_pct",
                                    100.0 * self._acciones.max() / total)
 
-            # ── Exploración ───────────────────────────────────────
-            try:
-                eps = self.model.exploration_rate
-                self.logger.record("custom/epsilon", eps)
-            except AttributeError:
-                pass
-
             # Limpiar buffers (incluido conteo de acciones → % del intervalo, no acumulado)
             self._soc_buffer.clear()
             self._comprado_buffer.clear()
@@ -201,8 +190,6 @@ def main():
     # ── 2. Crear entornos con VecNormalize ────────────────────────
     #  Solo normaliza observaciones (norm_obs=True).
     #  norm_reward=False: la recompensa NO se normaliza.
-    #  Razon: normalizar la recompensa distorsiona la señal de aprendizaje
-    #  y dificulta comparar evaluaciones entre entrenamientos.
     print("2. Instanciando entornos con VecNormalize (solo observaciones)...")
     env = VecNormalize(
         make_env(),
@@ -219,26 +206,27 @@ def main():
     )
     print("   Entornos listos.\n")
 
-    # ── 3. Configurar agente DQN ──────────────────────────────────
-    print("3. Configurando agente DQN...")
-    print(f"   Red neuronal: 101 -> {NET_ARCH[0]} -> {NET_ARCH[1]} -> 9  (~11273 params)")
+    # ── 3. Configurar agente PPO ──────────────────────────────────
+    print("3. Configurando agente PPO...")
+    print(f"   Actor:  101 -> {NET_ARCH_PI[0]} -> {NET_ARCH_PI[1]} -> 9")
+    print(f"   Critic: 101 -> {NET_ARCH_VF[0]} -> {NET_ARCH_VF[1]} -> 1")
     print(f"   Total timesteps: {TOTAL_TIMESTEPS:,}")
 
-    model = DQN(
-        policy                 = "MlpPolicy",
-        env                    = env,
-        learning_rate          = LEARNING_RATE,
-        buffer_size            = BUFFER_SIZE,
-        learning_starts        = LEARNING_STARTS,
-        batch_size             = BATCH_SIZE,
-        gamma                  = GAMMA,
-        exploration_fraction   = EXPLORATION_FRAC,
-        exploration_final_eps  = EXPLORATION_FINAL,
-        target_update_interval = TARGET_UPDATE,
-        train_freq             = TRAIN_FREQ,
-        policy_kwargs          = {"net_arch": NET_ARCH},
-        verbose                = 1,
-        tensorboard_log        = LOG_DIR,
+    model = PPO(
+        policy        = "MlpPolicy",
+        env           = env,
+        learning_rate = LEARNING_RATE,
+        n_steps       = N_STEPS,
+        batch_size    = BATCH_SIZE,
+        n_epochs      = N_EPOCHS,
+        gamma         = GAMMA,
+        gae_lambda    = GAE_LAMBDA,
+        clip_range    = CLIP_RANGE,
+        ent_coef      = ENT_COEF,
+        vf_coef       = VF_COEF,
+        policy_kwargs = {"net_arch": {"pi": NET_ARCH_PI, "vf": NET_ARCH_VF}},
+        verbose       = 1,
+        tensorboard_log = LOG_DIR,
     )
     print()
 
@@ -256,7 +244,7 @@ def main():
 
     # ── 5. Entrenar ───────────────────────────────────────────────
     print("-" * 60)
-    print(f"4. Iniciando entrenamiento ({TOTAL_TIMESTEPS:,} pasos)...")
+    print(f"4. Iniciando entrenamiento PPO ({TOTAL_TIMESTEPS:,} pasos)...")
     print(f"   TensorBoard: tensorboard --logdir {LOG_DIR}")
     print("-" * 60)
 
