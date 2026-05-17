@@ -1,28 +1,19 @@
 """
-main.py -- Orquestador de entrenamiento del agente DQN (v8)
+main.py -- Orquestador de entrenamiento del agente DQN (v9 — DQN_11)
 ============================================================
 HU-12: Entrenar agente DQN con Stable Baselines3
 HU-13: Monitorizar el progreso del entrenamiento
 
-Cambios respecto a v7 (callback v2):
-  - MetricasCallback extendido con distribución completa de acciones:
-    * % por grupo: IDLE, CARGAR_SOLAR, CARGAR_MIXTA, DESCARGAR_CASA, DESCARGAR_RED
-    * % por accion individual (0-12) — permite ver que nivel de potencia se elige
-    * Accion dominante y su % (diagnostico rapido de colapso de politica)
-    * Epsilon actual (curva de exploracion)
-  - Nuevas metricas de bateria: soc_minimo, soc_maximo, cargado_medio, descargado_medio
-  - Requiere energy_env.py con campos 'cargado' y 'descargado' en info
+Cambios respecto a v8 (DQN_11):
+  - TOTAL_TIMESTEPS: 1.5M -> 2.0M (DQN_10 seguia mejorando a 960k, fase explotacion muy corta)
+  - EVAL_FREQ: 15k -> 20k (mantiene ~100 evals totales en 2M pasos)
 
-Fisica realista de bateria (sin cambios respecto a v7):
-  - Fisica realista de bateria en simulador.py:
-    * Eficiencia carga/descarga: 95% cada direccion (round-trip 90.25%)
-    * Limites operativos SoC: 10% - 90% (80 kWh utiles de 100 kWh)
-    * Autodescarga: ~3% mensual (0.004%/hora, tipico Li-ion)
-  - Modelo de precios asimetrico real (sin cambios respecto a v6):
-    * Compra: PVPC completo (ind. ESIOS 1001)
-    * Venta: compensacion simplificada (ind. ESIOS 1739, RD 244/2019)
-  - Observacion: 101 dimensiones (5 actuales + 24h x 4 vars)
-  - Red 64x64 mantenida (101 -> 64 -> 64 -> 13)
+Sin cambios en arquitectura (heredados de v8):
+  - 9 acciones (de 13): eliminados niveles redundantes en CARGAR_SOLAR y DESCARGAR_CASA
+  - Ruido AR(1) en pronostico solar y consumo (precios sin ruido, publicados por REE)
+  - SoC inicial aleatorio (SOC_MIN+5% a SOC_MAX-5%), simetria inicial/terminal de valor
+  - MetricasCallback: distribucion completa de acciones por grupo e individual
+  - Red 64x64 (101 -> 64 -> 64 -> 9), EXPLORATION_FRAC=0.6
 
 Ejecucion desde la raiz del proyecto (carpeta TFG/):
     python src/main.py
@@ -53,7 +44,7 @@ from src.envs.energy_env import EnergyEnv
 #  Para un test rapido: TOTAL_TIMESTEPS = 10_000, LEARNING_STARTS = 2_000
 # ------------------------------------------------------------------
 
-TOTAL_TIMESTEPS   = 1_500_000   # 1.5M — 2.6x mas datos permite mas pasos sin overfitting
+TOTAL_TIMESTEPS   = 2_000_000   # 2.0M — DQN_10 seguia mejorando a 960k, mas pasos de explotacion
 LEARNING_RATE     = 1e-4        # Validado: mejor que 5e-5 (v2 fue peor)
 BUFFER_SIZE       = 200_000     # Subido: 2.6x mas datos -> mas diversidad en buffer
 LEARNING_STARTS   = 10_000      # Sin cambio — suficiente exploracion inicial
@@ -69,7 +60,7 @@ TRAIN_FREQ        = 4           # Sin cambio
 # (101+1)*64 + (64+1)*64 + (64+1)*13 = 6528+4160+845 = 11533 — ok para 22646 datos
 NET_ARCH          = [64, 64]
 
-EVAL_FREQ         = 15_000      # Cada 15k pasos (100 evals en 1.5M)
+EVAL_FREQ         = 20_000      # Cada 20k pasos (100 evals en 2.0M)
 EVAL_EPISODES     = 20          # 20 episodios por eval — reduce varianza estacional
 
 MODEL_DIR  = os.path.join(ROOT, "models")
