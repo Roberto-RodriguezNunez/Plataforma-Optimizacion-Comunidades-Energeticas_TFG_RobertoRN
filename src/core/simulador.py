@@ -193,10 +193,22 @@ class ComunidadSimulador:
 
         beneficio = ingresos - gastos - coste_deg
 
+        # Coste de oportunidad: penalizar vender energía de BATERÍA a red.
+        # Cuando DESCARGAR_RED envía `para_red` kWh a red al precio_venta (bajo),
+        # esa energía podría valer precio_compra en una hora de déficit futura.
+        # El spread (precio_compra - precio_venta) es la pérdida no reflejada
+        # en el reward inmediato — causa raíz del sobreuso de DESCARGAR_RED.
+        # ALPHA=1.0: coste de oportunidad completo. Solo aplica a batería→red
+        # (para_red), nunca al excedente solar→red (exc_disp), que está en IDLE.
+        coste_oportunidad = 0.0
+        if estrategia == "DESCARGAR_RED" and para_red > 0:
+            coste_oportunidad = para_red * (precio_compra - precio_venta)
+        beneficio_marginal_shaped = beneficio - coste_oportunidad
+
         # Baseline IDLE: qué pasaría sin batería esta hora (reward shaping)
         # Es stateless: solo depende de los datos de la hora actual
         beneficio_idle = exc_disp * precio_venta - def_cub * precio_compra
-        beneficio_marginal = beneficio - beneficio_idle
+        beneficio_marginal = beneficio_marginal_shaped - beneficio_idle
 
         return {
             "beneficio":          beneficio,
