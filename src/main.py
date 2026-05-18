@@ -1,23 +1,21 @@
 """
-main.py -- Orquestador de entrenamiento del agente PPO (PPO_1)
+main.py -- Orquestador de entrenamiento del agente PPO (PPO_2)
 ============================================================
 HU-12: Entrenar agente RL con Stable Baselines3
 HU-13: Monitorizar el progreso del entrenamiento
 
-Cambio de algoritmo: DQN -> PPO con Discrete(9)
-  Motivacion: DQN lleva 12 iteraciones (DQN_1 a DQN_12) estancado en 34-39 EUR/sem.
-  El MPC con ruido da 48.46. El cuello de botella es el credito tardio: DQN propaga
-  valor paso a paso (1-step Bellman) y no consigue asignar credito a ciclos de
-  carga/descarga de 8-48h en episodios de 168h.
+PPO_1 (anterior): pico 39.91 EUR/sem en 320k pasos, luego regresion hasta 36 EUR/sem.
+  Diagnostico: ENT_COEF=0.01 demasiado alto — la politica encontro una solucion buena
+  y las actualizaciones siguientes la destruyeron por exceso de entropia.
+  MPC con ruido usa DESCARGAR_RED=4.3%, DESCARGAR_CASA=41.5%.
+  PPO_1 usaba DESCARGAR_RED=27-45% — ese es el gap de 9 EUR/sem.
 
-  PPO con Discrete(9) resuelve esto porque GAE calcula retornos multi-step
-  directamente. Mantiene las mismas 9 acciones bang-bang que DQN — sin clipping
-  en limites fisicos, sin convergencia conservadora a potencias intermedias.
+PPO_2: dos cambios respecto a PPO_1
+  - N_STEPS: 2048 -> 4096 (~24 episodios por rollout — rollouts mas estables,
+    ve ciclos completos de carga/descarga antes de actualizar)
+  - ENT_COEF: 0.01 -> 0.003 (menos aleatoriedad — deja consolidar lo aprendido)
 
-Sin cambios en entorno ni simulador:
-  - energy_env.py: action_space = Discrete(9), misma reward marginal
-  - simulador.py: misma fisica (bateria 100kWh, inversor 50kW, precios asimetricos)
-  - Correccion inicial/terminal: se mantiene (propiedad de la reward, no del algoritmo)
+Sin cambios en entorno ni simulador.
 
 Ejecucion desde la raiz del proyecto (carpeta TFG/):
     python src/main.py
@@ -44,20 +42,20 @@ from src.envs.energy_env import EnergyEnv
 
 
 # ------------------------------------------------------------------
-#  HIPERPARAMETROS — PPO_1
+#  HIPERPARAMETROS — PPO_2
 #  Para un test rapido: TOTAL_TIMESTEPS = 10_000
 # ------------------------------------------------------------------
 
 TOTAL_TIMESTEPS   = 3_000_000
-LEARNING_RATE     = 3e-4        # Default PPO (Adam)
-N_STEPS           = 2048        # ~12 episodios por rollout (2048/168)
-BATCH_SIZE        = 64          # Minibatches dentro de cada rollout
-N_EPOCHS          = 10          # Pasadas por rollout (estandar PPO)
-GAMMA             = 0.99        # GAE maneja horizonte largo; no necesita 0.995
-GAE_LAMBDA        = 0.95        # Balance sesgo/varianza en estimador de ventaja
-CLIP_RANGE        = 0.2         # Clipping PPO estandar
-ENT_COEF          = 0.01        # Entropia para mantener exploracion
-VF_COEF           = 0.5         # Peso del value loss (estandar)
+LEARNING_RATE     = 3e-4        # Sin cambio
+N_STEPS           = 4096        # ~24 episodios por rollout (antes 2048/~12)
+BATCH_SIZE        = 64          # Sin cambio
+N_EPOCHS          = 10          # Sin cambio
+GAMMA             = 0.99        # Sin cambio
+GAE_LAMBDA        = 0.95        # Sin cambio
+CLIP_RANGE        = 0.2         # Sin cambio
+ENT_COEF          = 0.003       # 0.01 -> 0.003: deja consolidar la politica
+VF_COEF           = 0.5         # Sin cambio
 
 # Redes actor/critic separadas: 101 -> 64 -> 64 -> 9 (actor) / 1 (critic)
 NET_ARCH_PI       = [64, 64]
@@ -65,10 +63,34 @@ NET_ARCH_VF       = [64, 64]
 
 EVAL_FREQ         = 20_000      # Cada 20k pasos (150 evals en 3.0M)
 EVAL_EPISODES     = 50          # 50 episodios por eval
+EVAL_SEED         = 42          # Semilla fija — siempre las mismas 50 semanas
 
 MODEL_DIR  = os.path.join(ROOT, "models")
 LOG_DIR    = os.path.join(ROOT, "logs")
 MODEL_NAME = "ppo_sgec"
+
+
+# ──────────────────────────────────────────────────────────────────
+#  SEEDED EVAL CALLBACK — mismas 50 semanas en cada evaluación
+# ──────────────────────────────────────────────────────────────────
+
+class SeededEvalCallback(EvalCallback):
+    """
+    EvalCallback que re-seedea np.random antes de cada ronda de evaluación.
+
+    Problema que resuelve:
+      EnergyEnv usa np.random.randint/uniform/normal (rng global de numpy).
+      Sin este callback las semanas evaluadas cambian entre evals, añadiendo
+      ±5 EUR/sem de varianza que enmascara el progreso real del agente.
+
+    Con este callback, cada ronda de evaluación empieza siempre con el mismo
+    estado del rng global → las 50 semanas son siempre las mismas → la curva
+    eval/mean_reward refleja convergencia real, no varianza de datos.
+    """
+    def _on_step(self) -> bool:
+        if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
+            np.random.seed(EVAL_SEED)
+        return super()._on_step()
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -154,6 +176,20 @@ class MetricasCallback(BaseCallback):
                 self.logger.record("acciones/dominante_pct",
                                    100.0 * self._acciones.max() / total)
 
+            # ── Print a stdout cada 20k pasos (visible en Kaggle) ───
+            if self.num_timesteps % 20_000 == 0 and total > 0:
+                grupos_str = "  ".join(
+                    f"{g}={100.0 * self._acciones[idxs].sum() / total:.0f}%"
+                    for g, idxs in self._GRUPOS.items()
+                )
+                print(
+                    f"[{self.num_timesteps:>9,}]  "
+                    f"SoC={np.mean(self._soc_buffer):.2f}"
+                    f"[{np.min(self._soc_buffer):.2f}-{np.max(self._soc_buffer):.2f}]"
+                    f"  {grupos_str}",
+                    flush=True,
+                )
+
             # Limpiar buffers (incluido conteo de acciones → % del intervalo, no acumulado)
             self._soc_buffer.clear()
             self._comprado_buffer.clear()
@@ -225,13 +261,14 @@ def main():
         ent_coef      = ENT_COEF,
         vf_coef       = VF_COEF,
         policy_kwargs = {"net_arch": {"pi": NET_ARCH_PI, "vf": NET_ARCH_VF}},
-        verbose       = 1,
+        verbose       = 0,
+        device        = "cpu",
         tensorboard_log = LOG_DIR,
     )
     print()
 
     # ── 4. Callbacks ──────────────────────────────────────────────
-    eval_callback = EvalCallback(
+    eval_callback = SeededEvalCallback(
         eval_env,
         best_model_save_path = MODEL_DIR,
         log_path             = LOG_DIR,
@@ -252,6 +289,7 @@ def main():
         total_timesteps = TOTAL_TIMESTEPS,
         callback        = [eval_callback, metricas_callback],
         progress_bar    = False,
+        tb_log_name     = "PPO_2",
     )
 
     # ── 6. Guardar modelo y estadísticas de normalización ─────────
