@@ -1,21 +1,35 @@
 """
-main.py -- Orquestador de entrenamiento del agente PPO (PPO_2)
+main.py -- Orquestador de entrenamiento del agente PPO (PPO_3)
 ============================================================
 HU-12: Entrenar agente RL con Stable Baselines3
 HU-13: Monitorizar el progreso del entrenamiento
 
-PPO_1 (anterior): pico 39.91 EUR/sem en 320k pasos, luego regresion hasta 36 EUR/sem.
-  Diagnostico: ENT_COEF=0.01 demasiado alto — la politica encontro una solucion buena
-  y las actualizaciones siguientes la destruyeron por exceso de entropia.
-  MPC con ruido usa DESCARGAR_RED=4.3%, DESCARGAR_CASA=41.5%.
-  PPO_1 usaba DESCARGAR_RED=27-45% — ese es el gap de 9 EUR/sem.
+Historial:
+  PPO_1: pico 39.91 EUR/sem (320k), luego colapso. ENT_COEF=0.01 demasiado alto.
+  PPO_2: pico 41.82 EUR/sem (960k), luego colapso. ENT_COEF=0.003 mejoro pero
+         el patron de colapso persiste — problema estructural de PPO on-policy.
 
-PPO_2: dos cambios respecto a PPO_1
-  - N_STEPS: 2048 -> 4096 (~24 episodios por rollout — rollouts mas estables,
-    ve ciclos completos de carga/descarga antes de actualizar)
-  - ENT_COEF: 0.01 -> 0.003 (menos aleatoriedad — deja consolidar lo aprendido)
+PPO_3: tres cambios respecto a PPO_2
 
-Sin cambios en entorno ni simulador.
+  1. Features temporales + margen solar: 101 -> 108 dims
+       +6 sin/cos (hora, dia_semana, mes): agente aprende patrones intradiarios.
+       +1 margen_solar: solar que desbordara la bateria en 24h / CAP.
+          Alta → D_RED hace hueco util; Cero → D_RED probablemente innecesario.
+       Coste de oportunidad dinamico en simulador: 0 cuando SoC >= 0.70
+       (bateria llena, vender es gestion de capacidad), escala 4x el spread
+       cuando SoC → SOC_MIN. Sin corte duro: D_RED sigue disponible siempre.
+
+  2. ENT_COEF decreciente: 0.005 -> 0.0005 (lineal a lo largo del entrenamiento)
+       EntCoefScheduler actualiza model.ent_coef en cada paso.
+       Exploracion alta al inicio → explotacion estable al final.
+       Ataca directamente el colapso de politica observado en PPO_1 y PPO_2.
+
+  3. Rollouts mas largos: N_STEPS 4096 -> 8192 (~48 episodios por rollout)
+       Mejor estimacion de la funcion de valor al ver mas de la distribucion
+       de retornos antes de cada actualizacion.
+       BATCH_SIZE 64 -> 128, N_EPOCHS 10 -> 5: menos sobreajuste por rollout.
+
+Sin cambios en simulador ni reward shaping.
 
 Ejecucion desde la raiz del proyecto (carpeta TFG/):
     python src/main.py
@@ -42,22 +56,23 @@ from src.envs.energy_env import EnergyEnv
 
 
 # ------------------------------------------------------------------
-#  HIPERPARAMETROS — PPO_2
+#  HIPERPARAMETROS — PPO_3
 #  Para un test rapido: TOTAL_TIMESTEPS = 10_000
 # ------------------------------------------------------------------
 
 TOTAL_TIMESTEPS   = 3_000_000
 LEARNING_RATE     = 3e-4        # Sin cambio
-N_STEPS           = 4096        # ~24 episodios por rollout (antes 2048/~12)
-BATCH_SIZE        = 64          # Sin cambio
-N_EPOCHS          = 10          # Sin cambio
+N_STEPS           = 8192        # ~48 episodios/rollout (4096 -> 8192)
+BATCH_SIZE        = 128         # 64 -> 128 (proporcional al rollout mayor)
+N_EPOCHS          = 5           # 10 -> 5 (menos sobreajuste por rollout)
 GAMMA             = 0.99        # Sin cambio
 GAE_LAMBDA        = 0.95        # Sin cambio
 CLIP_RANGE        = 0.2         # Sin cambio
-ENT_COEF          = 0.003       # 0.01 -> 0.003: deja consolidar la politica
+ENT_COEF_INIT     = 0.005       # Entropia inicial (mas alta que PPO_2=0.003)
+ENT_COEF_FINAL    = 0.0005      # Entropia final (muy baja — explotacion estable)
 VF_COEF           = 0.5         # Sin cambio
 
-# Redes actor/critic separadas: 101 -> 64 -> 64 -> 9 (actor) / 1 (critic)
+# Redes actor/critic separadas: 108 -> 64 -> 64 -> 9 (actor) / 1 (critic)
 NET_ARCH_PI       = [64, 64]
 NET_ARCH_VF       = [64, 64]
 
@@ -68,6 +83,28 @@ EVAL_SEED         = 42          # Semilla fija — siempre las mismas 50 semanas
 MODEL_DIR  = os.path.join(ROOT, "models")
 LOG_DIR    = os.path.join(ROOT, "logs")
 MODEL_NAME = "ppo_sgec"
+
+
+# ──────────────────────────────────────────────────────────────────
+#  ENT COEF SCHEDULER — decae linealmente ENT_COEF_INIT → ENT_COEF_FINAL
+# ──────────────────────────────────────────────────────────────────
+
+class EntCoefScheduler(BaseCallback):
+    """
+    Decae model.ent_coef linealmente de ENT_COEF_INIT a ENT_COEF_FINAL
+    a lo largo de TOTAL_TIMESTEPS pasos.
+
+    Razon: ENT_COEF constante alto (PPO_1=0.01) destruye la politica.
+    ENT_COEF constante bajo (PPO_2=0.003) permite consolidarla pero
+    sin exploracion suficiente al inicio. El decay combina ambas ventajas:
+    exploracion al principio + explotacion estable al final.
+    """
+    def _on_step(self) -> bool:
+        frac = min(1.0, self.num_timesteps / TOTAL_TIMESTEPS)
+        self.model.ent_coef = float(
+            ENT_COEF_INIT + frac * (ENT_COEF_FINAL - ENT_COEF_INIT)
+        )
+        return True
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -243,9 +280,11 @@ def main():
     print("   Entornos listos.\n")
 
     # ── 3. Configurar agente PPO ──────────────────────────────────
-    print("3. Configurando agente PPO...")
-    print(f"   Actor:  101 -> {NET_ARCH_PI[0]} -> {NET_ARCH_PI[1]} -> 9")
-    print(f"   Critic: 101 -> {NET_ARCH_VF[0]} -> {NET_ARCH_VF[1]} -> 1")
+    print("3. Configurando agente PPO (PPO_3 — 108 dims, decay ENT_COEF, N_STEPS=8192)...")
+    print(f"   Actor:  108 -> {NET_ARCH_PI[0]} -> {NET_ARCH_PI[1]} -> 9")
+    print(f"   Critic: 108 -> {NET_ARCH_VF[0]} -> {NET_ARCH_VF[1]} -> 1")
+    print(f"   ENT_COEF: {ENT_COEF_INIT} -> {ENT_COEF_FINAL} (decay lineal)")
+    print(f"   N_STEPS={N_STEPS}  BATCH={BATCH_SIZE}  EPOCHS={N_EPOCHS}")
     print(f"   Total timesteps: {TOTAL_TIMESTEPS:,}")
 
     model = PPO(
@@ -258,7 +297,7 @@ def main():
         gamma         = GAMMA,
         gae_lambda    = GAE_LAMBDA,
         clip_range    = CLIP_RANGE,
-        ent_coef      = ENT_COEF,
+        ent_coef      = ENT_COEF_INIT,   # EntCoefScheduler lo decae durante training
         vf_coef       = VF_COEF,
         policy_kwargs = {"net_arch": {"pi": NET_ARCH_PI, "vf": NET_ARCH_VF}},
         verbose       = 0,
@@ -278,6 +317,7 @@ def main():
         verbose              = 1,
     )
     metricas_callback = MetricasCallback()
+    ent_scheduler     = EntCoefScheduler()
 
     # ── 5. Entrenar ───────────────────────────────────────────────
     print("-" * 60)
@@ -287,9 +327,9 @@ def main():
 
     model.learn(
         total_timesteps = TOTAL_TIMESTEPS,
-        callback        = [eval_callback, metricas_callback],
+        callback        = [eval_callback, metricas_callback, ent_scheduler],
         progress_bar    = False,
-        tb_log_name     = "PPO_2",
+        tb_log_name     = "PPO_3",
     )
 
     # ── 6. Guardar modelo y estadísticas de normalización ─────────

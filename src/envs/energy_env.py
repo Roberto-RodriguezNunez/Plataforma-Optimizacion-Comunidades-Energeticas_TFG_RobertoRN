@@ -1,6 +1,7 @@
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
+import pandas as pd
 from src.core.simulador import ComunidadSimulador
 
 class EnergyEnv(gym.Env):
@@ -15,8 +16,14 @@ class EnergyEnv(gym.Env):
     - precio_kwh, precio_excedente: sin ruido
         (PVPC e ind. 1739 publicados por REE/ESIOS el día anterior)
 
+    Features temporales (6 dims): codificación cíclica sin/cos de hora, día_semana
+    y mes — permiten al agente aprender patrones intradiarios de precio/solar.
+
     Parámetro forecast_noise=False desactiva el ruido (útil para benchmarks).
     """
+
+    # Ruta al dataset (misma que usa ComunidadSimulador)
+    _DATASET_PATH = 'data/processed/dataset_final.csv'
     # Sigmas base de cada variable en la ventana de pronóstico
     # Orden columnas dataset: [consumo, generacion, precio_kwh, precio_excedente]
     _SIGMA_CONS_BASE  = 0.10   # 10% MAE — relativamente plano con el horizonte
@@ -39,16 +46,28 @@ class EnergyEnv(gym.Env):
 
         # Instanciar el motor físico
         # Asegúrate de haber ejecutado la Tarea 1 para tener este archivo
-        self.simulador = ComunidadSimulador('data/processed/dataset_final.csv')
-        
+        self.simulador = ComunidadSimulador(self._DATASET_PATH)
+
+        # Cargar índice temporal para features sin/cos (hora, día_semana, mes)
+        try:
+            _raw = pd.read_csv(self._DATASET_PATH, index_col=0, parse_dates=True)
+            self._timestamps = (
+                _raw.index if isinstance(_raw.index, pd.DatetimeIndex) else None
+            )
+        except Exception:
+            self._timestamps = None
+
         # --- ACCIONES: 9 (ver justificacion_9_acciones.md) ---
         self.action_space = spaces.Discrete(9)
-        
-        # --- ESTADO: 101 Variables ---
+
+        # --- ESTADO: 108 Variables ---
         # 5 actuales (SoC, Precio_compra, Precio_venta, Excedente, Deficit)
         # + 96 futuras (24h * 4 variables: Consumo, Generacion, Precio_compra, Precio_venta)
+        # + 6 temporales (sin/cos hora, sin/cos dia_semana, sin/cos mes)
+        # + 1 margen_solar (solar excedente que desbordará la batería en 24h / CAP)
+        #     Alta → D_RED útil para hacer hueco; Cero → D_RED probablemente innecesario
         self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(101,), dtype=np.float32
+            low=-np.inf, high=np.inf, shape=(108,), dtype=np.float32
         )
         
         # Configuración del Episodio
@@ -93,12 +112,16 @@ class EnergyEnv(gym.Env):
 
     def _get_obs(self):
         """
-        Construye el vector de estado completo (101 dimensiones).
+        Construye el vector de estado completo (108 dimensiones).
 
         Primeras 5: estado actual exacto (SoC, precios, excedente, déficit).
         Siguientes 96: pronóstico 24h con ruido en generacion y consumo.
           - Los precios se dejan exactos (publicados por REE el día anterior).
           - El ruido del solar crece linealmente con el horizonte.
+        Siguientes 6: codificación cíclica del tiempo (sin/cos hora, día_semana, mes).
+          - Permiten al agente aprender patrones intradiarios de precio y solar.
+        Última 1: margen_solar — solar previsto que desbordará la batería en 24h
+          (normalizado por capacidad). Alta → D_RED hace hueco útil; 0 → D_RED innecesario.
         """
         t = self.simulador.current_step
 
@@ -131,10 +154,45 @@ class EnergyEnv(gym.Env):
 
         forecast_flat = window_future.flatten()  # 24 * 4 = 96 valores
 
-        # 3. Concatenar (5 + 96 = 101)
+        # 3. Features temporales — codificación cíclica sin/cos (6 dims)
+        if self._timestamps is not None and t < len(self._timestamps):
+            ts = self._timestamps[t]
+            hora    = ts.hour
+            dia_sem = ts.dayofweek   # 0=lunes … 6=domingo
+            mes     = ts.month - 1   # 0–11
+        else:
+            # Fallback: estimación por paso (asume step=0 → hora 0, día 0)
+            hora    = t % 24
+            dia_sem = (t // 24) % 7
+            mes     = 0
+
+        temp_feats = np.array([
+            np.sin(2 * np.pi * hora    / 24),
+            np.cos(2 * np.pi * hora    / 24),
+            np.sin(2 * np.pi * dia_sem /  7),
+            np.cos(2 * np.pi * dia_sem /  7),
+            np.sin(2 * np.pi * mes     / 12),
+            np.cos(2 * np.pi * mes     / 12),
+        ], dtype=np.float32)
+
+        # 4. Margen solar — excedente que desbordará la batería en 24h (1 dim)
+        # Columnas window_future: [consumo, generacion, precio_kwh, precio_excedente]
+        # Usamos la ventana SIN ruido para que la señal sea limpia (precios ya lo son;
+        # para solar usamos window_future antes del ruido — recalculamos con datos crudos)
+        window_clean = self.simulador.get_data_window(t + 1, horizon=24)
+        solar_exc_24h = float(np.sum(np.maximum(0.0, window_clean[:, 1] - window_clean[:, 0])))
+        espacio_bat   = max(0.0, (self.simulador.SOC_MAX - self.simulador.soc)
+                           * self.simulador.BATERIA_CAPACIDAD)
+        margen_solar  = np.float32(
+            max(0.0, solar_exc_24h - espacio_bat) / self.simulador.BATERIA_CAPACIDAD
+        )
+
+        # 5. Concatenar (5 + 96 + 6 + 1 = 108)
         obs = np.concatenate((
             [self.simulador.soc, precio_compra, precio_venta, exc, def_],
             forecast_flat,
+            temp_feats,
+            [margen_solar],
         ))
         return obs.astype(np.float32)
 
