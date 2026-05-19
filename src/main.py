@@ -1,5 +1,5 @@
 """
-main.py -- Orquestador de entrenamiento del agente PPO (PPO_3)
+main.py -- Orquestador de entrenamiento del agente PPO (PPO_4)
 ============================================================
 HU-12: Entrenar agente RL con Stable Baselines3
 HU-13: Monitorizar el progreso del entrenamiento
@@ -8,28 +8,26 @@ Historial:
   PPO_1: pico 39.91 EUR/sem (320k), luego colapso. ENT_COEF=0.01 demasiado alto.
   PPO_2: pico 41.82 EUR/sem (960k), luego colapso. ENT_COEF=0.003 mejoro pero
          el patron de colapso persiste — problema estructural de PPO on-policy.
+  PPO_3: pico 45.69 EUR/sem (1.48M), estabilizacion ~44 EUR/sem. Sin colapso
+         visible gracias al decay de ENT_COEF y rollouts largos (N_STEPS=8192).
+         Plateau leve a partir de 1.5M — la politica convergió antes de los 3M.
 
-PPO_3: tres cambios respecto a PPO_2
+PPO_4 = PPO_3 + LR decay + 4M pasos
 
-  1. Features temporales + margen solar: 101 -> 108 dims
-       +6 sin/cos (hora, dia_semana, mes): agente aprende patrones intradiarios.
-       +1 margen_solar: solar que desbordara la bateria en 24h / CAP.
-          Alta → D_RED hace hueco util; Cero → D_RED probablemente innecesario.
-       Coste de oportunidad dinamico en simulador: 0 cuando SoC >= 0.70
-       (bateria llena, vender es gestion de capacidad), escala 4x el spread
-       cuando SoC → SOC_MIN. Sin corte duro: D_RED sigue disponible siempre.
+  1. Learning rate decay: 3e-4 -> 3e-5 (lineal, via callable SB3)
+       progress_remaining va de 1.0 (inicio) a 0.0 (fin).
+       LR = LR_FINAL + progress_remaining * (LR_INIT - LR_FINAL)
+       Razon: LR alto al inicio para explorar el espacio de politicas;
+       LR bajo al final para consolidar sin destruir la politica aprendida.
+       Complementa el decay de ENT_COEF ya presente en PPO_3.
 
-  2. ENT_COEF decreciente: 0.005 -> 0.0005 (lineal a lo largo del entrenamiento)
-       EntCoefScheduler actualiza model.ent_coef en cada paso.
-       Exploracion alta al inicio → explotacion estable al final.
-       Ataca directamente el colapso de politica observado en PPO_1 y PPO_2.
+  2. Total timesteps: 3M -> 4M
+       PPO_3 mostro plateau a partir de 1.5M pero sin colapso posterior.
+       1M extra con LR bajo puede permitir consolidacion adicional.
+       EVAL_FREQ = 20k → 200 evaluaciones en 4M (misma granularidad).
 
-  3. Rollouts mas largos: N_STEPS 4096 -> 8192 (~48 episodios por rollout)
-       Mejor estimacion de la funcion de valor al ver mas de la distribucion
-       de retornos antes de cada actualizacion.
-       BATCH_SIZE 64 -> 128, N_EPOCHS 10 -> 5: menos sobreajuste por rollout.
-
-Sin cambios en simulador ni reward shaping.
+Resto sin cambios (108 dims, ENT_COEF decay 0.005→0.0005, N_STEPS=8192,
+coste oportunidad dinamico en simulador, margen_solar feature).
 
 Ejecucion desde la raiz del proyecto (carpeta TFG/):
     python src/main.py
@@ -56,12 +54,13 @@ from src.envs.energy_env import EnergyEnv
 
 
 # ------------------------------------------------------------------
-#  HIPERPARAMETROS — PPO_3
+#  HIPERPARAMETROS — PPO_4
 #  Para un test rapido: TOTAL_TIMESTEPS = 10_000
 # ------------------------------------------------------------------
 
-TOTAL_TIMESTEPS   = 3_000_000
-LEARNING_RATE     = 3e-4        # Sin cambio
+TOTAL_TIMESTEPS   = 4_000_000
+LR_INIT           = 3e-4        # LR al inicio del entrenamiento
+LR_FINAL          = 3e-5        # LR al final del entrenamiento (decay lineal)
 N_STEPS           = 8192        # ~48 episodios/rollout (4096 -> 8192)
 BATCH_SIZE        = 128         # 64 -> 128 (proporcional al rollout mayor)
 N_EPOCHS          = 5           # 10 -> 5 (menos sobreajuste por rollout)
@@ -76,7 +75,7 @@ VF_COEF           = 0.5         # Sin cambio
 NET_ARCH_PI       = [64, 64]
 NET_ARCH_VF       = [64, 64]
 
-EVAL_FREQ         = 20_000      # Cada 20k pasos (150 evals en 3.0M)
+EVAL_FREQ         = 20_000      # Cada 20k pasos (200 evals en 4M)
 EVAL_EPISODES     = 50          # 50 episodios por eval
 EVAL_SEED         = 42          # Semilla fija — siempre las mismas 50 semanas
 
@@ -280,9 +279,10 @@ def main():
     print("   Entornos listos.\n")
 
     # ── 3. Configurar agente PPO ──────────────────────────────────
-    print("3. Configurando agente PPO (PPO_3 — 108 dims, decay ENT_COEF, N_STEPS=8192)...")
+    print("3. Configurando agente PPO (PPO_4 — 108 dims, LR decay, ENT_COEF decay, N_STEPS=8192)...")
     print(f"   Actor:  108 -> {NET_ARCH_PI[0]} -> {NET_ARCH_PI[1]} -> 9")
     print(f"   Critic: 108 -> {NET_ARCH_VF[0]} -> {NET_ARCH_VF[1]} -> 1")
+    print(f"   LR: {LR_INIT} -> {LR_FINAL} (decay lineal)")
     print(f"   ENT_COEF: {ENT_COEF_INIT} -> {ENT_COEF_FINAL} (decay lineal)")
     print(f"   N_STEPS={N_STEPS}  BATCH={BATCH_SIZE}  EPOCHS={N_EPOCHS}")
     print(f"   Total timesteps: {TOTAL_TIMESTEPS:,}")
@@ -290,7 +290,7 @@ def main():
     model = PPO(
         policy        = "MlpPolicy",
         env           = env,
-        learning_rate = LEARNING_RATE,
+        learning_rate = lambda p: LR_FINAL + p * (LR_INIT - LR_FINAL),
         n_steps       = N_STEPS,
         batch_size    = BATCH_SIZE,
         n_epochs      = N_EPOCHS,
@@ -321,7 +321,7 @@ def main():
 
     # ── 5. Entrenar ───────────────────────────────────────────────
     print("-" * 60)
-    print(f"4. Iniciando entrenamiento PPO ({TOTAL_TIMESTEPS:,} pasos)...")
+    print(f"4. Iniciando entrenamiento PPO_4 ({TOTAL_TIMESTEPS:,} pasos)...")
     print(f"   TensorBoard: tensorboard --logdir {LOG_DIR}")
     print("-" * 60)
 
@@ -329,7 +329,7 @@ def main():
         total_timesteps = TOTAL_TIMESTEPS,
         callback        = [eval_callback, metricas_callback, ent_scheduler],
         progress_bar    = False,
-        tb_log_name     = "PPO_3",
+        tb_log_name     = "PPO_4",
     )
 
     # ── 6. Guardar modelo y estadísticas de normalización ─────────
