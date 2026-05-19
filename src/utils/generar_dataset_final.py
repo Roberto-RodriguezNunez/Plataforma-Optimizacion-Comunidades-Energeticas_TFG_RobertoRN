@@ -238,10 +238,10 @@ def generar(semilla: int = 42):
         'hashes_sha256_fuentes': hashes_fuente,
         'hash_sha256_salida': _sha256(RUTA_SALIDA),
         'split': {
-            'train_end':   _CFG['split']['train_end'],
-            'buffer_start': _CFG['split']['buffer_start'],
-            'buffer_end':  _CFG['split']['buffer_end'],
-            'test_start':  _CFG['split']['test_start'],
+            'tipo': 'muestreo_aleatorio_semanal',
+            'semilla_split': _CFG['split']['semilla_split'],
+            'n_semanas_eval': _CFG['split']['n_semanas_eval'],
+            'horas_por_semana': _CFG['split']['horas_por_semana'],
         },
     }
 

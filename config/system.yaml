@@ -43,16 +43,17 @@ rutas:
   dataset_final: data/processed/dataset_final.csv
   metadata: data/processed/metadata.json
 
-# --- Split temporal train / buffer / test ---
-# Train: dos ciclos estacionales completos (~24 meses).
-# Buffer: dos meses sin usar, corta correlación temporal.
-# Test: otoño-invierno (~4 meses), inmutable, 50 semanas deterministas.
+# --- Split por muestreo aleatorio de semanas ---
+# El dataset cubre jun-2021 a dic-2023 (~134 semanas completas de 168h).
+# Un split temporal por bloques genera distribuciones train/eval heterogeneas
+# (crisis energetica 2022 vs post-crisis 2023 = shift del 24% en beneficio).
+# En su lugar, se muestrean 50 semanas al azar como pool de evaluacion y las
+# ~84 restantes como pool de entrenamiento. Ambos pools cubren todo el rango
+# temporal (crisis, post-crisis, verano, invierno) eliminando el sesgo.
 split:
-  train_end: "2023-06-30T23:00:00"
-  buffer_start: "2023-07-01T00:00:00"
-  buffer_end: "2023-08-31T23:00:00"
-  test_start: "2023-09-01T00:00:00"
-  n_semanas_test: 50          # Semanas de evaluación determinista sobre test
+  semilla_split: 42           # Semilla para muestreo de semanas (fija e inmutable)
+  n_semanas_eval: 50          # Semanas en pool de evaluacion
+  horas_por_semana: 168       # 24 * 7
 
 # --- ETL: generación de datos ---
 etl:
@@ -92,13 +93,13 @@ mpc:
   # Coherente con la corrección terminal del simulador (energy_env.py:232-238).
   valor_terminal:
     activado: true
-    lambda: 0.5               # Calibrado sobre train (grid: 0.0-2.0, mejor: 0.5)
+    lambda: 0.0               # Calibrado sobre train (grid: 0.0-1.0, mejor: 0.0)
     modo_precio: "ultimo"     # "ultimo" = precio_compra[H-1] (default, coherente
                               #   con simulador). Alternativas: "media_movil",
                               #   "mediana_historica".
   # Degradación linealizada para el LP.
   # K_DEG_LIN se calibra empíricamente minimizando la diferencia entre coste
   # predicho por el LP y coste real medido por el simulador sobre el train set.
-  k_deg_lin: 0.010            # Calibrado sobre train (grid: 0.002-0.015, mejor: 0.010)
+  k_deg_lin: 0.005            # Calibrado: K=0.005 y K=0.010 equivalentes (+/-0.06 EUR/sem)
   # Modo de pronóstico: "oraculo" (datos perfectos) o "realista" (ruido AR(1)).
   modo_pronostico: "realista"

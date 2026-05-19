@@ -417,10 +417,11 @@ def simular_semana_idle(sim_idle, start):
 
 
 def correr_episodios(
-    sim, sim_idle, rng, mpc: LinearMPC, forecast_mode: str = 'oraculo'
+    sim, sim_idle, rng, mpc: LinearMPC, forecast_mode: str = 'oraculo',
+    pool: str = 'eval'
 ):
     """
-    Ejecuta N_EPISODES semanas aleatorias y devuelve arrays de beneficios.
+    Ejecuta episodios sobre un pool de semanas y devuelve arrays de beneficios.
 
     Args:
         sim: Simulador principal (se modifica soc y current_step).
@@ -428,14 +429,20 @@ def correr_episodios(
         rng: Generador de números aleatorios (numpy).
         mpc: Instancia de LinearMPC configurada.
         forecast_mode: 'oraculo' (datos perfectos) o 'realista' (ruido AR(1)).
+        pool: 'eval' (semanas eval, determinista) o 'train' (semanas train,
+              muestreo aleatorio N_EPISODES veces).
     """
     con_ruido = (forecast_mode == 'realista')
-    max_start = sim.max_steps - EPISODE_LENGTH - HORIZON - 1
+
+    if pool == 'eval':
+        starts = sim.semanas_eval
+    else:
+        starts = [sim.semanas_train[int(rng.integers(len(sim.semanas_train)))]
+                  for _ in range(N_EPISODES)]
 
     bens_mpc, bens_idle, bens_marg = [], [], []
 
-    for ep in range(N_EPISODES):
-        start = int(rng.integers(0, max_start))
+    for ep, start in enumerate(starts):
 
         # IDLE
         ben_idle = simular_semana_idle(sim_idle, start)
@@ -478,7 +485,7 @@ def correr_episodios(
         bens_marg.append(ben_marg)
 
         if (ep + 1) % 100 == 0:
-            print(f"     episodio {ep + 1}/{N_EPISODES} completado")
+            print(f"     episodio {ep + 1}/{len(starts)} completado")
 
     return np.array(bens_mpc), np.array(bens_idle), np.array(bens_marg)
 
@@ -492,23 +499,22 @@ def imprimir_resultado(label, bens_mpc, bens_idle, bens_marg):
 
 
 def calibrate_deg(
-    sim, sim_idle, rng,
+    sim, rng,
     k_grid=None,
     n_semanas: int = 20,
     terminal_lambda: float = 0.0,
 ):
     """
     Calibra K_DEG_LIN ejecutando MPC oráculo con distintos valores sobre
-    n_semanas del train set. Retorna el K que minimiza |coste_predicho_LP - coste_real|.
+    n_semanas del pool train. Retorna el K que maximiza beneficio marginal.
 
-    NOTA: esta función debe ejecutarse sobre el TRAIN set, nunca sobre test.
+    NOTA: usa semanas del pool train del simulador.
 
     Args:
-        sim: ComunidadSimulador (mode='train').
-        sim_idle: Simulador IDLE.
+        sim: ComunidadSimulador (con pools calculados).
         rng: Generador aleatorio.
-        k_grid: Lista de valores a probar. Default: [0.003, 0.004, 0.005, 0.006, 0.008, 0.010].
-        n_semanas: Número de semanas de calibración.
+        k_grid: Lista de valores a probar.
+        n_semanas: Número de semanas de calibración (del pool train).
         terminal_lambda: Lambda para valor terminal durante calibración.
 
     Returns:
@@ -517,8 +523,11 @@ def calibrate_deg(
     if k_grid is None:
         k_grid = [0.003, 0.004, 0.005, 0.006, 0.008, 0.010]
 
-    max_start = sim.max_steps - EPISODE_LENGTH - HORIZON - 1
-    starts = [int(rng.integers(0, max_start)) for _ in range(n_semanas)]
+    # Muestrear semanas del pool train
+    train_pool = sim.semanas_train
+    n_semanas = min(n_semanas, len(train_pool))
+    idxs = rng.choice(len(train_pool), n_semanas, replace=False)
+    starts = [train_pool[i] for i in idxs]
 
     resultados = {}
     for k in k_grid:
@@ -554,25 +563,27 @@ def calibrate_deg(
 
 def main():
     print("=" * 62)
-    print("BENCHMARK MPC — horizonte 24h")
+    print("BENCHMARK MPC -- horizonte 24h")
     print("=" * 62)
 
     sim      = ComunidadSimulador(DATASET_PATH)
     sim_idle = ComunidadSimulador(DATASET_PATH)
 
-    # Configuración del MPC desde YAML
+    n_eval  = len(sim.semanas_eval)
+    n_train = len(sim.semanas_train)
+    print(f"\n  Split por semanas: {n_train} train + {n_eval} eval")
+
+    # Configuracion del MPC desde YAML
     tv_cfg = _MPC['valor_terminal']
     use_tv = tv_cfg['activado']
     lam    = tv_cfg['lambda']
     k_deg  = _MPC['k_deg_lin']
 
-    print(f"\n  Configuración:")
-    print(f"    Horizonte:      {HORIZON}h")
-    print(f"    Episodios:      {N_EPISODES}")
-    print(f"    Valor terminal: {'activado' if use_tv else 'desactivado'}"
-          f" (λ={lam}, modo='{tv_cfg['modo_precio']}')")
-    print(f"    K_DEG_LIN:      {k_deg}")
-    print(f"    SoC inicial:    {SOC_INICIAL}")
+    print(f"  Horizonte:      {HORIZON}h")
+    print(f"  Valor terminal: {'activado' if use_tv else 'desactivado'}"
+          f" (lam={lam}, modo='{tv_cfg['modo_precio']}')")
+    print(f"  K_DEG_LIN:      {k_deg}")
+    print(f"  SoC inicial:    {SOC_INICIAL}")
 
     mpc = LinearMPC(
         sim,
@@ -582,28 +593,26 @@ def main():
         k_deg_lin=k_deg,
     )
 
-    # Misma semilla: ambas variantes evalúan las mismas semanas aleatorias.
     rng_perf  = np.random.default_rng(SEED)
     rng_ruido = np.random.default_rng(SEED)
 
-    print("\n  Ejecutando MPC con previsión PERFECTA (oráculo)...")
+    print(f"\n  Ejecutando MPC oraculo sobre {n_eval} semanas eval...")
     mpc_p, idle_p, marg_p = correr_episodios(
-        sim, sim_idle, rng_perf, mpc, forecast_mode='oraculo')
+        sim, sim_idle, rng_perf, mpc, forecast_mode='oraculo', pool='eval')
 
-    print("\n  Ejecutando MPC con RUIDO AR(1) (realista)...")
+    print(f"\n  Ejecutando MPC realista sobre {n_eval} semanas eval...")
     mpc_r, idle_r, marg_r = correr_episodios(
-        sim, sim_idle, rng_ruido, mpc, forecast_mode='realista')
+        sim, sim_idle, rng_ruido, mpc, forecast_mode='realista', pool='eval')
 
     print("\n" + "=" * 62)
-    print(f"RESULTADOS ({N_EPISODES} episodios aleatorios cada variante)")
+    print(f"RESULTADOS ({n_eval} semanas eval, muestreo aleatorio)")
     print("=" * 62)
-    imprimir_resultado("MPC previsión PERFECTA — cota superior teórica", mpc_p, idle_p, marg_p)
-    imprimir_resultado("MPC con RUIDO AR(1) — comparación justa con DQN", mpc_r, idle_r, marg_r)
+    imprimir_resultado("MPC oraculo -- cota superior teorica", mpc_p, idle_p, marg_p)
+    imprimir_resultado("MPC realista AR(1) -- comparacion justa con RL", mpc_r, idle_r, marg_r)
 
     print()
     gap = marg_p.mean() - marg_r.mean()
     print(f"  Coste del ruido para MPC: {gap:.2f} EUR/sem")
-    print(f"  (diferencia perfecta vs ruidosa — cuánto vale tener previsión perfecta)")
 
     # Estadísticas del solver
     stats = mpc.stats_solver()

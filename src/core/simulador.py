@@ -7,9 +7,16 @@ class ComunidadSimulador:
 
     Args:
         data_path: Ruta al dataset_final.csv.
-        mode: 'all' (todo el dataset), 'train' (hasta 2023-06-30),
-              'test' (desde 2023-09-01). Requiere columna 'fecha' en el CSV.
+        mode: 'all' (todo el dataset), 'train' (pool de entrenamiento),
+              'eval' (pool de evaluación). Los pools se definen por muestreo
+              aleatorio de semanas completas (168h) con semilla fija.
     """
+
+    # Parámetros del split (deben coincidir con config/system.yaml)
+    _SEED_SPLIT = 42
+    _N_SEMANAS_EVAL = 50
+    _HORAS_POR_SEMANA = 168
+
     def __init__(self, data_path, mode='all'):
         # 1. Cargar datos
         try:
@@ -18,18 +25,20 @@ class ComunidadSimulador:
         except FileNotFoundError:
             raise Exception(f"ERROR: No se encuentra {data_path}.")
 
-        # 2. Filtrar por split temporal si procede
-        if mode != 'all' and 'fecha' in self.df.columns:
-            self.df['fecha'] = pd.to_datetime(self.df['fecha'])
-            if mode == 'train':
-                self.df = self.df[self.df['fecha'] <= '2023-06-30 23:00:00']
-            elif mode == 'test':
-                self.df = self.df[self.df['fecha'] >= '2023-09-01 00:00:00']
-            else:
-                raise ValueError(f"mode debe ser 'all', 'train' o 'test', no '{mode}'")
-            self.df = self.df.reset_index(drop=True)
-
         self.max_steps = len(self.df)
+
+        # 2. Calcular pools de semanas
+        total_semanas = self.max_steps // self._HORAS_POR_SEMANA
+        rng_split = np.random.RandomState(self._SEED_SPLIT)
+        indices_eval = sorted(rng_split.choice(
+            total_semanas, self._N_SEMANAS_EVAL, replace=False))
+        set_eval = set(indices_eval)
+        indices_train = [i for i in range(total_semanas) if i not in set_eval]
+
+        # Convertir a índices horarios de inicio de semana
+        self.semanas_train = [i * self._HORAS_POR_SEMANA for i in indices_train]
+        self.semanas_eval = [i * self._HORAS_POR_SEMANA for i in indices_eval]
+        self._mode = mode
         
         # 2. Configuración Física
         self.BATERIA_CAPACIDAD = 100.0    # kWh

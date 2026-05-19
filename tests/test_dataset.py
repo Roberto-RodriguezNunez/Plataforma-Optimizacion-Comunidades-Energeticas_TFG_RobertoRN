@@ -171,27 +171,40 @@ class TestRuidoAR1:
 class TestSplit:
 
     def test_split_no_solapado(self, df):
-        """Los índices de train, buffer y test son disjuntos por construcción."""
-        fechas = df['fecha']
+        """Los pools de semanas train y eval son disjuntos."""
+        n_horas = len(df)
+        horas_por_semana = 168
+        total_semanas = n_horas // horas_por_semana
+        n_eval = 50
 
-        train  = fechas[fechas <= '2023-06-30 23:00:00']
-        buffer = fechas[(fechas >= '2023-07-01 00:00:00') &
-                        (fechas <= '2023-08-31 23:00:00')]
-        test   = fechas[fechas >= '2023-09-01 00:00:00']
+        rng_split = np.random.RandomState(42)
+        indices_eval = sorted(rng_split.choice(total_semanas, n_eval, replace=False))
+        set_eval = set(indices_eval)
+        indices_train = [i for i in range(total_semanas) if i not in set_eval]
 
-        # No hay solapamiento
-        assert len(set(train.index) & set(buffer.index)) == 0
-        assert len(set(train.index) & set(test.index)) == 0
-        assert len(set(buffer.index) & set(test.index)) == 0
+        # Disjuntos
+        assert len(set(indices_train) & set_eval) == 0
 
-        # Cobertura total
-        assert len(train) + len(buffer) + len(test) == len(df)
+        # Cobertura (todas las semanas completas repartidas)
+        assert len(indices_train) + len(indices_eval) == total_semanas
 
-        # Train tiene al menos 17.000 horas (~24 meses)
-        assert len(train) >= 17_000, f"Train muy corto: {len(train)} horas"
+        # Eval tiene exactamente 50 semanas
+        assert len(indices_eval) == n_eval
 
-        # Test tiene al menos 2.500 horas (~4 meses)
-        assert len(test) >= 2_500, f"Test muy corto: {len(test)} horas"
+        # Train tiene al menos 80 semanas
+        assert len(indices_train) >= 80, (
+            f"Train muy corto: {len(indices_train)} semanas")
+
+        # Ningún índice horario de eval cae en train (verificación a nivel hora)
+        horas_eval = set()
+        for s in indices_eval:
+            for h in range(horas_por_semana):
+                horas_eval.add(s * horas_por_semana + h)
+        horas_train = set()
+        for s in indices_train:
+            for h in range(horas_por_semana):
+                horas_train.add(s * horas_por_semana + h)
+        assert len(horas_eval & horas_train) == 0, "Data leakage: horas compartidas"
 
 
 # -----------------------------------------------------------------
