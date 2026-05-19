@@ -3,15 +3,31 @@ import pandas as pd
 
 class ComunidadSimulador:
     """
-    Motor físico de la comunidad energética con 13 ACCIONES (3 Niveles de Potencia).
+    Motor físico de la comunidad energética con 9 acciones discretas.
+
+    Args:
+        data_path: Ruta al dataset_final.csv.
+        mode: 'all' (todo el dataset), 'train' (hasta 2023-06-30),
+              'test' (desde 2023-09-01). Requiere columna 'fecha' en el CSV.
     """
-    def __init__(self, data_path):
+    def __init__(self, data_path, mode='all'):
         # 1. Cargar datos
         try:
             self.df = pd.read_csv(data_path)
             self.df.columns = self.df.columns.str.strip()
         except FileNotFoundError:
-            raise Exception(f"❌ ERROR: No se encuentra {data_path}.")
+            raise Exception(f"ERROR: No se encuentra {data_path}.")
+
+        # 2. Filtrar por split temporal si procede
+        if mode != 'all' and 'fecha' in self.df.columns:
+            self.df['fecha'] = pd.to_datetime(self.df['fecha'])
+            if mode == 'train':
+                self.df = self.df[self.df['fecha'] <= '2023-06-30 23:00:00']
+            elif mode == 'test':
+                self.df = self.df[self.df['fecha'] >= '2023-09-01 00:00:00']
+            else:
+                raise ValueError(f"mode debe ser 'all', 'train' o 'test', no '{mode}'")
+            self.df = self.df.reset_index(drop=True)
 
         self.max_steps = len(self.df)
         

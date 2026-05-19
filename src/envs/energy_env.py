@@ -36,7 +36,7 @@ class EnergyEnv(gym.Env):
     _RHO_SOLAR = 0.7
     _RHO_CONS  = 0.3
 
-    def __init__(self, forecast_noise: bool = True):
+    def __init__(self, forecast_noise: bool = True, mode: str = 'all'):
         super(EnergyEnv, self).__init__()
 
         self.forecast_noise = forecast_noise
@@ -44,16 +44,20 @@ class EnergyEnv(gym.Env):
         self._error_solar = 0.0
         self._error_cons  = 0.0
 
-        # Instanciar el motor físico
-        # Asegúrate de haber ejecutado la Tarea 1 para tener este archivo
-        self.simulador = ComunidadSimulador(self._DATASET_PATH)
+        # Instanciar el motor físico (con split temporal si procede)
+        self.simulador = ComunidadSimulador(self._DATASET_PATH, mode=mode)
 
-        # Cargar índice temporal para features sin/cos (hora, día_semana, mes)
+        # Cargar índice temporal para features sin/cos (hora, día_semana, mes).
+        # El CSV debe tener una columna 'fecha' (generada por generar_dataset_final.py).
         try:
-            _raw = pd.read_csv(self._DATASET_PATH, index_col=0, parse_dates=True)
-            self._timestamps = (
-                _raw.index if isinstance(_raw.index, pd.DatetimeIndex) else None
-            )
+            _raw = pd.read_csv(self._DATASET_PATH, parse_dates=['fecha'])
+            if mode != 'all' and 'fecha' in _raw.columns:
+                if mode == 'train':
+                    _raw = _raw[_raw['fecha'] <= '2023-06-30 23:00:00']
+                elif mode == 'test':
+                    _raw = _raw[_raw['fecha'] >= '2023-09-01 00:00:00']
+                _raw = _raw.reset_index(drop=True)
+            self._timestamps = _raw['fecha']
         except Exception:
             self._timestamps = None
 
@@ -156,7 +160,7 @@ class EnergyEnv(gym.Env):
 
         # 3. Features temporales — codificación cíclica sin/cos (6 dims)
         if self._timestamps is not None and t < len(self._timestamps):
-            ts = self._timestamps[t]
+            ts = self._timestamps.iloc[t]
             hora    = ts.hour
             dia_sem = ts.dayofweek   # 0=lunes … 6=domingo
             mes     = ts.month - 1   # 0–11

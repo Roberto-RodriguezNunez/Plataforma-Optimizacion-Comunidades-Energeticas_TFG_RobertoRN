@@ -1,0 +1,104 @@
+# =============================================================================
+# system.yaml — Configuración centralizada del sistema de gestión energética
+# =============================================================================
+# Comunidad de autoconsumo fotovoltaico colectivo (15 viviendas, 50 kWp, 100 kWh)
+# Regulación: RD 244/2019, compensación simplificada de excedentes.
+#
+# Convención de unidades:
+#   - Energía: kWh
+#   - Potencia: kW
+#   - Precios: EUR/kWh
+#   - Tiempo: horas
+#   - SoC: fracción [0, 1]
+# =============================================================================
+
+# --- Batería comunitaria (LFP, inversor bidireccional) ---
+bateria:
+  capacidad_kwh: 100.0          # Capacidad nominal de la batería
+  potencia_inversor_kw: 50.0    # Potencia máxima del inversor bidireccional
+  eficiencia_carga: 0.95        # η_c: pérdidas AC→DC al cargar (5%)
+  eficiencia_descarga: 0.95     # η_d: pérdidas DC→AC al descargar (5%)
+  # Round-trip: η_c × η_d = 0.9025 (90.25%)
+  autodescarga_por_hora: 0.00004  # ~3% mensual, típico Li-ion/LFP
+  soc_min: 0.10                 # Límite operativo inferior (protección)
+  soc_max: 0.90                 # Límite operativo superior (protección)
+  soc_inicial: 0.50             # SoC al inicio de cada episodio MPC
+  degradacion_base: 0.005       # Coste base degradación (EUR/kWh)
+  # Degradación no lineal del simulador:
+  #   coste = base × (1 + (P/P_max)²) × (1 + 15·|SoC-0.5|⁴) × E
+  # El MPC usa degradación linealizada (solo base × E) — brecha intencional.
+
+# --- Comunidad ---
+comunidad:
+  num_viviendas: 15
+  potencia_solar_total_kwp: 50.0
+  consumo_anual_vivienda_kwh: 3500.0  # Consumo medio doméstico español
+
+# --- Rutas de datos ---
+rutas:
+  consumo_raw: data/raw/consumo_esios_2021_2023.csv
+  precios_raw: data/raw/precios_esios_2021_2023.csv
+  compensacion_raw: data/raw/compensacion_autoconsumo_esios_2021_2023.csv
+  solar_raw: data/raw/solar_pvgis_2021_2023.csv
+  dataset_final: data/processed/dataset_final.csv
+  metadata: data/processed/metadata.json
+
+# --- Split temporal train / buffer / test ---
+# Train: dos ciclos estacionales completos (~24 meses).
+# Buffer: dos meses sin usar, corta correlación temporal.
+# Test: otoño-invierno (~4 meses), inmutable, 50 semanas deterministas.
+split:
+  train_end: "2023-06-30T23:00:00"
+  buffer_start: "2023-07-01T00:00:00"
+  buffer_end: "2023-08-31T23:00:00"
+  test_start: "2023-09-01T00:00:00"
+  n_semanas_test: 50          # Semanas de evaluación determinista sobre test
+
+# --- ETL: generación de datos ---
+etl:
+  semilla: 42
+  # Ruido AR(1) sobre demanda agregada.
+  # Justificación: el perfil 2.0TD ya incorpora la diversidad del consumidor
+  # doméstico medio español. Un AR(1) sobre la demanda agregada con ρ=0.50
+  # captura la persistencia temporal en errores de demanda (correlación horaria
+  # por condiciones meteorológicas y patrones de ocupación), y σ=0.05 da ~5%
+  # de variabilidad horaria, coherente con la literatura de pronóstico de
+  # demanda residencial agregada a escala de comunidad [VERIFICAR CITA].
+  ruido_demanda:
+    rho: 0.50                 # Autocorrelación lag-1 (rango defendible: 0.4–0.6)
+    sigma: 0.05               # Desviación típica del factor multiplicativo
+    clip_min: 0.70            # Factor mínimo: 1 + sigma × clip = 0.70
+    clip_max: 1.30            # Factor máximo: 1 + sigma × clip = 1.30
+  # Política de saneamiento de precios.
+  # RD 244/2019 Art.14: el productor nunca recibe remuneración negativa
+  # por excedentes bajo compensación simplificada [VERIFICAR ARTÍCULO EXACTO].
+  precio_excedente_min: 0.0
+
+# --- Ruido de pronóstico AR(1) (usado por EnergyEnv y MPC realista) ---
+pronostico:
+  rho_solar: 0.7              # Nubes persisten varias horas
+  rho_consumo: 0.3            # Más variable, patrón horario domina
+  sigma_solar_h1: 0.05        # 5% error en hora+1
+  sigma_solar_h24: 0.25       # 25% error en hora+24 (crece linealmente)
+  sigma_consumo: 0.10         # 10% MAE constante en horizonte
+
+# --- MPC ---
+mpc:
+  horizonte: 24               # Horizonte de planificación (horas)
+  duracion_episodio: 168      # 1 semana = 24 × 7 horas
+  n_episodios: 500            # Episodios para evaluación estadística
+  # Valor terminal: incentiva mantener SoC para arbitraje futuro.
+  # V_T = lambda × p_terminal × η_d × E[H]
+  # Coherente con la corrección terminal del simulador (energy_env.py:232-238).
+  valor_terminal:
+    activado: true
+    lambda: 0.5               # Calibrado sobre train (grid: 0.0-2.0, mejor: 0.5)
+    modo_precio: "ultimo"     # "ultimo" = precio_compra[H-1] (default, coherente
+                              #   con simulador). Alternativas: "media_movil",
+                              #   "mediana_historica".
+  # Degradación linealizada para el LP.
+  # K_DEG_LIN se calibra empíricamente minimizando la diferencia entre coste
+  # predicho por el LP y coste real medido por el simulador sobre el train set.
+  k_deg_lin: 0.010            # Calibrado sobre train (grid: 0.002-0.015, mejor: 0.010)
+  # Modo de pronóstico: "oraculo" (datos perfectos) o "realista" (ruido AR(1)).
+  modo_pronostico: "realista"
