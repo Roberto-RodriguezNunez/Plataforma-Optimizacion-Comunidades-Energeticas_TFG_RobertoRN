@@ -38,7 +38,7 @@ from src.core.simulador import ComunidadSimulador
 # --- CONFIGURACIÓN ---
 DATASET_PATH   = 'data/processed/dataset_final.csv'
 EPISODE_LENGTH = 24 * 7   # 1 semana = 168 horas
-N_EPISODES     = 100
+N_EPISODES     = 500
 HORIZON        = 24
 SEED           = 42
 SOC_INICIAL    = 0.5
@@ -297,10 +297,11 @@ def main():
     sim      = ComunidadSimulador(DATASET_PATH)
     sim_idle = ComunidadSimulador(DATASET_PATH)
 
-    # Dos RNG con semillas distintas para que el ruido no sea idéntico
-    # entre la variante ruidosa y la perfecta (más realista)
+    # Misma semilla: ambas variantes evaluan las mismas 100 semanas.
+    # IDLE no depende del ruido → debe dar igual en ambas variantes.
+    # Asi el "coste del ruido" refleja solo la calidad de prevision del MPC.
     rng_perf  = np.random.default_rng(SEED)
-    rng_ruido = np.random.default_rng(SEED + 1)
+    rng_ruido = np.random.default_rng(SEED)
 
     print("\nEjecutando MPC con previsión perfecta ...")
     mpc_p, idle_p, marg_p = correr_episodios(sim, sim_idle, rng_perf,  con_ruido=False)
