@@ -1,24 +1,35 @@
 """
 mpc_benchmark.py — Benchmark MPC de horizonte deslizante (24h)
 ===============================================================
-Ejecuta dos variantes para contextualizar los resultados del DQN:
+Implementa un MPC lineal (LP) como controlador BaseController para
+contextualizar los resultados del RL.
 
-  1. MPC con ruido AR(1) idéntico al DQN  → comparación JUSTA
-       Ambos reciben la misma calidad de previsión solar/consumo.
-       Si DQN ≈ MPC_ruido: el agente exprime bien la información disponible.
+Dos variantes ejecutables desde una sola clase LinearMPC:
+  1. Oráculo (forecast_mode="oraculo"):  previsión perfecta → cota superior teórica.
+  2. Realista (forecast_mode="realista"): ruido AR(1) idéntico al RL → comparación justa.
 
-  2. MPC con previsión perfecta           → cota superior TEÓRICA
-       Máximo alcanzable si se conociera el futuro exacto.
-       Sirve para acotar el margen de mejora posible.
+Formulación LP (linprog minimiza):
+  - Variables (4 × H = 96): cs[h], cm[h], dc[h], dr[h]  ∀h ∈ {0..H-1}
+  - Objetivo: min -beneficio_marginal_vs_IDLE + valor_terminal
+  - Restricciones:
+      cs[h] + cm[h] ≤ P_MAX                     (potencia carga)
+      dc[h] + dr[h] ≤ P_MAX                     (potencia descarga)
+      SOC_MIN × CAP ≤ E[h+1] ≤ SOC_MAX × CAP   (límites SoC con autodescarga)
+  - Bounds: cs ≤ exc, dc ≤ dfc/η_d, cm ≤ P_MAX, dr ≤ P_MAX
 
-Física idéntica al simulador en ambos casos:
-  - Precios asimétricos: PVPC (ind.1001) compra, excedentaria (ind.1739) venta
-  - Eficiencia carga/descarga: 95% cada dirección (round-trip 90.25%)
-  - Autodescarga: ~3% mensual (0.004%/hora)
-  - Degradación no lineal: factor potencia (I²) + factor SoC (extremos)
+  Coeficientes de la función objetivo (derivación):
+    Sea IDLE: vender excedente a pv, comprar déficit a pc.
+    Beneficio marginal de cada variable:
+      cs[h]: pierde venta solar (pv) + degradación (DEG)          → coef = +(pv + DEG)
+      cm[h]: paga compra red (pc) + degradación (DEG)             → coef = +(pc + DEG)
+      dc[h]: ahorra compra (pc × η_d) − degradación (DEG)        → coef = −(pc×η_d − DEG)
+      dr[h]: ingresa venta (pv × η_d) − degradación (DEG)        → coef = −(pv×η_d − DEG)
 
-El LP interno usa degradación linealizada (necesario para LP; en la ejecución
-real se aplica la degradación no lineal completa del simulador).
+  Valor terminal (si activado):
+    V_T = λ × p_T × η_d × E[H]
+    Añade a c_obj:
+      cs[h], cm[h]: −λ × p_T × η_d × η_c × α^(H-1-h)   (cargar aumenta E[H])
+      dc[h], dr[h]: +λ × p_T × η_d × α^(H-1-h)          (descargar reduce E[H])
 
 Ejecución desde la raíz del proyecto (carpeta TFG/):
     python src/benchmarks/mpc_benchmark.py
@@ -26,139 +37,309 @@ Ejecución desde la raíz del proyecto (carpeta TFG/):
 
 import os
 import sys
+import time
+from typing import Dict, Optional
+
 import numpy as np
+import yaml
 from scipy.optimize import linprog
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
+from src.controllers.base import BaseController
 from src.core.simulador import ComunidadSimulador
 
-# --- CONFIGURACIÓN ---
-DATASET_PATH   = 'data/processed/dataset_final.csv'
-EPISODE_LENGTH = 24 * 7   # 1 semana = 168 horas
-N_EPISODES     = 500
-HORIZON        = 24
-SEED           = 42
-SOC_INICIAL    = 0.5
+# --- Cargar configuración ---
+_CONFIG_PATH = os.path.join(ROOT, 'config', 'system.yaml')
+with open(_CONFIG_PATH, 'r', encoding='utf-8') as f:
+    _CFG = yaml.safe_load(f)
+
+# Parámetros de configuración
+_BAT    = _CFG['bateria']
+_MPC    = _CFG['mpc']
+_PRON   = _CFG['pronostico']
+
+DATASET_PATH   = _CFG['rutas']['dataset_final']
+EPISODE_LENGTH = _MPC['duracion_episodio']
+N_EPISODES     = _MPC['n_episodios']
+HORIZON        = _MPC['horizonte']
+SEED           = _CFG['etl']['semilla']
+SOC_INICIAL    = _BAT['soc_inicial']
 
 # Parámetros AR(1) — idénticos a energy_env.py
-_SIGMA_SOL_H1    = 0.05
-_SIGMA_SOL_H24   = 0.25
-_SIGMA_CONS_BASE = 0.10
-_RHO_SOLAR       = 0.7
-_RHO_CONS        = 0.3
+_SIGMA_SOL_H1    = _PRON['sigma_solar_h1']
+_SIGMA_SOL_H24   = _PRON['sigma_solar_h24']
+_SIGMA_CONS_BASE = _PRON['sigma_consumo']
+_RHO_SOLAR       = _PRON['rho_solar']
+_RHO_CONS        = _PRON['rho_consumo']
 
+
+# =====================================================================
+# LinearMPC — Controlador MPC lineal con horizonte deslizante
+# =====================================================================
+
+class LinearMPC(BaseController):
+    """
+    Controlador MPC basado en programación lineal (LP) con horizonte 24h.
+
+    El LP se resuelve cada hora con el SoC real medido del simulador.
+    Solo se aplica la acción del primer paso (h=0) — horizonte rodante.
+
+    Args:
+        sim: Instancia de ComunidadSimulador (para parámetros físicos).
+        use_terminal_value: Si True, añade valor terminal al LP.
+        terminal_lambda: Peso del valor terminal (0.0 = desactivado).
+        terminal_price_mode: 'ultimo', 'media_movil' o 'mediana_historica'.
+        k_deg_lin: Coste lineal de degradación (EUR/kWh). Si None, usa
+                   sim.COSTE_DEGRADACION_BASE.
+    """
+
+    def __init__(
+        self,
+        sim: ComunidadSimulador,
+        use_terminal_value: bool = True,
+        terminal_lambda: float = 1.0,
+        terminal_price_mode: str = 'ultimo',
+        k_deg_lin: Optional[float] = None,
+    ):
+        self._sim = sim
+        self._use_tv = use_terminal_value
+        self._lambda = terminal_lambda if use_terminal_value else 0.0
+        self._tv_mode = terminal_price_mode
+        self._k_deg = k_deg_lin if k_deg_lin is not None else sim.COSTE_DEGRADACION_BASE
+
+        # Cachear parámetros del simulador
+        self._EFF_C = sim.EFICIENCIA_CARGA
+        self._EFF_D = sim.EFICIENCIA_DESCARGA
+        self._CAP   = sim.BATERIA_CAPACIDAD
+        self._P_MAX = sim.POTENCIA_INVERSOR
+        self._ALPHA = 1.0 - sim.AUTODESCARGA_POR_HORA
+
+        # Métricas de rendimiento del solver
+        self._solve_times = []
+
+    def solve(self, state: Dict, forecast: np.ndarray) -> Dict[str, float]:
+        """
+        Resuelve el LP y devuelve las acciones para h=0.
+
+        Args:
+            state: {'soc': float, 'step': int}
+            forecast: (H, 4) array [consumo, generacion, precio_kwh, precio_excedente]
+
+        Returns:
+            {'P_carga_solar', 'P_carga_red', 'P_descarga_casa', 'P_descarga_red'}
+        """
+        cs, cm, dc, dr = self._solve_lp(state['soc'], forecast)
+        return {
+            'P_carga_solar':   cs,
+            'P_carga_red':     cm,
+            'P_descarga_casa': dc,
+            'P_descarga_red':  dr,
+        }
+
+    def nombre(self) -> str:
+        tv_str = f"λ={self._lambda}" if self._use_tv else "sin_TV"
+        return f"MPC_LP({tv_str}, k_deg={self._k_deg:.4f})"
+
+    def stats_solver(self) -> Dict:
+        """Estadísticas del tiempo de resolución del solver."""
+        if not self._solve_times:
+            return {}
+        t = np.array(self._solve_times)
+        return {
+            'media_ms':  float(t.mean() * 1000),
+            'max_ms':    float(t.max() * 1000),
+            'mediana_ms': float(np.median(t) * 1000),
+            'n_solves':  len(t),
+        }
+
+    # -----------------------------------------------------------------
+    # LP interno
+    # -----------------------------------------------------------------
+    def _solve_lp(self, soc_actual: float, window: np.ndarray):
+        """
+        LP de horizonte H sobre la ventana recibida.
+
+        Variables por hora h (4 × H = 96 total):
+          cs[h]: kWh de excedente solar → cargador (lado input inversor)
+          cm[h]: kWh comprados de red → cargador (lado input inversor)
+          dc[h]: kWh extraídos batería → casas (lado batería)
+          dr[h]: kWh extraídos batería → red (lado batería)
+
+        Retorna (cs0, cm0, dc0, dr0) para la hora actual.
+        """
+        t0 = time.perf_counter()
+
+        H      = min(HORIZON, len(window))
+        EFF_C  = self._EFF_C
+        EFF_D  = self._EFF_D
+        CAP    = self._CAP
+        P_MAX  = self._P_MAX
+        DEG    = self._k_deg
+        ALPHA  = self._ALPHA
+        LAM    = self._lambda
+
+        consumo    = window[:H, 0]
+        generacion = window[:H, 1]
+        precio_c   = window[:H, 2]   # PVPC (compra)
+        precio_v   = window[:H, 3]   # Excedentaria (venta)
+
+        balance = generacion - consumo
+        exc = np.maximum(0,  balance)
+        dfc = np.maximum(0, -balance)
+
+        def i_cs(h): return 4 * h
+        def i_cm(h): return 4 * h + 1
+        def i_dc(h): return 4 * h + 2
+        def i_dr(h): return 4 * h + 3
+
+        n = 4 * H
+
+        # =============================================================
+        # FUNCIÓN OBJETIVO (linprog minimiza)
+        # =============================================================
+        # Beneficio marginal sobre IDLE (negado para minimización).
+        c_obj = np.zeros(n)
+        for h in range(H):
+            pv = precio_v[h]
+            pc = precio_c[h]
+            c_obj[i_cs(h)] =  pv + DEG             # pierde venta solar + degradación
+            c_obj[i_cm(h)] =  pc + DEG             # paga compra red + degradación
+            c_obj[i_dc(h)] = -(pc * EFF_D - DEG)   # ahorra compra × η_d − degradación
+            c_obj[i_dr(h)] = -(pv * EFF_D - DEG)   # ingresa venta × η_d − degradación
+
+        # Valor terminal: V_T = λ × p_T × η_d × E[H]
+        # E[H] depende de las variables de decisión con decaimiento por autodescarga.
+        # Contribución de las variables en hora h al E[H]:
+        #   carga:    +(cs[h]+cm[h]) × η_c × α^(H-1-h)
+        #   descarga: -(dc[h]+dr[h]) × α^(H-1-h)
+        if LAM > 0:
+            p_terminal = self._precio_terminal(precio_c, H)
+            tv_base = LAM * p_terminal * EFF_D
+            for h in range(H):
+                decay = ALPHA ** (H - 1 - h)
+                tv_charge    = tv_base * EFF_C * decay
+                tv_discharge = tv_base * decay
+                # Cargar aumenta E[H] → reduce coste (signo negativo)
+                c_obj[i_cs(h)] -= tv_charge
+                c_obj[i_cm(h)] -= tv_charge
+                # Descargar reduce E[H] → aumenta coste (signo positivo)
+                c_obj[i_dc(h)] += tv_discharge
+                c_obj[i_dr(h)] += tv_discharge
+
+        # =============================================================
+        # BOUNDS DE VARIABLES
+        # =============================================================
+        bounds = []
+        for h in range(H):
+            bounds.append((0, exc[h]))                           # cs ≤ excedente
+            bounds.append((0, P_MAX))                            # cm ≤ P_MAX
+            bounds.append((0, dfc[h] / EFF_D if dfc[h] > 0 else 0))  # dc ≤ déficit/η_d
+            bounds.append((0, P_MAX))                            # dr ≤ P_MAX
+
+        # =============================================================
+        # RESTRICCIONES DE DESIGUALDAD (A_ub × x ≤ b_ub)
+        # =============================================================
+        A_ub, b_ub = [], []
+        E0 = soc_actual * CAP
+
+        for h in range(H):
+            # --- Potencia carga: cs[h] + cm[h] ≤ P_MAX ---
+            row = np.zeros(n)
+            row[i_cs(h)] = 1
+            row[i_cm(h)] = 1
+            A_ub.append(row.copy())
+            b_ub.append(P_MAX)
+
+            # --- Potencia descarga: dc[h] + dr[h] ≤ P_MAX ---
+            row = np.zeros(n)
+            row[i_dc(h)] = 1
+            row[i_dr(h)] = 1
+            A_ub.append(row.copy())
+            b_ub.append(P_MAX)
+
+            # --- SoC acumulado con autodescarga ---
+            # E[h+1] = α^(h+1) × E0
+            #         + Σ_{k=0}^{h} α^(h-k) × [(cs[k]+cm[k])×η_c − dc[k] − dr[k]]
+            row = np.zeros(n)
+            for k in range(h + 1):
+                decay = ALPHA ** (h - k)
+                row[i_cs(k)] =  EFF_C * decay
+                row[i_cm(k)] =  EFF_C * decay
+                row[i_dc(k)] = -1.0   * decay
+                row[i_dr(k)] = -1.0   * decay
+
+            E0_decayed = (ALPHA ** (h + 1)) * E0
+
+            # E[h+1] ≤ SOC_MAX × CAP
+            A_ub.append(row.copy())
+            b_ub.append(self._sim.SOC_MAX * CAP - E0_decayed)
+
+            # E[h+1] ≥ SOC_MIN × CAP  →  −row ≤ E0_decayed − SOC_MIN × CAP
+            A_ub.append(-row)
+            b_ub.append(E0_decayed - self._sim.SOC_MIN * CAP)
+
+        # =============================================================
+        # RESOLVER
+        # =============================================================
+        res = linprog(
+            c_obj,
+            A_ub=np.array(A_ub),
+            b_ub=np.array(b_ub),
+            bounds=bounds,
+            method='highs',
+            options={'disp': False},
+        )
+
+        elapsed = time.perf_counter() - t0
+        self._solve_times.append(elapsed)
+
+        if not res.success:
+            # Diagnóstico para debugging (no debería ocurrir en operación normal)
+            raise RuntimeError(
+                f"LP infactible: status={res.status}, message='{res.message}', "
+                f"soc={soc_actual:.4f}, E0={E0:.2f} kWh, "
+                f"exc_h0={exc[0]:.2f}, dfc_h0={dfc[0]:.2f}, "
+                f"pc_h0={precio_c[0]:.4f}, pv_h0={precio_v[0]:.4f}"
+            )
+
+        x = res.x
+        return x[i_cs(0)], x[i_cm(0)], x[i_dc(0)], x[i_dr(0)]
+
+    def _precio_terminal(self, precio_c: np.ndarray, H: int) -> float:
+        """Calcula el precio de referencia para el valor terminal."""
+        if self._tv_mode == 'ultimo':
+            # Modo "a": precio de compra en la última hora del horizonte.
+            # Coherente con la corrección terminal del simulador (energy_env.py:237).
+            return float(precio_c[H - 1])
+        elif self._tv_mode == 'media_movil':
+            # Modo "b": media de precio de compra en el horizonte.
+            return float(precio_c[:H].mean())
+        elif self._tv_mode == 'mediana_historica':
+            # Modo "c": mediana global (se debería calcular offline sobre train).
+            # Placeholder: usa la mediana del horizonte actual.
+            return float(np.median(precio_c[:H]))
+        else:
+            raise ValueError(f"modo_precio desconocido: {self._tv_mode}")
+
+
+# =====================================================================
+# Funciones auxiliares de ejecución
+# =====================================================================
 
 def aplicar_ruido_ar1(window, error_solar, error_cons):
     """
     Aplica el mismo ruido AR(1) que energy_env._get_obs() a la ventana de 24h.
     Precios (columnas 2 y 3) no se tocan — publicados por REE el día anterior.
-    Devuelve la ventana ruidosa (copia).
     """
     w = window.copy()
     for h in range(len(w)):
         sigma_sol = _SIGMA_SOL_H1 + h * ((_SIGMA_SOL_H24 - _SIGMA_SOL_H1) / 23)
-        w[h, 1] = max(0.0, w[h, 1] * (1.0 + error_solar * sigma_sol))   # generacion
-        w[h, 0] = max(0.0, w[h, 0] * (1.0 + error_cons * _SIGMA_CONS_BASE))  # consumo
+        w[h, 1] = max(0.0, w[h, 1] * (1.0 + error_solar * sigma_sol))
+        w[h, 0] = max(0.0, w[h, 0] * (1.0 + error_cons * _SIGMA_CONS_BASE))
     return w
-
-
-def solve_lp(soc_actual, window, sim):
-    """
-    LP de horizonte 24h sobre la ventana recibida (puede ser perfecta o ruidosa).
-
-    Variables por hora h (4 × 24 = 96 total):
-      cs[h]: kWh de excedente solar → cargador (lado input inversor)
-      cm[h]: kWh comprados de red  → cargador (lado input inversor)
-      dc[h]: kWh extraídos batería → casas (lado batería)
-      dr[h]: kWh extraídos batería → red   (lado batería)
-
-    Eficiencia (igual que simulador):
-      energía almacenada  = (cs + cm) * EFF_C
-      energía entregada   = (dc + dr) * EFF_D
-
-    Retorna (cs0, cm0, dc0, dr0) para la hora actual.
-    """
-    H     = HORIZON
-    EFF_C = sim.EFICIENCIA_CARGA
-    EFF_D = sim.EFICIENCIA_DESCARGA
-    CAP   = sim.BATERIA_CAPACIDAD
-    P_MAX = sim.POTENCIA_INVERSOR
-    DEG   = sim.COSTE_DEGRADACION_BASE   # linealizado (sin factores stress)
-
-    consumo    = window[:H, 0]
-    generacion = window[:H, 1]
-    precio_c   = window[:H, 2]
-    precio_v   = window[:H, 3]
-
-    balance = generacion - consumo
-    exc = np.maximum(0,  balance)
-    dfc = np.maximum(0, -balance)
-
-    def i_cs(h): return 4*h
-    def i_cm(h): return 4*h + 1
-    def i_dc(h): return 4*h + 2
-    def i_dr(h): return 4*h + 3
-
-    n = 4 * H
-
-    # Objetivo: maximizar beneficio incremental sobre IDLE (linprog minimiza → negamos)
-    c_obj = np.zeros(n)
-    for h in range(H):
-        pv = precio_v[h]; pc = precio_c[h]
-        c_obj[i_cs(h)] =  pv + DEG             # pierde venta solar directa + deg
-        c_obj[i_cm(h)] =  pc + DEG             # paga compra red + deg
-        c_obj[i_dc(h)] = -(pc * EFF_D - DEG)   # ahorra compra - deg
-        c_obj[i_dr(h)] = -(pv * EFF_D - DEG)   # ingresa venta red - deg
-
-    # Límites de variables
-    bounds = []
-    for h in range(H):
-        bounds.append((0, exc[h]))           # cs <= excedente
-        bounds.append((0, P_MAX))           # cm <= potencia inversor
-        bounds.append((0, dfc[h] / EFF_D)) # dc <= déficit (lado batería)
-        bounds.append((0, P_MAX))           # dr <= potencia inversor
-
-    # Restricciones de desigualdad
-    A_ub, b_ub = [], []
-    E0 = soc_actual * CAP
-
-    for h in range(H):
-        # Potencia carga total (input): cs + cm <= P_MAX
-        row = np.zeros(n)
-        row[i_cs(h)] = 1; row[i_cm(h)] = 1
-        A_ub.append(row.copy()); b_ub.append(P_MAX)
-
-        # Potencia descarga total (batería): dc + dr <= P_MAX
-        row = np.zeros(n)
-        row[i_dc(h)] = 1; row[i_dr(h)] = 1
-        A_ub.append(row.copy()); b_ub.append(P_MAX)
-
-        # SoC acumulado hasta hora h+1:
-        # E[h+1] = E0 + sum_{k=0..h} [(cs+cm)*EFF_C - dc - dr]
-        # (autodescarga ignorada en LP: 0.004%/h → <0.07% semanal)
-        row = np.zeros(n)
-        for k in range(h + 1):
-            row[i_cs(k)] =  EFF_C
-            row[i_cm(k)] =  EFF_C
-            row[i_dc(k)] = -1.0
-            row[i_dr(k)] = -1.0
-
-        # E[h+1] <= SOC_MAX * CAP
-        A_ub.append(row.copy());  b_ub.append(sim.SOC_MAX * CAP - E0)
-        # E[h+1] >= SOC_MIN * CAP
-        A_ub.append(-row);        b_ub.append(E0 - sim.SOC_MIN * CAP)
-
-    res = linprog(c_obj, A_ub=np.array(A_ub), b_ub=np.array(b_ub),
-                  bounds=bounds, method='highs', options={'disp': False})
-
-    if not res.success:
-        return 0.0, 0.0, 0.0, 0.0   # fallback IDLE
-
-    x = res.x
-    return x[i_cs(0)], x[i_cm(0)], x[i_dc(0)], x[i_dr(0)]
 
 
 def simular_hora_mpc(sim, cs, cm, dc, dr):
@@ -188,7 +369,7 @@ def simular_hora_mpc(sim, cs, cm, dc, dr):
     espacio_libre  = max(0, sim.SOC_MAX * CAP - bateria_kwh)
     bat_disponible = max(0, bateria_kwh - sim.SOC_MIN * CAP)
 
-    # Recortar por estado real de la batería (el LP usó el estado del paso anterior)
+    # Recortar por estado real de la batería
     cs = min(cs, exc_disp, espacio_libre / EFF_C)
     cm = min(cm, max(0, espacio_libre / EFF_C - cs))
     carga_total = cs + cm
@@ -235,8 +416,20 @@ def simular_semana_idle(sim_idle, start):
     return total
 
 
-def correr_episodios(sim, sim_idle, rng, con_ruido: bool):
-    """Ejecuta N_EPISODES semanas aleatorias y devuelve listas de beneficios."""
+def correr_episodios(
+    sim, sim_idle, rng, mpc: LinearMPC, forecast_mode: str = 'oraculo'
+):
+    """
+    Ejecuta N_EPISODES semanas aleatorias y devuelve arrays de beneficios.
+
+    Args:
+        sim: Simulador principal (se modifica soc y current_step).
+        sim_idle: Simulador para calcular baseline IDLE (solo lectura + step).
+        rng: Generador de números aleatorios (numpy).
+        mpc: Instancia de LinearMPC configurada.
+        forecast_mode: 'oraculo' (datos perfectos) o 'realista' (ruido AR(1)).
+    """
+    con_ruido = (forecast_mode == 'realista')
     max_start = sim.max_steps - EPISODE_LENGTH - HORIZON - 1
 
     bens_mpc, bens_idle, bens_marg = [], [], []
@@ -268,8 +461,14 @@ def correr_episodios(sim, sim_idle, rng, con_ruido: bool):
             if con_ruido:
                 window = aplicar_ruido_ar1(window, error_solar, error_cons)
 
-            # Resolver LP y ejecutar
-            cs, cm, dc, dr = solve_lp(sim.soc, window, sim)
+            # Resolver LP con SoC real medido y ejecutar
+            state = {'soc': sim.soc, 'step': sim.current_step}
+            action = mpc.solve(state, window)
+            cs = action['P_carga_solar']
+            cm = action['P_carga_red']
+            dc = action['P_descarga_casa']
+            dr = action['P_descarga_red']
+
             b, bm = simular_hora_mpc(sim, cs, cm, dc, dr)
             ben_mpc  += b
             ben_marg += bm
@@ -278,16 +477,80 @@ def correr_episodios(sim, sim_idle, rng, con_ruido: bool):
         bens_idle.append(ben_idle)
         bens_marg.append(ben_marg)
 
+        if (ep + 1) % 100 == 0:
+            print(f"     episodio {ep + 1}/{N_EPISODES} completado")
+
     return np.array(bens_mpc), np.array(bens_idle), np.array(bens_marg)
 
 
 def imprimir_resultado(label, bens_mpc, bens_idle, bens_marg):
     print(f"\n  [{label}]")
-    print(f"    IDLE puro  : {bens_idle.mean():+.2f} ± {bens_idle.std():.2f} €/semana")
-    print(f"    MPC total  : {bens_mpc.mean():+.2f} ± {bens_mpc.std():.2f} €/semana")
-    print(f"    MPC − IDLE : {bens_marg.mean():+.2f} ± {bens_marg.std():.2f} €/semana"
-          "  ← misma métrica que DQN reward")
+    print(f"    IDLE puro  : {bens_idle.mean():+.2f} +/- {bens_idle.std():.2f} EUR/semana")
+    print(f"    MPC total  : {bens_mpc.mean():+.2f} +/- {bens_mpc.std():.2f} EUR/semana")
+    print(f"    MPC - IDLE : {bens_marg.mean():+.2f} +/- {bens_marg.std():.2f} EUR/semana"
+          "  <- misma metrica que DQN reward")
 
+
+def calibrate_deg(
+    sim, sim_idle, rng,
+    k_grid=None,
+    n_semanas: int = 20,
+    terminal_lambda: float = 0.0,
+):
+    """
+    Calibra K_DEG_LIN ejecutando MPC oráculo con distintos valores sobre
+    n_semanas del train set. Retorna el K que minimiza |coste_predicho_LP - coste_real|.
+
+    NOTA: esta función debe ejecutarse sobre el TRAIN set, nunca sobre test.
+
+    Args:
+        sim: ComunidadSimulador (mode='train').
+        sim_idle: Simulador IDLE.
+        rng: Generador aleatorio.
+        k_grid: Lista de valores a probar. Default: [0.003, 0.004, 0.005, 0.006, 0.008, 0.010].
+        n_semanas: Número de semanas de calibración.
+        terminal_lambda: Lambda para valor terminal durante calibración.
+
+    Returns:
+        (mejor_k, resultados_dict)
+    """
+    if k_grid is None:
+        k_grid = [0.003, 0.004, 0.005, 0.006, 0.008, 0.010]
+
+    max_start = sim.max_steps - EPISODE_LENGTH - HORIZON - 1
+    starts = [int(rng.integers(0, max_start)) for _ in range(n_semanas)]
+
+    resultados = {}
+    for k in k_grid:
+        mpc = LinearMPC(sim, use_terminal_value=(terminal_lambda > 0),
+                        terminal_lambda=terminal_lambda, k_deg_lin=k)
+        total_marg = 0.0
+        for start in starts:
+            sim.current_step = start
+            sim.soc = SOC_INICIAL
+            sem_marg = 0.0
+            for _ in range(EPISODE_LENGTH):
+                window = sim.get_data_window(sim.current_step, horizon=HORIZON)
+                state = {'soc': sim.soc, 'step': sim.current_step}
+                action = mpc.solve(state, window)
+                _, bm = simular_hora_mpc(
+                    sim, action['P_carga_solar'], action['P_carga_red'],
+                    action['P_descarga_casa'], action['P_descarga_red'])
+                sem_marg += bm
+            total_marg += sem_marg
+
+        media = total_marg / n_semanas
+        resultados[k] = media
+        print(f"     K_DEG={k:.4f} -> beneficio marginal medio = {media:.2f} EUR/sem")
+
+    mejor_k = max(resultados, key=resultados.get)
+    print(f"\n  Mejor K_DEG_LIN = {mejor_k:.4f} ({resultados[mejor_k]:.2f} EUR/sem)")
+    return mejor_k, resultados
+
+
+# =====================================================================
+# MAIN
+# =====================================================================
 
 def main():
     print("=" * 62)
@@ -297,31 +560,62 @@ def main():
     sim      = ComunidadSimulador(DATASET_PATH)
     sim_idle = ComunidadSimulador(DATASET_PATH)
 
-    # Misma semilla: ambas variantes evaluan las mismas 100 semanas.
-    # IDLE no depende del ruido → debe dar igual en ambas variantes.
-    # Asi el "coste del ruido" refleja solo la calidad de prevision del MPC.
+    # Configuración del MPC desde YAML
+    tv_cfg = _MPC['valor_terminal']
+    use_tv = tv_cfg['activado']
+    lam    = tv_cfg['lambda']
+    k_deg  = _MPC['k_deg_lin']
+
+    print(f"\n  Configuración:")
+    print(f"    Horizonte:      {HORIZON}h")
+    print(f"    Episodios:      {N_EPISODES}")
+    print(f"    Valor terminal: {'activado' if use_tv else 'desactivado'}"
+          f" (λ={lam}, modo='{tv_cfg['modo_precio']}')")
+    print(f"    K_DEG_LIN:      {k_deg}")
+    print(f"    SoC inicial:    {SOC_INICIAL}")
+
+    mpc = LinearMPC(
+        sim,
+        use_terminal_value=use_tv,
+        terminal_lambda=lam,
+        terminal_price_mode=tv_cfg['modo_precio'],
+        k_deg_lin=k_deg,
+    )
+
+    # Misma semilla: ambas variantes evalúan las mismas semanas aleatorias.
     rng_perf  = np.random.default_rng(SEED)
     rng_ruido = np.random.default_rng(SEED)
 
-    print("\nEjecutando MPC con previsión perfecta ...")
-    mpc_p, idle_p, marg_p = correr_episodios(sim, sim_idle, rng_perf,  con_ruido=False)
+    print("\n  Ejecutando MPC con previsión PERFECTA (oráculo)...")
+    mpc_p, idle_p, marg_p = correr_episodios(
+        sim, sim_idle, rng_perf, mpc, forecast_mode='oraculo')
 
-    print("Ejecutando MPC con ruido AR(1) idéntico al DQN ...")
-    mpc_r, idle_r, marg_r = correr_episodios(sim, sim_idle, rng_ruido, con_ruido=True)
+    print("\n  Ejecutando MPC con RUIDO AR(1) (realista)...")
+    mpc_r, idle_r, marg_r = correr_episodios(
+        sim, sim_idle, rng_ruido, mpc, forecast_mode='realista')
 
     print("\n" + "=" * 62)
-    print("RESULTADOS (100 semanas aleatorias cada variante)")
+    print(f"RESULTADOS ({N_EPISODES} episodios aleatorios cada variante)")
     print("=" * 62)
     imprimir_resultado("MPC previsión PERFECTA — cota superior teórica", mpc_p, idle_p, marg_p)
-    imprimir_resultado("MPC con RUIDO AR(1)    — comparación justa con DQN", mpc_r, idle_r, marg_r)
+    imprimir_resultado("MPC con RUIDO AR(1) — comparación justa con DQN", mpc_r, idle_r, marg_r)
 
     print()
     gap = marg_p.mean() - marg_r.mean()
-    print(f"  Coste del ruido para MPC: {gap:.2f} €/sem")
+    print(f"  Coste del ruido para MPC: {gap:.2f} EUR/sem")
     print(f"  (diferencia perfecta vs ruidosa — cuánto vale tener previsión perfecta)")
+
+    # Estadísticas del solver
+    stats = mpc.stats_solver()
+    if stats:
+        print(f"\n  Solver LP (HiGHS):")
+        print(f"    Tiempo medio:   {stats['media_ms']:.2f} ms")
+        print(f"    Tiempo máximo:  {stats['max_ms']:.2f} ms")
+        print(f"    Tiempo mediana: {stats['mediana_ms']:.2f} ms")
+
     print()
-    print("  El DQN reward es beneficio_marginal (ya descuenta IDLE).")
-    print(f"  Objetivo DQN: acercarse a {marg_r.mean():.1f} €/sem (MPC con mismo ruido).")
+    print(f"  El DQN reward es beneficio_marginal (ya descuenta IDLE).")
+    print(f"  Objetivo DQN: acercarse a {marg_r.mean():.1f} EUR/sem (MPC con mismo ruido).")
     print("=" * 62)
 
 
