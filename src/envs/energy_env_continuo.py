@@ -36,8 +36,9 @@ class EnergyEnvContinuo(EnergyEnv):
         mode: 'train', 'eval' o 'all'.
     """
 
-    def __init__(self, forecast_noise: bool = True, mode: str = 'all'):
-        super().__init__(forecast_noise=forecast_noise, mode=mode)
+    def __init__(self, forecast_noise: bool = True, mode: str = 'all',
+                 rng=None):
+        super().__init__(forecast_noise=forecast_noise, mode=mode, rng=rng)
 
         # Sobreescribir el espacio de accion discreto por continuo 4D
         P_MAX = self.simulador.POTENCIA_INVERSOR
@@ -64,11 +65,11 @@ class EnergyEnvContinuo(EnergyEnv):
         if not self._skip_next_ar1 and self.forecast_noise:
             self._error_solar = (
                 self._RHO_SOLAR * self._error_solar
-                + np.sqrt(1 - self._RHO_SOLAR ** 2) * np.random.normal()
+                + np.sqrt(1 - self._RHO_SOLAR ** 2) * self._noise()
             )
             self._error_cons = (
                 self._RHO_CONS * self._error_cons
-                + np.sqrt(1 - self._RHO_CONS ** 2) * np.random.normal()
+                + np.sqrt(1 - self._RHO_CONS ** 2) * self._noise()
             )
         self._skip_next_ar1 = False  # Resetear flag
 

@@ -81,7 +81,21 @@ pronostico:
   rho_consumo: 0.3            # Más variable, patrón horario domina
   sigma_solar_h1: 0.05        # 5% error en hora+1
   sigma_solar_h24: 0.25       # 25% error en hora+24 (crece linealmente)
-  sigma_consumo: 0.10         # 10% MAE constante en horizonte
+  sigma_consumo: 0.15         # 15% MAE constante en horizonte
+  # Justificación σ=0.15: el perfil 2.0TD de ESIOS representa el consumo
+  # medio nacional del segmento residencial. La variabilidad real del consumo
+  # agregado de 15 viviendas es superior por menor efecto de diversificación
+  # (10-20% para grupos pequeños, Haben et al. 2016) y por no capturar
+  # patrones locales. σ=0.15 es consistente con la literatura.
+  # Ruido de precio PVPC — modelo 3 capas (publicación PVPC a las 20:30h)
+  # Capa 1: horas ya publicadas → exacto. Capa 2: OMIE intradiario. Capa 3: estimación.
+  precio:
+    hora_publicacion: 20.5       # PVPC se publica a las 20:30h del día anterior
+    sigma_intradiario: 0.05      # Capa 2: ~5% error (OMIE intraday, 6 subastas/día)
+    sigma_estadistico: 0.15      # Capa 3: ~15% error (solo estimación estadística)
+    rho_intradiario: 0.5         # Capa 2: ρ=0.5 (correcciones OMIE frecuentes)
+    rho_estadistico: 0.7         # Capa 3: ρ=0.7 (condiciones mercado persisten)
+    margen_intradiario_h: 6      # Horas cubiertas por OMIE intraday tras publicación
 
 # --- MPC ---
 mpc:
@@ -110,14 +124,14 @@ mpc:
 # delta in [-1,1]^4, acción final en kW. MPC se resuelve online (~2ms HiGHS).
 residual_sac:
   total_timesteps: 1_000_000
-  delta_max: 0.30               # ±30% multiplicativo sobre cada flujo MPC
-  dawn_warmup_steps: 100_000    # Pre-llenado del buffer (v4: subido de 50k)
+  delta_max: 0.15               # ±15% multiplicativo (v5: reducido para estabilidad)
+  dawn_warmup_steps: 100_000    # Pre-llenado del buffer
   learning_rate: 1.0e-4
   buffer_size: 100_000
   batch_size: 256
   gamma: 0.99
   tau: 0.005                    # Soft target update
-  ent_coef: 0.002               # Muy conservador (v4: empuja delta~0 rápido)
+  ent_coef: 0.01                # v5: más exploración (MPC ahora tiene ruido precios)
   target_entropy: "auto"
   net_arch: [256, 256]          # Redes actor/critic
   eval_freq: 20_000             # Evaluar cada 20k pasos (v1: 10k)

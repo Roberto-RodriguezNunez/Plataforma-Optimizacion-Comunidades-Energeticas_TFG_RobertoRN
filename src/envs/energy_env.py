@@ -26,7 +26,11 @@ class EnergyEnv(gym.Env):
     _DATASET_PATH = 'data/processed/dataset_final.csv'
     # Sigmas base de cada variable en la ventana de pronóstico
     # Orden columnas dataset: [consumo, generacion, precio_kwh, precio_excedente]
-    _SIGMA_CONS_BASE  = 0.10   # 10% MAE — relativamente plano con el horizonte
+    _SIGMA_CONS_BASE  = 0.15   # 15% MAE — relativamente plano con el horizonte
+    # Justificación σ=0.15: el perfil 2.0TD (ESIOS) es la media nacional de
+    # millones de hogares. Con solo 15 viviendas la diversificación es menor y
+    # la variabilidad local no está capturada. La literatura reporta errores de
+    # 10-20% para grupos pequeños (Haben et al. 2016). [VERIFICAR CITA]
     _SIGMA_SOL_H1     = 0.05   # 5%  error en hora+1
     _SIGMA_SOL_H24    = 0.25   # 25% error en hora+24  (crece linealmente)
 
@@ -36,14 +40,31 @@ class EnergyEnv(gym.Env):
     _RHO_SOLAR = 0.7
     _RHO_CONS  = 0.3
 
-    def __init__(self, forecast_noise: bool = True, mode: str = 'all'):
+    # Ruido de precio PVPC — modelo 3 capas
+    # PVPC se publica a las 20:30h del día anterior por REE.
+    # Capa 1: ya publicado → exacto. Capa 2: OMIE intradiario. Capa 3: estimación.
+    _HORA_PUBLICACION    = 20.5
+    _SIGMA_PRECIO_INTRA  = 0.05   # Capa 2: ~5% error (mercados intradiarios OMIE)
+    _SIGMA_PRECIO_STAT   = 0.15   # Capa 3: ~15% error (estimación estadística)
+    _RHO_PRECIO_INTRA    = 0.5    # Capa 2: ρ=0.5 (correcciones OMIE frecuentes)
+    _RHO_PRECIO_STAT     = 0.7    # Capa 3: ρ=0.7 (condiciones mercado persisten)
+    _MARGEN_INTRA_H      = 6      # Horas cubiertas por OMIE intraday
+
+    def __init__(self, forecast_noise: bool = True, mode: str = 'all',
+                 rng=None):
         super(EnergyEnv, self).__init__()
 
         self.forecast_noise = forecast_noise
         self._mode = mode
+        # RNG: si se pasa un np.random.Generator seeded, se usa para todo
+        # el ruido AR(1). Si None, usa np.random global (backward compatible).
+        self._rng = rng
         # Estados AR(1) del error de pronóstico (se resetean en cada episodio)
         self._error_solar = 0.0
         self._error_cons  = 0.0
+        # Factores de ruido de precio 3 capas (generados una vez por step,
+        # reutilizados por _get_obs y por ResidualEnv._compute_mpc_action)
+        self._precio_noise_factors = None  # None = no hay ruido cacheado
 
         # Instanciar el motor físico (con split por semanas si procede)
         self.simulador = ComunidadSimulador(self._DATASET_PATH, mode=mode)
@@ -122,17 +143,65 @@ class EnergyEnv(gym.Env):
         # Resetear estados AR(1) del error de pronóstico
         self._error_solar = 0.0
         self._error_cons  = 0.0
+        self._precio_noise_factors = None
 
         return self._get_obs(), {}
+
+    def _noise(self):
+        """Genera N(0,1) usando el rng seeded si existe, o np.random global."""
+        if self._rng is not None:
+            return self._rng.standard_normal()
+        return np.random.normal()
+
+    def _generar_precio_noise(self, hora_actual):
+        """
+        Genera factores multiplicativos de ruido de precio para 24 posiciones
+        de forecast (offsets 0..23 horas adelante desde hora_actual).
+
+        El AR(1) avanza POR HORA dentro del forecast (draw nuevo cada hora),
+        con ρ distinto por capa. Esto cambia el ranking de precios entre
+        horas, no solo el nivel general.
+
+        Exactamente 24 draws — coincide con aplicar_ruido_precio_3capas()
+        del MPC benchmark (offset=0), garantizando coherencia RNG.
+
+        - MPC (offset=0): usa factors[0..23] directamente
+        - _get_obs (offset=1): usa factors[h+1] con clamp a 23
+        """
+        if hora_actual >= self._HORA_PUBLICACION:
+            horas_publicadas = 24 + (24 - hora_actual)
+        else:
+            horas_publicadas = 24 - hora_actual
+
+        factors = np.ones(24)
+        eps = 0.0
+        for h_ahead in range(24):
+            if h_ahead < horas_publicadas:
+                continue  # Capa 1: precio publicado exacto
+            elif h_ahead < horas_publicadas + self._MARGEN_INTRA_H:
+                rho = self._RHO_PRECIO_INTRA    # Capa 2: ρ=0.5
+                sigma = self._SIGMA_PRECIO_INTRA
+            else:
+                rho = self._RHO_PRECIO_STAT     # Capa 3: ρ=0.7
+                sigma = self._SIGMA_PRECIO_STAT
+            eps = rho * eps + np.sqrt(1 - rho**2) * self._noise()
+            factors[h_ahead] = 1.0 + sigma * eps
+        return factors
+
+    def _get_hora_actual_from_step(self, step):
+        """Obtiene hora del día (0-23) para un step."""
+        if self._timestamps is not None and step < len(self._timestamps):
+            return self._timestamps.iloc[step].hour
+        return step % 24
 
     def _get_obs(self):
         """
         Construye el vector de estado completo (108 dimensiones).
 
         Primeras 5: estado actual exacto (SoC, precios, excedente, déficit).
-        Siguientes 96: pronóstico 24h con ruido en generacion y consumo.
-          - Los precios se dejan exactos (publicados por REE el día anterior).
+        Siguientes 96: pronóstico 24h con ruido en generacion, consumo y precios.
           - El ruido del solar crece linealmente con el horizonte.
+          - Los precios usan modelo 3 capas según publicación PVPC.
         Siguientes 6: codificación cíclica del tiempo (sin/cos hora, día_semana, mes).
           - Permiten al agente aprender patrones intradiarios de precio y solar.
         Última 1: margen_solar — solar previsto que desbordará la batería en 24h
@@ -152,6 +221,17 @@ class EnergyEnv(gym.Env):
         # Columnas: [consumo, generacion, precio_kwh, precio_excedente]
         window_future = self.simulador.get_data_window(t + 1, horizon=24).copy()
 
+        # Obtener hora actual del día (necesario para ruido precios y features)
+        if self._timestamps is not None and t < len(self._timestamps):
+            ts = self._timestamps.iloc[t]
+            hora    = ts.hour
+            dia_sem = ts.dayofweek   # 0=lunes … 6=domingo
+            mes     = ts.month - 1   # 0–11
+        else:
+            hora    = t % 24
+            dia_sem = (t // 24) % 7
+            mes     = 0
+
         if self.forecast_noise:
             # _error_solar y _error_cons son estados AR(1) N(0,1) actualizados
             # en step(). Aquí se escalan por el sigma de cada hora del horizonte.
@@ -165,21 +245,23 @@ class EnergyEnv(gym.Env):
                 window_future[h, 0] = max(  # consumo
                     0.0, window_future[h, 0] * (1.0 + self._error_cons * self._SIGMA_CONS_BASE)
                 )
-                # columnas 2 y 3 (precios PVPC e ind.1739) — sin tocar
+
+            # Ruido de precio — modelo 3 capas según publicación PVPC
+            # Los factores se generan una vez por step y se cachean en
+            # _precio_noise_factors para que ResidualEnv._compute_mpc_action()
+            # y _get_obs() usen exactamente los mismos valores.
+            if self._precio_noise_factors is None:
+                self._precio_noise_factors = self._generar_precio_noise(hora)
+            # window_future[h] = hora h+1 adelante → factors[min(h+1, 23)]
+            for h in range(24):
+                f = self._precio_noise_factors[min(h + 1, 23)]
+                if f != 1.0:
+                    window_future[h, 2] = max(0.0, window_future[h, 2] * f)
+                    window_future[h, 3] = max(0.0, window_future[h, 3] * f)
 
         forecast_flat = window_future.flatten()  # 24 * 4 = 96 valores
 
         # 3. Features temporales — codificación cíclica sin/cos (6 dims)
-        if self._timestamps is not None and t < len(self._timestamps):
-            ts = self._timestamps.iloc[t]
-            hora    = ts.hour
-            dia_sem = ts.dayofweek   # 0=lunes … 6=domingo
-            mes     = ts.month - 1   # 0–11
-        else:
-            # Fallback: estimación por paso (asume step=0 → hora 0, día 0)
-            hora    = t % 24
-            dia_sem = (t // 24) % 7
-            mes     = 0
 
         temp_feats = np.array([
             np.sin(2 * np.pi * hora    / 24),
@@ -212,16 +294,19 @@ class EnergyEnv(gym.Env):
         return obs.astype(np.float32)
 
     def step(self, action):
+        # Invalidar cache de factores de precio (se regeneran en _get_obs)
+        self._precio_noise_factors = None
+
         # 0. Avanzar estado AR(1) del error de pronóstico antes de construir la obs
         #    ε_t = ρ·ε_{t-1} + √(1-ρ²)·N(0,1)  →  varianza estacionaria = 1
         if self.forecast_noise:
             self._error_solar = (
                 self._RHO_SOLAR * self._error_solar
-                + np.sqrt(1 - self._RHO_SOLAR ** 2) * np.random.normal()
+                + np.sqrt(1 - self._RHO_SOLAR ** 2) * self._noise()
             )
             self._error_cons = (
                 self._RHO_CONS * self._error_cons
-                + np.sqrt(1 - self._RHO_CONS ** 2) * np.random.normal()
+                + np.sqrt(1 - self._RHO_CONS ** 2) * self._noise()
             )
 
         # 1. Ejecutar en el simulador

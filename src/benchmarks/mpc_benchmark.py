@@ -75,6 +75,37 @@ _SIGMA_CONS_BASE = _PRON['sigma_consumo']
 _RHO_SOLAR       = _PRON['rho_solar']
 _RHO_CONS        = _PRON['rho_consumo']
 
+# Parámetros de ruido de precio — modelo 3 capas
+# Justificación: PVPC se publica a las 20:30h del día anterior por REE.
+# Antes de esa hora, las horas del día siguiente no están disponibles.
+# Capa 1: ya publicado → exacto. Capa 2: OMIE intradiario → σ bajo.
+# Capa 3: estimación estadística → σ alto.
+_PRECIO_CFG         = _PRON.get('precio', {})
+_HORA_PUBLICACION   = _PRECIO_CFG.get('hora_publicacion', 20.5)
+_SIGMA_PRECIO_INTRA = _PRECIO_CFG.get('sigma_intradiario', 0.05)
+_SIGMA_PRECIO_STAT  = _PRECIO_CFG.get('sigma_estadistico', 0.15)
+_RHO_PRECIO_INTRA   = _PRECIO_CFG.get('rho_intradiario', 0.5)
+_RHO_PRECIO_STAT    = _PRECIO_CFG.get('rho_estadistico', 0.7)
+_MARGEN_INTRA_H     = _PRECIO_CFG.get('margen_intradiario_h', 6)
+
+# Timestamps para obtener hora_actual del día (necesario para modelo 3 capas)
+import pandas as _pd_bench
+_TIMESTAMPS_BENCH = None
+try:
+    _df_ts = _pd_bench.read_csv(
+        os.path.join(ROOT, DATASET_PATH), usecols=['fecha'], parse_dates=['fecha']
+    )
+    _TIMESTAMPS_BENCH = _df_ts['fecha']
+except Exception:
+    pass
+
+
+def _get_hora_actual(step):
+    """Obtiene la hora del día (0-23) para un step del dataset."""
+    if _TIMESTAMPS_BENCH is not None and step < len(_TIMESTAMPS_BENCH):
+        return _TIMESTAMPS_BENCH.iloc[step].hour
+    return step % 24
+
 
 # =====================================================================
 # LinearMPC — Controlador MPC lineal con horizonte deslizante
@@ -355,6 +386,59 @@ def aplicar_ruido_ar1(window, error_solar, error_cons):
     return w
 
 
+def aplicar_ruido_precio_3capas(window, hora_actual, noise_fn,
+                                start_offset=0):
+    """
+    Aplica ruido AR(1) a precios con modelo de 3 capas según publicación PVPC.
+    El estado AR(1) eps avanza HORA A HORA dentro del forecast, con un draw
+    nuevo por cada hora y ρ distinto por capa. Esto hace que el ranking de
+    precios entre horas cambie, no solo el nivel general.
+
+    El PVPC del día siguiente se publica a las 20:30h del día anterior por REE.
+    Antes de esa publicación, el agente/MPC no conoce los precios exactos.
+
+    Capas:
+      1. Horas ya publicadas (precio exacto conocido): sin ruido.
+      2. Hasta 6h post-publicación (OMIE intradiario): σ=0.05, ρ=0.5.
+      3. Resto del horizonte (estimación estadística): σ=0.15, ρ=0.7.
+
+    Args:
+        window: (H, 4+) array. Columnas 2 y 3 se modifican in-place.
+        hora_actual: Hora del día (0-23) del paso de decisión actual.
+        noise_fn: Callable que devuelve N(0,1). Puede ser rng.standard_normal
+                  (seeded, para MPC/eval) o np.random.normal (global, para env).
+        start_offset: 0 si window[0]=hora actual (MPC/eval),
+                      1 si window[0]=hora+1 (energy_env._get_obs).
+    """
+    if hora_actual >= _HORA_PUBLICACION:
+        horas_publicadas = 24 + (24 - hora_actual)
+    else:
+        horas_publicadas = 24 - hora_actual
+
+    eps = 0.0
+
+    for h in range(len(window)):
+        hora_forecast = h + start_offset  # horas adelante desde hora_actual
+
+        if hora_forecast < horas_publicadas:
+            # Capa 1: precio publicado exacto — sin ruido
+            continue
+        elif hora_forecast < horas_publicadas + _MARGEN_INTRA_H:
+            # Capa 2: OMIE intradiario — ruido bajo, ρ=0.5
+            rho = _RHO_PRECIO_INTRA
+            sigma = _SIGMA_PRECIO_INTRA
+        else:
+            # Capa 3: estimación estadística — ruido alto, ρ=0.7
+            rho = _RHO_PRECIO_STAT
+            sigma = _SIGMA_PRECIO_STAT
+
+        # Avanzar AR(1) por hora: eps_h = ρ·eps_{h-1} + √(1-ρ²)·N(0,1)
+        eps = rho * eps + np.sqrt(1 - rho**2) * noise_fn()
+        factor = 1.0 + sigma * eps
+        window[h, 2] = max(0.0, window[h, 2] * factor)  # precio_kwh
+        window[h, 3] = max(0.0, window[h, 3] * factor)  # precio_excedente
+
+
 def simular_hora_mpc(sim, cs, cm, dc, dr):
     """
     Aplica los flujos del LP al simulador con física completa.
@@ -381,6 +465,23 @@ def simular_hora_mpc(sim, cs, cm, dc, dr):
     bateria_kwh    = sim.soc * CAP
     espacio_libre  = max(0, sim.SOC_MAX * CAP - bateria_kwh)
     bat_disponible = max(0, bateria_kwh - sim.SOC_MIN * CAP)
+
+    # Netear carga vs descarga — inversor bidireccional ejecuta potencia
+    # neta, carga y descarga simultánea es imposible (coherente con
+    # energy_env_continuo.step líneas 100-116).
+    carga_bruta = cs + cm
+    descarga_bruta = dc + dr
+    net = carga_bruta - descarga_bruta
+    if net >= 0:
+        ratio_solar = cs / carga_bruta if carga_bruta > 0 else 0.0
+        cs = net * ratio_solar
+        cm = net * (1 - ratio_solar)
+        dc, dr = 0.0, 0.0
+    else:
+        ratio_casa = dc / descarga_bruta if descarga_bruta > 0 else 0.0
+        dc = abs(net) * ratio_casa
+        dr = abs(net) * (1 - ratio_casa)
+        cs, cm = 0.0, 0.0
 
     # Recortar por estado real de la batería
     cs = min(cs, exc_disp, espacio_libre / EFF_C)
@@ -469,7 +570,7 @@ def correr_episodios(
         ben_marg = 0.0
 
         for _ in range(EPISODE_LENGTH):
-            # Avanzar estado AR(1) (igual que energy_env.step())
+            # Avanzar estado AR(1) solar/consumo (igual que energy_env.step())
             if con_ruido:
                 error_solar = (_RHO_SOLAR * error_solar
                                + np.sqrt(1 - _RHO_SOLAR**2) * rng.standard_normal())
@@ -480,6 +581,10 @@ def correr_episodios(
             window = sim.get_data_window(sim.current_step, horizon=HORIZON)
             if con_ruido:
                 window = aplicar_ruido_ar1(window, error_solar, error_cons)
+                hora_actual = _get_hora_actual(sim.current_step)
+                aplicar_ruido_precio_3capas(window, hora_actual,
+                                            rng.standard_normal,
+                                            start_offset=0)
 
             # Resolver LP con SoC real medido y ejecutar
             state = {'soc': sim.soc, 'step': sim.current_step}

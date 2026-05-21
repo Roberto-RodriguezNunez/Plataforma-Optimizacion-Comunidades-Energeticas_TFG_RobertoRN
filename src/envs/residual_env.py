@@ -72,16 +72,19 @@ class ResidualEnv(gym.Wrapper):
     def step(self, delta_action):
         sim = self.env.simulador
 
+        # Invalidar cache de factores de precio del step anterior
+        self.env._precio_noise_factors = None
+
         # 1. Avanzar AR(1) manualmente (replicar timing de correr_episodios:
         #    AR(1) avanza ANTES de resolver MPC en cada paso)
         if self.env.forecast_noise:
             self.env._error_solar = (
                 self.env._RHO_SOLAR * self.env._error_solar
-                + np.sqrt(1 - self.env._RHO_SOLAR ** 2) * np.random.normal()
+                + np.sqrt(1 - self.env._RHO_SOLAR ** 2) * self.env._noise()
             )
             self.env._error_cons = (
                 self.env._RHO_CONS * self.env._error_cons
-                + np.sqrt(1 - self.env._RHO_CONS ** 2) * np.random.normal()
+                + np.sqrt(1 - self.env._RHO_CONS ** 2) * self.env._noise()
             )
 
         # 2. Resolver MPC online con SoC real y forecast ruidoso
@@ -129,5 +132,18 @@ class ResidualEnv(gym.Wrapper):
             window = aplicar_ruido_ar1(
                 window, self.env._error_solar, self.env._error_cons
             )
+            # Ruido de precio: generar factores y cachearlos en el env
+            # para que _get_obs() use los mismos (coherencia MPC↔agente).
+            # _compute_mpc_action se llama ANTES de _get_obs en cada step.
+            hora_actual = self.env._get_hora_actual_from_step(sim.current_step)
+            self.env._precio_noise_factors = self.env._generar_precio_noise(
+                hora_actual
+            )
+            # MPC window[h] = hora h adelante → factors[h] (offset=0)
+            for h in range(24):
+                f = self.env._precio_noise_factors[h]
+                if f != 1.0:
+                    window[h, 2] = max(0.0, window[h, 2] * f)
+                    window[h, 3] = max(0.0, window[h, 3] * f)
         state = {'soc': sim.soc, 'step': sim.current_step}
         return self.mpc.solve(state, window)

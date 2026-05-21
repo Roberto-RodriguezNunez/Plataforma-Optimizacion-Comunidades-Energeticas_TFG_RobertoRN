@@ -28,6 +28,7 @@ if ROOT not in sys.path:
 from src.benchmarks.mpc_benchmark import (
     LinearMPC, ComunidadSimulador, DATASET_PATH,
     simular_hora_mpc, simular_semana_idle, aplicar_ruido_ar1,
+    aplicar_ruido_precio_3capas, _get_hora_actual,
     SOC_INICIAL, SEED, EPISODE_LENGTH, HORIZON,
     _RHO_SOLAR, _RHO_CONS,
 )
@@ -82,7 +83,7 @@ def evaluar_controlador(
         ben_marg = 0.0
 
         for _ in range(EPISODE_LENGTH):
-            # Avanzar AR(1) — mismo timing que correr_episodios
+            # Avanzar AR(1) solar/consumo — mismo timing que correr_episodios
             if con_ruido:
                 error_solar = (
                     _RHO_SOLAR * error_solar
@@ -97,6 +98,10 @@ def evaluar_controlador(
             window = sim.get_data_window(sim.current_step, horizon=HORIZON)
             if con_ruido:
                 window = aplicar_ruido_ar1(window, error_solar, error_cons)
+                hora_actual = _get_hora_actual(sim.current_step)
+                aplicar_ruido_precio_3capas(window, hora_actual,
+                                            rng.standard_normal,
+                                            start_offset=0)
 
             # Resolver controlador
             state = {'soc': sim.soc, 'step': sim.current_step}

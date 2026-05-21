@@ -471,12 +471,73 @@ da ±6 kW de corrección.
 
 ---
 
+## Residual SAC v5 (multiplicativo, delta_max=0.15)
+| Parámetro | Valor |
+|-----------|-------|
+| Algoritmo | SAC |
+| Arquitectura | Residual **multiplicativo**: flow × (1 + delta × 0.15) |
+| Observación | 112 dims (108 base + 4 flujos MPC normalizados) |
+| Acción | Box(4) in [-1,1] |
+| delta_max | 0.15 → ±15% de cada flujo MPC |
+| DAWN warmup | 100,000 |
+| LR | 1e-4 |
+| Buffer | 100k |
+| Batch size | 256 |
+| GAMMA | 0.99 |
+| TAU | 0.005 |
+| ent_coef | 0.01 |
+| Red actor/critic | 112→256→256→4 |
+| Pasos totales | 1M (en curso) |
+| Entorno | EnergyEnvContinuo con neteo + ruido precios 3 capas |
+| Seed | 42 |
+
+**Cambios respecto a v4**: delta_max 0.30→0.15 (más conservador, correcciones menores),
+ent_coef 0.002→0.01 (más exploración, MPC ahora tiene ruido en precios).
+
+**Motivación**: v4 con delta_max=0.30 hacía correcciones demasiado grandes y se estancaba.
+Reducir a ±15% obliga a correcciones finas sobre un MPC ya optimizado. La entropía más alta
+compensa el rango reducido permitiendo explorar mejor dentro del ±15%.
+
+**Resultados** *(en curso — 240k/1M pasos a 21/05/2026)*:
+- Mejor eval reward (env): +45.71 a 240k (New best, tendencia alcista)
+- Delta L1 medio: 0.14-0.17 kW — correcciones muy finas
+- SoC medio: 0.43-0.49 [0.10-0.90]
+- Sin estancamiento visible (a diferencia de v4 que se estancó en 80k)
+
+**Comparativa eval reward (env) por pasos**:
+
+| Step | v4 (mult 0.30) | v5 (mult 0.15) |
+|-----:|:-:|:-:|
+| 20k | +41.84 | +44.39 |
+| 40k | +43.77 | +44.78 |
+| 60k | +44.17 | +44.92 |
+| 80k | +43.07 | +45.01 |
+| 100k | +43.66 | +45.44 |
+| 120k | — | +45.21 |
+| 140k | +42.40 | +45.48 |
+| 200k | +43.16 | +45.03 |
+| 240k | — | +45.71 |
+
+**eval_unificada (3 seeds × 50 semanas = 150 semanas, best_model a 240k)**:
+
+| Seed | MPC realista | ResidualSAC v5 | Δ vs MPC |
+|-----:|:-:|:-:|:-:|
+| 42 | +48.71 | +49.33 | **+0.62** |
+| 1337 | +48.70 | +48.90 | **+0.20** |
+| 2024 | +48.78 | +49.45 | **+0.68** |
+| **Agregado** | **+48.73** | **+49.23** | **+0.50** |
+
+Backup modelo: `models/best_model_v5_240k.zip`
+
+---
+
 ## Referencia eval_unificada (50 semanas eval, protocolo idéntico)
 | Controlador | EUR/semana | Notas |
 |-------------|-----------|-------|
 | MPC oráculo | **+57.71** | Techo teórico (forecast perfecto) |
-| MPC realista (AR(1)) | **+51.69** | Cota práctica |
-| Residual SAC v2 | +48.80 | Env sin neteo, OOM a 280k |
+| **Residual SAC v5** | **+49.23** | **Agregado 3 seeds (150 sem), best a 240k, en curso** |
+| MPC realista (AR(1)) | **+48.73** | Cota práctica (agregado 3 seeds) |
+| Residual SAC v2 | +48.80 | Env sin neteo, OOM a 280k (no comparable) |
 | DQN_13 | +45.23 | 101 dims, [256,128], gamma=0.995 |
 | DQN_20 | +45.07 | 101 dims, [64,64], gamma=0.99 |
 | DQN_14 | +41.71 | n-step=24, no convergido |
