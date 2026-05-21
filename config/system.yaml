@@ -103,3 +103,26 @@ mpc:
   k_deg_lin: 0.005            # Calibrado: K=0.005 y K=0.010 equivalentes (+/-0.06 EUR/sem)
   # Modo de pronóstico: "oraculo" (datos perfectos) o "realista" (ruido AR(1)).
   modo_pronostico: "realista"
+
+# --- Residual SAC (4D) ---
+# Agente SAC que aprende correcciones delta 4D sobre los 4 flujos del MPC.
+# Arquitectura: flow_final = max(0, mpc_flow + delta * delta_max * P_MAX)
+# delta in [-1,1]^4, acción final en kW. MPC se resuelve online (~2ms HiGHS).
+residual_sac:
+  total_timesteps: 1_000_000
+  delta_max: 0.30               # ±30% multiplicativo sobre cada flujo MPC
+  dawn_warmup_steps: 100_000    # Pre-llenado del buffer (v4: subido de 50k)
+  learning_rate: 1.0e-4
+  buffer_size: 100_000
+  batch_size: 256
+  gamma: 0.99
+  tau: 0.005                    # Soft target update
+  ent_coef: 0.002               # Muy conservador (v4: empuja delta~0 rápido)
+  target_entropy: "auto"
+  net_arch: [256, 256]          # Redes actor/critic
+  eval_freq: 20_000             # Evaluar cada 20k pasos (v1: 10k)
+  eval_episodes: 50             # 50 semanas eval (mismo pool que MPC)
+  seeds: [42, 1337, 2024]       # 3 semillas para robustez estadistica
+  norm_obs: true
+  norm_reward: false
+  clip_obs: 10.0

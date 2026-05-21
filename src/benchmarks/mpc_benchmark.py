@@ -117,8 +117,28 @@ class LinearMPC(BaseController):
         self._P_MAX = sim.POTENCIA_INVERSOR
         self._ALPHA = 1.0 - sim.AUTODESCARGA_POR_HORA
 
-        # Métricas de rendimiento del solver
+        # Métricas de rendimiento del solver (buffer circular, no crece)
+        self._solve_times_max = 1000
         self._solve_times = []
+
+        # Pre-asignar matrices LP (H=24 fijo: 4*24=96 variables, 4*24=96 filas)
+        H = HORIZON
+        n = 4 * H
+        n_rows = 4 * H  # 2 potencia + 2 SoC por hora
+        self._A_ub_buf = np.zeros((n_rows, n), dtype=np.float64)
+        self._b_ub_buf = np.zeros(n_rows, dtype=np.float64)
+        self._c_obj_buf = np.zeros(n, dtype=np.float64)
+        self._bounds_lo = np.zeros(n, dtype=np.float64)
+        self._bounds_hi = np.zeros(n, dtype=np.float64)
+
+        # Pre-calcular la estructura fija de A_ub (potencia carga/descarga)
+        for h in range(H):
+            # Potencia carga: cs[h] + cm[h] ≤ P_MAX
+            self._A_ub_buf[4*h, 4*h] = 1.0
+            self._A_ub_buf[4*h, 4*h+1] = 1.0
+            # Potencia descarga: dc[h] + dr[h] ≤ P_MAX
+            self._A_ub_buf[4*h+1, 4*h+2] = 1.0
+            self._A_ub_buf[4*h+1, 4*h+3] = 1.0
 
     def solve(self, state: Dict, forecast: np.ndarray) -> Dict[str, float]:
         """
@@ -198,10 +218,10 @@ class LinearMPC(BaseController):
         n = 4 * H
 
         # =============================================================
-        # FUNCIÓN OBJETIVO (linprog minimiza)
+        # FUNCIÓN OBJETIVO (linprog minimiza) — reutiliza buffer
         # =============================================================
-        # Beneficio marginal sobre IDLE (negado para minimización).
-        c_obj = np.zeros(n)
+        c_obj = self._c_obj_buf
+        c_obj[:] = 0.0
         for h in range(H):
             pv = precio_v[h]
             pc = precio_c[h]
@@ -211,10 +231,6 @@ class LinearMPC(BaseController):
             c_obj[i_dr(h)] = -(pv * EFF_D - DEG)   # ingresa venta × η_d − degradación
 
         # Valor terminal: V_T = λ × p_T × η_d × E[H]
-        # E[H] depende de las variables de decisión con decaimiento por autodescarga.
-        # Contribución de las variables en hora h al E[H]:
-        #   carga:    +(cs[h]+cm[h]) × η_c × α^(H-1-h)
-        #   descarga: -(dc[h]+dr[h]) × α^(H-1-h)
         if LAM > 0:
             p_terminal = self._precio_terminal(precio_c, H)
             tv_base = LAM * p_terminal * EFF_D
@@ -222,78 +238,75 @@ class LinearMPC(BaseController):
                 decay = ALPHA ** (H - 1 - h)
                 tv_charge    = tv_base * EFF_C * decay
                 tv_discharge = tv_base * decay
-                # Cargar aumenta E[H] → reduce coste (signo negativo)
                 c_obj[i_cs(h)] -= tv_charge
                 c_obj[i_cm(h)] -= tv_charge
-                # Descargar reduce E[H] → aumenta coste (signo positivo)
                 c_obj[i_dc(h)] += tv_discharge
                 c_obj[i_dr(h)] += tv_discharge
 
         # =============================================================
-        # BOUNDS DE VARIABLES
+        # BOUNDS — reutiliza buffers
         # =============================================================
-        bounds = []
+        lo = self._bounds_lo
+        hi = self._bounds_hi
+        lo[:] = 0.0
         for h in range(H):
-            bounds.append((0, exc[h]))                           # cs ≤ excedente
-            bounds.append((0, P_MAX))                            # cm ≤ P_MAX
-            bounds.append((0, dfc[h] / EFF_D if dfc[h] > 0 else 0))  # dc ≤ déficit/η_d
-            bounds.append((0, P_MAX))                            # dr ≤ P_MAX
+            hi[i_cs(h)] = exc[h]
+            hi[i_cm(h)] = P_MAX
+            hi[i_dc(h)] = dfc[h] / EFF_D if dfc[h] > 0 else 0.0
+            hi[i_dr(h)] = P_MAX
+        bounds = list(zip(lo, hi))
 
         # =============================================================
-        # RESTRICCIONES DE DESIGUALDAD (A_ub × x ≤ b_ub)
+        # RESTRICCIONES (A_ub × x ≤ b_ub) — reutiliza buffers
         # =============================================================
-        A_ub, b_ub = [], []
+        A_ub = self._A_ub_buf
+        b_ub = self._b_ub_buf
         E0 = soc_actual * CAP
 
         for h in range(H):
-            # --- Potencia carga: cs[h] + cm[h] ≤ P_MAX ---
-            row = np.zeros(n)
-            row[i_cs(h)] = 1
-            row[i_cm(h)] = 1
-            A_ub.append(row.copy())
-            b_ub.append(P_MAX)
+            # Potencia carga/descarga (estructura fija, solo actualizar b)
+            b_ub[4*h]   = P_MAX
+            b_ub[4*h+1] = P_MAX
 
-            # --- Potencia descarga: dc[h] + dr[h] ≤ P_MAX ---
-            row = np.zeros(n)
-            row[i_dc(h)] = 1
-            row[i_dr(h)] = 1
-            A_ub.append(row.copy())
-            b_ub.append(P_MAX)
+            # SoC acumulado con autodescarga
+            E0_decayed = (ALPHA ** (h + 1)) * E0
+            row_idx_max = 4*h + 2
+            row_idx_min = 4*h + 3
 
-            # --- SoC acumulado con autodescarga ---
-            # E[h+1] = α^(h+1) × E0
-            #         + Σ_{k=0}^{h} α^(h-k) × [(cs[k]+cm[k])×η_c − dc[k] − dr[k]]
-            row = np.zeros(n)
+            # Limpiar filas SoC (la estructura cambia con h)
+            A_ub[row_idx_max, :] = 0.0
+            A_ub[row_idx_min, :] = 0.0
+
             for k in range(h + 1):
                 decay = ALPHA ** (h - k)
-                row[i_cs(k)] =  EFF_C * decay
-                row[i_cm(k)] =  EFF_C * decay
-                row[i_dc(k)] = -1.0   * decay
-                row[i_dr(k)] = -1.0   * decay
+                A_ub[row_idx_max, i_cs(k)] =  EFF_C * decay
+                A_ub[row_idx_max, i_cm(k)] =  EFF_C * decay
+                A_ub[row_idx_max, i_dc(k)] = -1.0   * decay
+                A_ub[row_idx_max, i_dr(k)] = -1.0   * decay
 
-            E0_decayed = (ALPHA ** (h + 1)) * E0
+                A_ub[row_idx_min, i_cs(k)] = -EFF_C * decay
+                A_ub[row_idx_min, i_cm(k)] = -EFF_C * decay
+                A_ub[row_idx_min, i_dc(k)] =  1.0   * decay
+                A_ub[row_idx_min, i_dr(k)] =  1.0   * decay
 
-            # E[h+1] ≤ SOC_MAX × CAP
-            A_ub.append(row.copy())
-            b_ub.append(self._sim.SOC_MAX * CAP - E0_decayed)
-
-            # E[h+1] ≥ SOC_MIN × CAP  →  −row ≤ E0_decayed − SOC_MIN × CAP
-            A_ub.append(-row)
-            b_ub.append(E0_decayed - self._sim.SOC_MIN * CAP)
+            b_ub[row_idx_max] = self._sim.SOC_MAX * CAP - E0_decayed
+            b_ub[row_idx_min] = E0_decayed - self._sim.SOC_MIN * CAP
 
         # =============================================================
         # RESOLVER
         # =============================================================
         res = linprog(
             c_obj,
-            A_ub=np.array(A_ub),
-            b_ub=np.array(b_ub),
+            A_ub=A_ub,
+            b_ub=b_ub,
             bounds=bounds,
             method='highs',
             options={'disp': False},
         )
 
         elapsed = time.perf_counter() - t0
+        if len(self._solve_times) >= self._solve_times_max:
+            self._solve_times.pop(0)
         self._solve_times.append(elapsed)
 
         if not res.success:
