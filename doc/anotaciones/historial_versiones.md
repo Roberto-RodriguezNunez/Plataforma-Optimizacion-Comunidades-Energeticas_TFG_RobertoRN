@@ -531,6 +531,38 @@ Backup modelo: `models/best_model_v5_240k.zip`
 
 ---
 
+## Residual SAC v5b (multiplicativo, delta_max=0.20)
+| Parámetro | Valor |
+|-----------|-------|
+| Algoritmo | SAC |
+| Arquitectura | Residual **multiplicativo**: flow × (1 + delta × 0.20) |
+| Observación | 112 dims (108 base + 4 flujos MPC normalizados) |
+| Acción | Box(4) in [-1,1] |
+| delta_max | 0.20 → ±20% de cada flujo MPC |
+| DAWN warmup | 100,000 |
+| LR | 1e-4 |
+| Buffer | 100k |
+| Batch size | 256 |
+| GAMMA | 0.99 |
+| TAU | 0.005 |
+| ent_coef | 0.01 |
+| Red actor/critic | 112→256→256→4 |
+| Pasos totales | 1M |
+| Entorno | EnergyEnvContinuo con neteo + ruido precios 3 capas |
+| Seed | 42 |
+| Tag | v5b (modelos en `models/v5b/`, logs en `logs/v5b/`) |
+
+**Cambios respecto a v5**: delta_max 0.15→0.20 (más rango de corrección).
+Resto de hiperparámetros idénticos.
+
+**Motivación**: v5 con delta_max=0.15 supera al MPC (+0.50 EUR/sem a 240k),
+pero el rango ±15% puede ser demasiado conservador. v5b prueba ±20% para ver
+si un rango intermedio entre v4 (30%) y v5 (15%) mejora la convergencia.
+
+**Resultados**: *(en curso — lanzado 22/05/2026)*
+
+---
+
 ## Referencia eval_unificada (50 semanas eval, protocolo idéntico)
 | Controlador | EUR/semana | Notas |
 |-------------|-----------|-------|

@@ -201,9 +201,16 @@ def _make_residual_env(mpc, mode='train'):
 #  MAIN
 # ──────────────────────────────────────────────────────────────────
 
-def main(seed=42, total_timesteps=None):
+def main(seed=42, total_timesteps=None, tag=None):
     if total_timesteps is None:
         total_timesteps = _SAC_CFG['total_timesteps']
+
+    # Directorios con tag opcional para no sobreescribir otros runs
+    model_dir = MODEL_DIR
+    log_dir = LOG_DIR
+    if tag:
+        model_dir = os.path.join(MODEL_DIR, tag)
+        log_dir = os.path.join(LOG_DIR, tag)
 
     print("=" * 62)
     print("RESIDUAL SAC — Entrenamiento")
@@ -214,9 +221,11 @@ def main(seed=42, total_timesteps=None):
     print(f"  DAWN warmup:     {_SAC_CFG['dawn_warmup_steps']:,}")
     print(f"  Buffer size:     {_SAC_CFG['buffer_size']:,}")
     print(f"  Net arch:        {_SAC_CFG['net_arch']}")
+    if tag:
+        print(f"  Tag:             {tag}")
 
-    os.makedirs(MODEL_DIR, exist_ok=True)
-    os.makedirs(LOG_DIR, exist_ok=True)
+    os.makedirs(model_dir, exist_ok=True)
+    os.makedirs(log_dir, exist_ok=True)
 
     # 1. Crear MPC (compartido por todos los entornos)
     sim_mpc = ComunidadSimulador(DATASET_PATH)
@@ -263,7 +272,7 @@ def main(seed=42, total_timesteps=None):
         verbose=0,
         seed=seed,
         device='cpu',
-        tensorboard_log=LOG_DIR,
+        tensorboard_log=log_dir,
     )
 
     # 4. DAWN warmup (llena buffer + calibra VecNormalize)
@@ -276,8 +285,8 @@ def main(seed=42, total_timesteps=None):
     # 5. Callbacks
     eval_callback = SeededEvalCallback(
         eval_env,
-        best_model_save_path=MODEL_DIR,
-        log_path=LOG_DIR,
+        best_model_save_path=model_dir,
+        log_path=log_dir,
         eval_freq=_SAC_CFG['eval_freq'],
         n_eval_episodes=_SAC_CFG['eval_episodes'],
         deterministic=True,
@@ -288,7 +297,7 @@ def main(seed=42, total_timesteps=None):
 
     # 6. Entrenar
     print(f"\n  Iniciando entrenamiento ({total_timesteps:,} pasos)...")
-    print(f"  TensorBoard: tensorboard --logdir {LOG_DIR}")
+    print(f"  TensorBoard: tensorboard --logdir {log_dir}")
     print("-" * 62)
 
     model.learn(
@@ -299,12 +308,12 @@ def main(seed=42, total_timesteps=None):
     )
 
     # 7. Guardar
-    model_path = os.path.join(MODEL_DIR, f"residual_sac_seed{seed}")
+    model_path = os.path.join(model_dir, f"residual_sac_seed{seed}")
     model.save(model_path)
-    train_env.save(os.path.join(MODEL_DIR, f"residual_sac_vec_normalize_seed{seed}.pkl"))
+    train_env.save(os.path.join(model_dir, f"residual_sac_vec_normalize_seed{seed}.pkl"))
 
     print(f"\n  Modelo guardado:     {model_path}.zip")
-    print(f"  Mejor modelo:        {os.path.join(MODEL_DIR, 'best_model.zip')}")
+    print(f"  Mejor modelo:        {os.path.join(model_dir, 'best_model.zip')}")
     print(f"  VecNormalize stats:  residual_sac_vec_normalize_seed{seed}.pkl")
     print("=" * 62)
 
@@ -316,5 +325,15 @@ if __name__ == '__main__':
                         help='Semilla (default: 42)')
     parser.add_argument('--timesteps', type=int, default=None,
                         help='Total timesteps (default: config)')
+    parser.add_argument('--delta-max', type=float, default=None,
+                        help='Delta max override (default: config)')
+    parser.add_argument('--ent-coef', type=float, default=None,
+                        help='Entropy coef override (default: config)')
+    parser.add_argument('--tag', type=str, default=None,
+                        help='Tag para separar modelos/logs (ej: v5b)')
     args = parser.parse_args()
-    main(seed=args.seed, total_timesteps=args.timesteps)
+    if args.delta_max is not None:
+        _SAC_CFG['delta_max'] = args.delta_max
+    if args.ent_coef is not None:
+        _SAC_CFG['ent_coef'] = args.ent_coef
+    main(seed=args.seed, total_timesteps=args.timesteps, tag=args.tag)
