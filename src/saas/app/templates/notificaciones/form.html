@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import bell %}
+{% block titulo %}Enviar notificación{% endblock %}
+{% block contenido %}
+
+<nav aria-label="breadcrumb"><ul>
+  <li><a href="{{ url_for('notificaciones.lista') }}">Notificaciones</a></li>
+  <li>Enviar</li>
+</ul></nav>
+
+<div style="max-width:600px;">
+  <div style="margin-bottom:1.8rem;">
+    <h2 style="margin:0 0 .2rem;display:inline-flex;align-items:center;gap:.5rem;">
+      {{ bell(20) }} Enviar notificación
+    </h2>
+    <p style="margin:0;color:var(--text-muted);font-size:.9rem;">
+      Envía un aviso a un usuario o a todos.
+    </p>
+  </div>
+
+  <div style="background:var(--surface);border:1px solid var(--border);
+              border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:1.4rem;">
+    <form method="POST">
+      {{ form.hidden_tag() }}
+
+      <div style="margin-bottom:1rem;">
+        <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                      display:block;margin-bottom:.4rem;">{{ form.destinatario.label.text }}</label>
+        {{ form.destinatario() }}
+      </div>
+
+      <div style="margin-bottom:1rem;">
+        <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                      display:block;margin-bottom:.4rem;">{{ form.titulo.label.text }}</label>
+        {{ form.titulo(placeholder='Ej: Aviso de mantenimiento') }}
+        {% for e in form.titulo.errors %}<small class="form-error">{{ e }}</small>{% endfor %}
+      </div>
+
+      <div style="margin-bottom:1.2rem;">
+        <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                      display:block;margin-bottom:.4rem;">{{ form.mensaje.label.text }}</label>
+        {{ form.mensaje(placeholder='Escribe el mensaje…', rows=4, style='resize:vertical;') }}
+        {% for e in form.mensaje.errors %}<small class="form-error">{{ e }}</small>{% endfor %}
+      </div>
+
+      <div style="display:flex;gap:.75rem;">
+        {{ form.enviar(style="flex:1;") }}
+        <a href="{{ url_for('notificaciones.lista') }}" role="button" class="secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

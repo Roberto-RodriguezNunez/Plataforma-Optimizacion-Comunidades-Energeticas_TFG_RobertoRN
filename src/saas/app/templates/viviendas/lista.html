@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import home, sun, edit, users, trash %}
+{% block titulo %}Viviendas — {{ com.nombre }}{% endblock %}
+{% block contenido %}
+
+<nav aria-label="breadcrumb"><ul>
+  <li><a href="{{ url_for('comunidades.lista') }}">Comunidades</a></li>
+  <li><a href="{{ url_for('comunidades.detalle', safe_oid=comunidad_safe_oid) }}">{{ com.nombre }}</a></li>
+  <li>Viviendas</li>
+</ul></nav>
+
+<div class="section-header" style="margin-bottom:1.5rem;">
+  <div>
+    <h2 style="margin:0 0 .2rem;">Viviendas</h2>
+    <p style="margin:0;color:var(--text-muted);font-size:.9rem;">
+      {{ viviendas|length }} vivienda{{ 's' if viviendas|length != 1 }}
+      en {{ com.nombre }}
+    </p>
+  </div>
+  <a href="{{ url_for('viviendas.nueva', comunidad_safe_oid=comunidad_safe_oid) }}"
+     role="button" style="display:flex;align-items:center;gap:.4rem;white-space:nowrap;">
+    + Nueva vivienda
+  </a>
+</div>
+
+{% if viviendas %}
+<div style="background:var(--surface);border:1px solid var(--border);
+            border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);overflow:hidden;">
+  <table style="margin:0;">
+    <thead>
+      <tr>
+        <th style="padding:1rem 1.2rem;">Vivienda</th>
+        <th style="padding:1rem 1.2rem;">Coef.</th>
+        <th style="padding:1rem 1.2rem;">Potencia</th>
+        <th style="padding:1rem 1.2rem;text-align:center;">Paneles</th>
+        <th style="padding:1rem 1.2rem;width:120px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in viviendas %}
+      <tr data-removable>
+        <td style="padding:.9rem 1.2rem;">
+          <a href="{{ url_for('viviendas.detalle', safe_oid=oid_to_safe(v.__oid__)) }}"
+             style="font-weight:600;">{{ v.identificador }}</a>
+          {% if v.direccion_completa %}
+          <br><small style="color:var(--text-muted);font-size:.78rem;">{{ v.direccion_completa }}</small>
+          {% endif %}
+        </td>
+        <td style="padding:.9rem 1.2rem;">
+          <code>{{ "%.3f"|format(v.coeficiente_reparto) }}</code>
+        </td>
+        <td style="padding:.9rem 1.2rem;">
+          <code>{{ v.potencia_contratada_kw }} kW</code>
+        </td>
+        <td style="padding:.9rem 1.2rem;text-align:center;">
+          {% if v.tiene_paneles %}
+            {{ sun(14) }}{% if v.numero_paneles %} <span style="font-size:.8rem;color:var(--text-muted);">{{ v.numero_paneles }}</span>{% endif %}
+          {% else %}—{% endif %}
+        </td>
+        <td style="padding:.9rem 1.2rem;">
+          <div style="display:flex;align-items:center;gap:.4rem;">
+            <a href="{{ url_for('viviendas.editar', safe_oid=oid_to_safe(v.__oid__)) }}"
+               class="btn-icon-sm" title="Editar">{{ edit(15) }}</a>
+            <a href="{{ url_for('accesos.lista', vivienda_safe_oid=oid_to_safe(v.__oid__)) }}"
+               class="btn-icon-sm" title="Accesos">{{ users(15) }}</a>
+            <form method="POST"
+                  action="{{ url_for('viviendas.eliminar', safe_oid=oid_to_safe(v.__oid__)) }}"
+                  data-ajax-action="{{ url_for('viviendas.eliminar', safe_oid=oid_to_safe(v.__oid__)) }}"
+                  style="display:inline;"
+                  onsubmit="return confirm('¿Eliminar vivienda «{{ v.identificador }}» y sus datos?')">
+              {{ csrf_token_hidden() }}
+              <button type="submit" class="btn-danger-sm" title="Eliminar">{{ trash(12) }}</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state" style="padding:5rem 1rem;">
+  <div class="empty-icon">{{ home(36) }}</div>
+  <p>Sin viviendas en esta comunidad todavía.</p>
+  <a href="{{ url_for('viviendas.nueva', comunidad_safe_oid=comunidad_safe_oid) }}"
+     role="button" style="margin-top:.75rem;">+ Nueva vivienda</a>
+</div>
+{% endif %}
+
+{% endblock %}

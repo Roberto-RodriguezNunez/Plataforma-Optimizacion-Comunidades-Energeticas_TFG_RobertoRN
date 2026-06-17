@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import warning %}
+{% block titulo %}Mi panel{% endblock %}
+{% block contenido %}
+
+{# ── Saludo ── #}
+<div style="margin-bottom:2.5rem;">
+  <h2 style="margin:0 0 .25rem;font-size:1.5rem;font-weight:800;letter-spacing:-.04em;">
+    Hola, {{ current_user.nombre.split()[0] }}
+  </h2>
+  <p style="color:var(--text-muted);margin:0;font-size:.92rem;">Resumen de tu energía comunitaria</p>
+</div>
+
+{% if viviendas_data %}
+
+{# ── KPIs globales — estilo Trade Republic ── #}
+<div class="kpi-grid" style="margin-bottom:2.5rem;">
+  <div class="kpi-card">
+    <div class="kpi-label">Ahorro total acumulado</div>
+    <div class="kpi-value">{{ "%.2f"|format(ahorro_global) }} €</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Mis viviendas</div>
+    <div class="kpi-value">{{ viviendas_data|length }}</div>
+  </div>
+</div>
+
+{# ── Una tarjeta por vivienda ── #}
+<div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+            color:var(--text-muted);margin-bottom:1rem;">Mis viviendas</div>
+
+{% for item in viviendas_data %}
+<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);
+            margin-bottom:1.25rem;overflow:hidden;">
+
+  {# Cabecera vivienda #}
+  <div style="padding:1.2rem 1.4rem;border-bottom:1px solid var(--border);
+              display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+
+    {# Identificador inicial — TR style letter avatar #}
+    <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;
+                background:var(--surface-s);border:1px solid var(--border);
+                display:flex;align-items:center;justify-content:center;
+                font-size:.85rem;font-weight:800;color:var(--text-muted);letter-spacing:-.02em;">
+      {{ item.viv.identificador[0].upper() }}
+    </div>
+
+    <div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.2rem;">
+        <span style="font-size:1rem;font-weight:800;color:var(--text);letter-spacing:-.03em;">
+          {{ item.viv.identificador }}
+        </span>
+        <span class="badge">{{ item.acceso.rol_en_vivienda }}</span>
+        {% if item.viv.tiene_paneles %}
+        <span style="font-size:.75rem;font-weight:600;color:var(--text-muted);">
+          {{ item.viv.numero_paneles or '' }} paneles solares
+        </span>
+        {% endif %}
+      </div>
+      <div style="font-size:.82rem;color:var(--text-muted);display:flex;gap:.75rem;flex-wrap:wrap;">
+        {% if item.viv.direccion_completa %}
+        <span>{{ item.viv.direccion_completa }}</span>
+        {% endif %}
+        {% if item.bat_pct is not none %}
+        <span>Batería {{ item.bat_pct }}%</span>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Ahorro + botones #}
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.65rem;flex-shrink:0;">
+      <div style="text-align:right;">
+        <div style="font-size:1.35rem;font-weight:900;letter-spacing:-.04em;color:var(--text);">
+          +{{ "%.2f"|format(item.ultimo_ahorro) }} €
+        </div>
+        <div style="font-size:.72rem;color:var(--text-muted);">
+          {{ item.ultimo_mes }}{% if item.ultimo_pct > 0 %} · {{ item.ultimo_pct }}%{% endif %}
+        </div>
+      </div>
+      <div style="display:flex;gap:.45rem;flex-wrap:wrap;justify-content:flex-end;">
+        {% if item.com %}
+        <a href="{{ url_for('comunidades.detalle', safe_oid=item.com_safe_oid) }}"
+           role="button" class="secondary"
+           style="font-size:.8rem;padding:.32rem .8rem;white-space:nowrap;">
+          {{ item.com.nombre }}
+        </a>
+        {% endif %}
+        <a href="{{ url_for('viviendas.detalle', safe_oid=item.safe_oid) }}"
+           role="button" style="font-size:.8rem;padding:.32rem .8rem;white-space:nowrap;">
+          Ver detalle →
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {# Gráfica de ahorro #}
+  {% if item.chart_ahorro %}
+  <div style="padding:1.2rem 1.4rem;">
+    <div class="grid-2" style="gap:1rem;">
+      <div>
+        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;
+                    letter-spacing:.1em;color:var(--text-muted);margin-bottom:.6rem;">
+          Ahorro mensual (€)
+        </div>
+        <canvas data-chart-type="line-ahorro"
+                data-chart='{{ item.chart_ahorro }}'
+                style="max-height:150px;"></canvas>
+      </div>
+      <div>
+        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;
+                    letter-spacing:.1em;color:var(--text-muted);margin-bottom:.6rem;">
+          Sin comunidad vs con comunidad (€)
+        </div>
+        <canvas data-chart-type="bar-compare"
+                data-chart='{{ item.chart_ahorro }}'
+                style="max-height:150px;"></canvas>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div style="padding:1.4rem;text-align:center;color:var(--text-muted);font-size:.88rem;">
+    Sin datos de consumo todavía
+  </div>
+  {% endif %}
+
+</div>
+{% endfor %}
+
+{% else %}
+<div class="empty-state" style="padding:5rem 1rem;">
+  <p>No tienes acceso a ninguna vivienda todavía.<br>
+     Contacta con el administrador para que te asigne una.</p>
+</div>
+{% endif %}
+
+{# ── Incidencias abiertas ── #}
+{% if incidencias_abiertas %}
+<div style="margin-top:2.5rem;">
+  <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+              color:var(--text-muted);margin-bottom:1rem;">Mis incidencias abiertas</div>
+  <div style="display:flex;flex-direction:column;gap:.6rem;">
+    {% for inc in incidencias_abiertas %}
+    <a href="{{ url_for('incidencias.detalle', safe_oid=oid_to_safe(inc.__oid__)) }}"
+       style="display:flex;align-items:center;gap:1rem;
+              background:#fff;border:1px solid #e5e5e5;border-radius:10px;
+              padding:.85rem 1.1rem;text-decoration:none;color:inherit;">
+      <span style="flex-shrink:0;">{{ warning(18) }}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:.9rem;
+                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          {{ inc.titulo }}
+        </div>
+        <div style="font-size:.78rem;color:var(--text-muted);">{{ inc.fecha_creacion }}</div>
+      </div>
+      {% if inc.estado == 'abierta' %}
+        <span style="flex-shrink:0;padding:.2rem .55rem;border-radius:6px;
+                     font-size:.72rem;font-weight:700;background:#fee2e2;color:#b91c1c;">
+          ABIERTA
+        </span>
+      {% else %}
+        <span style="flex-shrink:0;padding:.2rem .55rem;border-radius:6px;
+                     font-size:.72rem;font-weight:700;background:#fef3c7;color:#92400e;">
+          EN PROCESO
+        </span>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  <div style="margin-top:.75rem;text-align:right;">
+    <a href="{{ url_for('incidencias.lista') }}" style="font-size:.84rem;">
+      Ver todas las incidencias →
+    </a>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

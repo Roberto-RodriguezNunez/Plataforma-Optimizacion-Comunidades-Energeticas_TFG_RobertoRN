@@ -1,0 +1,146 @@
+{% from '_icons.html' import home, bell, user, key, log_out, edit, plus, check, x_icon, warning, info %}
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block titulo %}LeaLink{% endblock %} — LeaLink</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.classless.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+</head>
+<body>
+
+<header class="ec-navbar">
+  <div class="ec-navbar-inner">
+    <a href="{{ url_for('main.index') }}" class="ec-brand">
+      <span class="ec-brand-icon">
+        <svg width="20" height="20" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+          <line x1="18" y1="12" x2="18" y2="4" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="23.2" y1="15" x2="30.8" y2="10.5" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="23.2" y1="21" x2="30.8" y2="25.5" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="18" y1="24" x2="18" y2="32" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="12.8" y1="21" x2="5.2" y2="25.5" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="12.8" y1="15" x2="5.2" y2="10.5" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+          <circle cx="18" cy="3" r="2" fill="#D97706"/>
+          <circle cx="32" cy="10.5" r="2" fill="#D97706"/>
+          <circle cx="32" cy="25.5" r="2" fill="#D97706"/>
+          <circle cx="18" cy="33" r="2" fill="#D97706"/>
+          <circle cx="4" cy="25.5" r="2" fill="#D97706"/>
+          <circle cx="4" cy="10.5" r="2" fill="#D97706"/>
+          <polygon points="18,11.5 23.2,14.5 23.2,20.5 18,23.5 12.8,20.5 12.8,14.5" fill="rgba(217,119,6,.15)" stroke="#D97706" stroke-width="1.8" stroke-linejoin="round"/>
+          <line x1="15" y1="18" x2="21" y2="18" stroke="#D97706" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="18" y1="15" x2="18" y2="21" stroke="#D97706" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="ec-brand-text">LeaLink</span>
+    </a>
+
+    <nav class="ec-nav-links">
+      {% if current_user.is_authenticated %}
+
+        {# ── Superadmin ── #}
+        {% if current_user.es_superadmin %}
+          <a href="{{ url_for('main.index') }}" class="ec-nav-link">Panel</a>
+          <a href="{{ url_for('comunidades.lista') }}" class="ec-nav-link">Comunidades</a>
+          <a href="{{ url_for('viviendas.lista_global') }}" class="ec-nav-link">Viviendas</a>
+          <a href="{{ url_for('usuarios.lista') }}" class="ec-nav-link">Usuarios</a>
+          <a href="{{ url_for('incidencias.lista') }}" class="ec-nav-link">Incidencias</a>
+
+        {# ── Usuario normal ── #}
+        {% else %}
+          <a href="{{ url_for('main.index') }}" class="ec-nav-link">Inicio</a>
+          <a href="{{ url_for('incidencias.lista') }}" class="ec-nav-link">Incidencias</a>
+          {% set coms_nav = mi_comunidad_nav() %}
+          {% if coms_nav|length == 1 %}
+            <a href="{{ url_for('comunidades.detalle', safe_oid=coms_nav[0].safe_oid) }}"
+               class="ec-nav-link" style="display:inline-flex;align-items:center;gap:.35rem;">
+              {{ home(14) }} {{ coms_nav[0].nombre }}
+            </a>
+          {% endif %}
+        {% endif %}
+
+        {# ── Notificaciones (todos) ── #}
+        <a href="{{ url_for('notificaciones.lista') }}" class="ec-nav-link notif-bell"
+           title="Notificaciones">
+          {{ bell(18) }}
+          {% set n_no_leidas = contador_no_leidas() %}
+          <span class="badge-notif" data-notif-count
+                style="{{ 'display:none' if n_no_leidas == 0 }}">{{ n_no_leidas }}</span>
+        </a>
+
+        {# ── Menú de usuario ── #}
+        <div class="ec-user-menu">
+          <button class="ec-user-btn" type="button"
+                  onclick="this.parentElement.classList.toggle('open')">
+            <span class="ec-avatar">{{ current_user.nombre[0].upper() }}</span>
+            <span class="ec-user-name">{{ current_user.nombre.split()[0] }}</span>
+            <span class="ec-chevron">▾</span>
+          </button>
+          <div class="ec-dropdown">
+            <div class="ec-dropdown-header">
+              <strong>{{ current_user.nombre }}</strong>
+              <small>{{ current_user.email }}</small>
+            </div>
+            <a href="{{ url_for('main.index') }}" style="display:inline-flex;align-items:center;gap:.4rem;">{{ home(14) }} Mi panel</a>
+            <a href="{{ url_for('auth.perfil') }}" style="display:inline-flex;align-items:center;gap:.4rem;">{{ user(14) }} Mi perfil</a>
+            <a href="{{ url_for('auth.cambiar_password') }}" style="display:inline-flex;align-items:center;gap:.4rem;">{{ key(14) }} Cambiar contraseña</a>
+            <a href="{{ url_for('notificaciones.lista') }}" style="display:inline-flex;align-items:center;gap:.4rem;">{{ bell(14) }} Notificaciones</a>
+            <hr style="margin:.4rem 0;border-color:var(--border);">
+            <a href="{{ url_for('auth.logout') }}" class="ec-logout" style="display:inline-flex;align-items:center;gap:.4rem;">{{ log_out(14) }} Cerrar sesión</a>
+          </div>
+        </div>
+
+      {% else %}
+        <a href="{{ url_for('auth.login') }}" class="ec-nav-link">Iniciar sesión</a>
+        <a href="{{ url_for('auth.registro') }}" class="ec-btn-primary">Registrarse gratis</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+
+<main class="ec-main">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-container" aria-live="polite">
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}" role="alert">
+            <span class="flash-icon">{% if category == 'success' %}{{ check(15) }}{% elif category == 'danger' %}{{ x_icon(15) }}{% elif category == 'warning' %}{{ warning(15) }}{% else %}{{ info(15) }}{% endif %}</span>
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block contenido %}{% endblock %}
+</main>
+
+<footer class="ec-footer">
+  LeaLink &copy; 2025 &nbsp;·&nbsp; Universidade de Vigo
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/ajax.js') }}"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+  // Cerrar dropdown de usuario al hacer clic fuera
+  document.addEventListener('click', function(e) {
+    document.querySelectorAll('.ec-user-menu.open').forEach(function(m) {
+      if (!m.contains(e.target)) m.classList.remove('open');
+    });
+  });
+  // Auto-dismiss flashes tras 5s
+  setTimeout(function() {
+    document.querySelectorAll('.flash').forEach(function(f) {
+      f.style.transition = 'opacity .4s';
+      f.style.opacity = '0';
+      setTimeout(function() { f.remove(); }, 400);
+    });
+  }, 5000);
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

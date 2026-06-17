@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import warning, plus, trash, info, check %}
+{% block titulo %}Incidencias{% endblock %}
+{% block contenido %}
+
+<div class="section-header" style="margin-bottom:1.5rem;">
+  <div>
+    <h2 style="margin:0 0 .2rem;display:inline-flex;align-items:center;gap:.5rem;">
+      {{ warning(20) }} Incidencias
+    </h2>
+    <p style="margin:0;color:var(--text-muted);font-size:.9rem;">
+      {% if detalle %}{{ detalle|length }} incidencia{{ 's' if detalle|length != 1 }}{% endif %}
+    </p>
+  </div>
+  {% if not current_user.es_superadmin %}
+  <a href="{{ url_for('incidencias.nueva') }}" role="button" style="white-space:nowrap;">
+    {{ plus(15) }} Nueva incidencia
+  </a>
+  {% endif %}
+</div>
+
+{% if detalle %}
+<div style="overflow-x:auto;">
+  <table style="width:100%;border-collapse:collapse;font-size:.9rem;">
+    <thead>
+      <tr style="background:#f9f9f9;border-bottom:2px solid #e5e5e5;">
+        <th style="padding:.7rem 1rem;text-align:left;font-size:.7rem;font-weight:700;
+                   letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);">Título</th>
+        <th style="padding:.7rem 1rem;text-align:left;font-size:.7rem;font-weight:700;
+                   letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);">Tipo</th>
+        <th style="padding:.7rem 1rem;text-align:left;font-size:.7rem;font-weight:700;
+                   letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);">Vivienda</th>
+        <th style="padding:.7rem 1rem;text-align:left;font-size:.7rem;font-weight:700;
+                   letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);">Estado</th>
+        <th style="padding:.7rem 1rem;text-align:left;font-size:.7rem;font-weight:700;
+                   letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);">Fecha</th>
+        <th style="padding:.7rem 1rem;width:3rem;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in detalle %}
+      <tr style="background:#fff;border-bottom:1px solid #e5e5e5;">
+        <td style="padding:.8rem 1rem;font-weight:600;">{{ item.inc.titulo }}</td>
+        <td style="padding:.8rem 1rem;color:var(--text-muted);font-size:.85rem;">
+          {% if item.inc.tipo == 'averia' %}Avería
+          {% elif item.inc.tipo == 'consulta' %}Consulta
+          {% else %}Otro{% endif %}
+        </td>
+        <td style="padding:.8rem 1rem;font-size:.85rem;">
+          {{ item.viv.identificador if item.viv else '—' }}
+        </td>
+        <td style="padding:.8rem 1rem;">
+          {% if item.inc.estado == 'abierta' %}
+            <span style="display:inline-block;padding:.2rem .6rem;border-radius:6px;
+                         font-size:.75rem;font-weight:700;letter-spacing:.04em;
+                         background:#fee2e2;color:#b91c1c;">ABIERTA</span>
+          {% elif item.inc.estado == 'en_proceso' %}
+            <span style="display:inline-block;padding:.2rem .6rem;border-radius:6px;
+                         font-size:.75rem;font-weight:700;letter-spacing:.04em;
+                         background:#fef3c7;color:#92400e;">EN PROCESO</span>
+          {% else %}
+            <span style="display:inline-block;padding:.2rem .6rem;border-radius:6px;
+                         font-size:.75rem;font-weight:700;letter-spacing:.04em;
+                         background:#d1fae5;color:#065f46;">CERRADA</span>
+          {% endif %}
+        </td>
+        <td style="padding:.8rem 1rem;color:var(--text-muted);font-size:.85rem;">
+          {{ item.inc.fecha_creacion or '—' }}
+        </td>
+        <td style="padding:.8rem 1rem;text-align:right;">
+          <a href="{{ url_for('incidencias.detalle', safe_oid=item.safe_oid) }}"
+             style="font-size:.85rem;font-weight:600;white-space:nowrap;">→</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% else %}
+<div class="empty-state" style="padding:5rem 1rem;">
+  <div class="empty-icon">{{ info(36) }}</div>
+  <p>No hay incidencias registradas.</p>
+  {% if not current_user.es_superadmin %}
+  <a href="{{ url_for('incidencias.nueva') }}" role="button" style="margin-top:.75rem;">
+    {{ plus(15) }} Nueva incidencia
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

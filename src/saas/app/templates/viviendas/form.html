@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block contenido %}
+
+<nav aria-label="breadcrumb"><ul>
+  <li><a href="{{ url_for('comunidades.lista') }}">Comunidades</a></li>
+  <li><a href="{{ url_for('comunidades.detalle', safe_oid=comunidad_safe_oid) }}">{{ com.nombre }}</a></li>
+  <li>{{ titulo }}</li>
+</ul></nav>
+
+<div style="max-width:680px;">
+  <div style="margin-bottom:1.8rem;">
+    <h2 style="margin:0 0 .2rem;">{{ titulo }}</h2>
+    <p style="margin:0;color:var(--text-muted);font-size:.9rem;">{{ com.nombre }}</p>
+  </div>
+
+  <form method="POST">
+    {{ form.hidden_tag() }}
+
+    {# Datos básicos #}
+    <div style="background:var(--surface);border:1px solid var(--border);
+                border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);
+                overflow:hidden;margin-bottom:1rem;">
+      <div style="padding:1rem 1.3rem;border-bottom:1px solid var(--border);
+                  background:var(--surface-2,#f8fafc);">
+        <h3 style="margin:0;font-size:.95rem;">Datos básicos</h3>
+      </div>
+      <div style="padding:1.4rem;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div>
+            <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                          display:block;margin-bottom:.4rem;">{{ form.identificador.label.text }}</label>
+            {{ form.identificador(placeholder='Ej: A-1, Piso 2B…',
+                                   **({'aria-invalid':'true'} if form.identificador.errors else {})) }}
+            {% for e in form.identificador.errors %}<small class="form-error">{{ e }}</small>{% endfor %}
+          </div>
+          <div>
+            <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                          display:block;margin-bottom:.4rem;">{{ form.cups.label.text }}
+              <span style="font-weight:400;color:var(--text-muted);"> (opcional)</span>
+            </label>
+            {{ form.cups() }}
+          </div>
+          <div style="grid-column:1/-1;">
+            <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                          display:block;margin-bottom:.4rem;">{{ form.direccion_completa.label.text }}
+              <span style="font-weight:400;color:var(--text-muted);"> (opcional)</span>
+            </label>
+            {{ form.direccion_completa(placeholder='Calle, número, piso…') }}
+          </div>
+          <div>
+            <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                          display:block;margin-bottom:.4rem;">{{ form.potencia_contratada_kw.label.text }}</label>
+            {{ form.potencia_contratada_kw(**({'aria-invalid':'true'} if form.potencia_contratada_kw.errors else {})) }}
+            {% for e in form.potencia_contratada_kw.errors %}<small class="form-error">{{ e }}</small>{% endfor %}
+          </div>
+          <div>
+            <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                          display:block;margin-bottom:.4rem;">{{ form.fecha_alta.label.text }}</label>
+            {{ form.fecha_alta(type='date') }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Instalación fotovoltaica #}
+    <div style="background:var(--surface);border:1px solid var(--border);
+                border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);
+                overflow:hidden;margin-bottom:1.5rem;">
+      <div style="padding:1rem 1.3rem;border-bottom:1px solid var(--border);
+                  background:var(--surface-2,#f8fafc);
+                  display:flex;align-items:center;gap:.75rem;">
+        <span style="font-size:1.1rem;">☀️</span>
+        <h3 style="margin:0;font-size:.95rem;">Instalación fotovoltaica</h3>
+      </div>
+      <div style="padding:1.4rem;">
+        <label for="tiene_paneles" style="display:flex;align-items:center;gap:.85rem;
+                       cursor:pointer;margin-bottom:1rem;user-select:none;">
+          <span style="font-size:.93rem;font-weight:600;color:var(--text-soft);">¿Tiene paneles solares?</span>
+          <span class="toggle-switch">
+            <input type="checkbox" id="tiene_paneles" name="tiene_paneles" value="y"
+                   {{ 'checked' if form.tiene_paneles.data }}>
+            <span class="toggle-slider"></span>
+          </span>
+          <span id="panel-label" style="font-size:.85rem;font-weight:700;min-width:1.5rem;"></span>
+        </label>
+
+        <div id="panel-fields" style="overflow:hidden;transition:max-height .3s ease, opacity .3s ease;">
+          <div style="border-top:1px solid var(--border);padding-top:1rem;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+              <div>
+                <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                              display:block;margin-bottom:.4rem;">{{ form.potencia_pico_paneles_kwp.label.text }}</label>
+                {{ form.potencia_pico_paneles_kwp() }}
+              </div>
+              <div>
+                <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                              display:block;margin-bottom:.4rem;">{{ form.numero_paneles.label.text }}</label>
+                {{ form.numero_paneles() }}
+              </div>
+              <div>
+                <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                              display:block;margin-bottom:.4rem;">{{ form.fecha_instalacion_paneles.label.text }}</label>
+                {{ form.fecha_instalacion_paneles(type='date') }}
+              </div>
+              <div>
+                <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                              display:block;margin-bottom:.4rem;">{{ form.orientacion_paneles.label.text }}</label>
+                {{ form.orientacion_paneles() }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:.75rem;">
+      {{ form.enviar(style="flex:1;") }}
+      <a href="{{ url_for('comunidades.detalle', safe_oid=comunidad_safe_oid) }}"
+         role="button" class="secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+  const chk = document.getElementById('tiene_paneles');
+  const pnl = document.getElementById('panel-fields');
+  const lbl = document.getElementById('panel-label');
+
+  function toggle(animate) {
+    if (chk.checked) {
+      lbl.textContent = 'Sí';
+      lbl.style.color = 'var(--green)';
+      pnl.style.maxHeight = pnl.scrollHeight + 'px';
+      pnl.style.opacity = '1';
+    } else {
+      lbl.textContent = 'No';
+      lbl.style.color = 'var(--text-muted)';
+      pnl.style.maxHeight = '0';
+      pnl.style.opacity = '0';
+    }
+  }
+
+  chk.addEventListener('change', function() { toggle(true); });
+  toggle(false);
+</script>
+{% endblock %}

@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import battery, edit, trash, zap %}
+{% block titulo %}Batería — {{ com.nombre }}{% endblock %}
+{% block contenido %}
+
+<nav aria-label="breadcrumb"><ul>
+  <li><a href="{{ url_for('comunidades.lista') }}">Comunidades</a></li>
+  <li><a href="{{ url_for('comunidades.detalle', safe_oid=comunidad_safe_oid) }}">{{ com.nombre }}</a></li>
+  <li>Batería</li>
+</ul></nav>
+
+<div class="section-header" style="margin-bottom:1.5rem;">
+  <div>
+    <h2 style="margin:0 0 .2rem;display:inline-flex;align-items:center;gap:.5rem;">{{ battery(20) }} Batería comunitaria</h2>
+    <p style="margin:0;color:var(--text-muted);font-size:.9rem;">{{ com.nombre }}</p>
+  </div>
+  {% if bateria %}
+  <div style="display:flex;gap:.5rem;">
+    <a href="{{ url_for('baterias.editar', safe_oid=safe_oid) }}" role="button" class="secondary"
+       style="font-size:.88rem;display:inline-flex;align-items:center;gap:.35rem;">{{ edit(14) }} Editar</a>
+    <form method="POST" action="{{ url_for('baterias.eliminar', safe_oid=safe_oid) }}"
+          data-ajax-action="{{ url_for('baterias.eliminar', safe_oid=safe_oid) }}"
+          onsubmit="return confirm('¿Eliminar la batería de esta comunidad?')">
+      {{ csrf_token_hidden() }}
+      <button type="submit" class="btn-danger" style="font-size:.88rem;display:inline-flex;align-items:center;gap:.35rem;">{{ trash(14) }} Eliminar</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+{% if bateria %}
+
+{# KPIs de salud #}
+{% set pct = [(bateria.capacidad_util_actual_kwh / bateria.capacidad_nominal_kwh * 100)|round|int, 100]|min %}
+<div class="kpi-grid" style="margin-bottom:2rem;">
+  <div class="kpi-card">
+    <div class="kpi-label">Capacidad nominal</div>
+    <div class="kpi-value">{{ bateria.capacidad_nominal_kwh }} <span style="font-size:1rem;font-weight:500;">kWh</span></div>
+    <div class="kpi-icon">{{ zap(22) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Capacidad útil actual</div>
+    <div class="kpi-value">{{ bateria.capacidad_util_actual_kwh }} <span style="font-size:1rem;font-weight:500;">kWh</span></div>
+    <div class="kpi-icon">{{ battery(22) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Salud de batería</div>
+    <div class="kpi-value" style="color:{% if pct > 70 %}var(--teal){% elif pct > 40 %}var(--amber){% else %}var(--red){% endif %};">
+      {{ pct }}%
+    </div>
+    <div class="kpi-icon">{{ battery(22) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Ciclos acumulados</div>
+    <div class="kpi-value">{{ bateria.ciclos_acumulados }}</div>
+    <div class="kpi-icon">{{ zap(22) }}</div>
+  </div>
+</div>
+
+<div class="grid-2" style="align-items:start;gap:1.5rem;">
+
+  {# Datos técnicos #}
+  <div style="background:var(--surface);border:1px solid var(--border);
+              border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);overflow:hidden;">
+    <div style="padding:1.2rem 1.4rem;border-bottom:1px solid var(--border);
+                background:var(--surface-2,#f8fafc);">
+      <h3 style="margin:0;font-size:1rem;">Datos técnicos</h3>
+    </div>
+    <div style="padding:1.4rem;">
+      <div style="display:flex;flex-direction:column;gap:.6rem;">
+        {% for label, val in [
+            ('Fabricante',      bateria.fabricante or '—'),
+            ('Modelo',          bateria.modelo or '—'),
+            ('Instalada el',    bateria.fecha_instalacion),
+            ('Degradación',     bateria.porcentaje_degradacion|string + '%')
+        ] %}
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    padding:.55rem 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:.88rem;color:var(--text-muted);">{{ label }}</span>
+          <code style="font-size:.88rem;">{{ val }}</code>
+        </div>
+        {% endfor %}
+      </div>
+
+      {# Barra de salud #}
+      <div style="margin-top:1.3rem;">
+        <div style="display:flex;justify-content:space-between;font-size:.8rem;
+                    color:var(--text-muted);margin-bottom:.4rem;">
+          <span>Salud de la batería</span><span>{{ pct }}%</span>
+        </div>
+        <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:{{ pct }}%;border-radius:4px;transition:width .6s;
+                      background:{% if pct > 70 %}var(--teal){% elif pct > 40 %}var(--amber){% else %}var(--red){% endif %};"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.75rem;
+                    color:var(--text-muted);margin-top:.3rem;">
+          <span>Degradada</span><span>Óptima</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Estado operativo #}
+  <div style="background:var(--surface);border:1px solid var(--border);
+              border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);overflow:hidden;">
+    <div style="padding:1.2rem 1.4rem;border-bottom:1px solid var(--border);
+                background:var(--surface-2,#f8fafc);">
+      <h3 style="margin:0;font-size:1rem;">Estado operativo</h3>
+    </div>
+    <div style="padding:1.4rem;">
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.5rem;">
+        <span style="font-size:.9rem;color:var(--text-muted);">Estado actual:</span>
+        <span class="badge badge-bat-{{ bateria.estado }}" style="font-size:.85rem;">{{ bateria.estado }}</span>
+      </div>
+
+      <form method="POST" action="{{ url_for('baterias.cambiar_estado', safe_oid=safe_oid) }}"
+            data-ajax-action="{{ url_for('baterias.cambiar_estado', safe_oid=safe_oid) }}">
+        {{ csrf_token_hidden() }}
+        <div style="margin-bottom:1rem;">
+          <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                        display:block;margin-bottom:.4rem;">
+            {{ form_estado.estado.label.text }}
+          </label>
+          {{ form_estado.estado() }}
+        </div>
+        {{ form_estado.enviar(style="width:100%;") }}
+      </form>
+    </div>
+  </div>
+
+</div>
+
+{% else %}
+<div class="empty-state" style="padding:5rem 1rem;">
+  <div class="empty-icon">{{ battery(36) }}</div>
+  <p>Esta comunidad no tiene batería registrada.</p>
+  <a href="{{ url_for('baterias.nueva', comunidad_safe_oid=comunidad_safe_oid) }}"
+     role="button" style="margin-top:.75rem;">+ Añadir batería</a>
+</div>
+{% endif %}
+
+{% endblock %}

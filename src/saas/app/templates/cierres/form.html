@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import bar_chart, zap %}
+{% block titulo %}Nuevo cierre mensual{% endblock %}
+{% block contenido %}
+
+<nav aria-label="breadcrumb"><ul>
+  <li><a href="{{ url_for('viviendas.detalle', safe_oid=vivienda_safe_oid) }}">{{ viv.identificador }}</a></li>
+  <li><a href="{{ url_for('cierres.lista', vivienda_safe_oid=vivienda_safe_oid) }}">Cierres</a></li>
+  <li>Nuevo cierre</li>
+</ul></nav>
+
+<div style="max-width:700px;">
+  <div style="margin-bottom:1.8rem;">
+    <h2 style="margin:0 0 .2rem;display:inline-flex;align-items:center;gap:.5rem;">{{ bar_chart(20) }} Nuevo cierre mensual</h2>
+    <p style="margin:0;color:var(--text-muted);font-size:.9rem;">{{ viv.identificador }}</p>
+  </div>
+
+  <form method="POST">
+    {{ form.hidden_tag() }}
+
+    {# Mes #}
+    <div style="background:var(--surface);border:1px solid var(--border);
+                border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);
+                padding:1.4rem;margin-bottom:1rem;">
+      <div style="max-width:220px;">
+        <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                      display:block;margin-bottom:.4rem;">{{ form.mes.label.text }}</label>
+        {{ form.mes(placeholder='2024-01', **({'aria-invalid':'true'} if form.mes.errors else {})) }}
+        {% for e in form.mes.errors %}<small class="form-error">{{ e }}</small>{% endfor %}
+      </div>
+    </div>
+
+    {# Energía #}
+    <div style="background:var(--surface);border:1px solid var(--border);
+                border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);
+                overflow:hidden;margin-bottom:1rem;">
+      <div style="padding:1rem 1.3rem;border-bottom:1px solid var(--border);
+                  background:var(--surface-2,#f8fafc);
+                  display:flex;align-items:center;gap:.6rem;">
+        {{ zap(16) }}<h3 style="margin:0;font-size:.95rem;">Balance energético (kWh)</h3>
+      </div>
+      <div style="padding:1.4rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        {% for field in [form.consumo_total_kwh, form.autoconsumo_directo_kwh,
+                         form.energia_de_bateria_kwh, form.vertido_a_red_kwh] %}
+        <div>
+          <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                        display:block;margin-bottom:.4rem;">{{ field.label.text }}</label>
+          {{ field() }}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# Economía #}
+    <div style="background:var(--surface);border:1px solid var(--border);
+                border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);
+                overflow:hidden;margin-bottom:1rem;">
+      <div style="padding:1rem 1.3rem;border-bottom:1px solid var(--border);
+                  background:var(--surface-2,#f8fafc);
+                  display:flex;align-items:center;gap:.6rem;">
+        <h3 style="margin:0;font-size:.95rem;">Datos económicos (€)</h3>
+      </div>
+      <div style="padding:1.4rem;display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+        {% for field in [form.factura_escenario_base_eur, form.factura_escenario_real_eur, form.ahorro_eur] %}
+        <div>
+          <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                        display:block;margin-bottom:.4rem;">{{ field.label.text }}</label>
+          {{ field() }}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# Coeficientes #}
+    <div style="background:var(--surface);border:1px solid var(--border);
+                border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);
+                overflow:hidden;margin-bottom:1.5rem;">
+      <div style="padding:1rem 1.3rem;border-bottom:1px solid var(--border);
+                  background:var(--surface-2,#f8fafc);">
+        <h3 style="margin:0;font-size:.95rem;">Coeficientes y porcentajes</h3>
+      </div>
+      <div style="padding:1.4rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                        display:block;margin-bottom:.4rem;">{{ form.porcentaje_ahorro_global.label.text }}</label>
+          {{ form.porcentaje_ahorro_global() }}
+        </div>
+        <div>
+          <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                        display:block;margin-bottom:.4rem;">{{ form.coeficiente_reparto_aplicado.label.text }}</label>
+          {{ form.coeficiente_reparto_aplicado() }}
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:.75rem;">
+      {{ form.enviar(style="flex:1;") }}
+      <a href="{{ url_for('cierres.lista', vivienda_safe_oid=vivienda_safe_oid) }}"
+         role="button" class="secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

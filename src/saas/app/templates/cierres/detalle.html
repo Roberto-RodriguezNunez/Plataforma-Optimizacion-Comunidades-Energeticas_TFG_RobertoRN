@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import bar_chart, trash, trending_up, check, zap %}
+{% block titulo %}Cierre {{ cierre.mes }}{% endblock %}
+{% block contenido %}
+
+<nav aria-label="breadcrumb"><ul>
+  <li><a href="{{ url_for('viviendas.detalle', safe_oid=vivienda_safe_oid) }}">{{ viv.identificador }}</a></li>
+  <li><a href="{{ url_for('cierres.lista', vivienda_safe_oid=vivienda_safe_oid) }}">Cierres</a></li>
+  <li>{{ cierre.mes }}</li>
+</ul></nav>
+
+<div class="section-header" style="margin-bottom:1.5rem;">
+  <div>
+    <h2 style="margin:0 0 .2rem;display:inline-flex;align-items:center;gap:.5rem;">{{ bar_chart(20) }} Cierre {{ cierre.mes }}</h2>
+    <p style="margin:0;color:var(--text-muted);font-size:.9rem;">{{ viv.identificador }}</p>
+  </div>
+  {% if es_admin %}
+  <form method="POST" action="{{ url_for('cierres.eliminar', safe_oid=safe_oid) }}"
+        data-ajax-action="{{ url_for('cierres.eliminar', safe_oid=safe_oid) }}"
+        onsubmit="return confirm('¿Eliminar cierre {{ cierre.mes }}?')">
+    {{ csrf_token_hidden() }}
+    <button type="submit" class="btn-danger" style="font-size:.88rem;display:inline-flex;align-items:center;gap:.35rem;">{{ trash(14) }} Eliminar</button>
+  </form>
+  {% endif %}
+</div>
+
+{# KPIs de ahorro #}
+<div class="kpi-grid" style="margin-bottom:2rem;">
+  <div class="kpi-card">
+    <div class="kpi-label">Ahorro este mes</div>
+    <div class="kpi-value" style="color:var(--teal);">+{{ "%.2f"|format(cierre.ahorro_eur) }} <span style="font-size:1rem;font-weight:500;">€</span></div>
+    <div class="kpi-icon">{{ trending_up(22) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Factura base</div>
+    <div class="kpi-value" style="color:var(--red);">{{ "%.2f"|format(cierre.factura_escenario_base_eur) }} <span style="font-size:1rem;font-weight:500;">€</span></div>
+    <div class="kpi-icon">{{ bar_chart(22) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Factura real</div>
+    <div class="kpi-value">{{ "%.2f"|format(cierre.factura_escenario_real_eur) }} <span style="font-size:1rem;font-weight:500;">€</span></div>
+    <div class="kpi-icon">{{ check(22) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">% ahorro global</div>
+    <div class="kpi-value">{{ cierre.porcentaje_ahorro_global }}<span style="font-size:1rem;font-weight:500;">%</span></div>
+    <div class="kpi-icon">{{ trending_up(22) }}</div>
+  </div>
+</div>
+
+<div class="grid-2" style="align-items:start;gap:1.5rem;margin-bottom:1.5rem;">
+
+  {# Energía #}
+  <div style="background:var(--surface);border:1px solid var(--border);
+              border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);overflow:hidden;">
+    <div style="padding:1.1rem 1.3rem;border-bottom:1px solid var(--border);
+                background:var(--surface-2,#f8fafc);">
+      <h3 style="margin:0;font-size:1rem;display:inline-flex;align-items:center;gap:.4rem;">{{ zap(16) }} Balance energético</h3>
+    </div>
+    <div style="padding:1.3rem;">
+      <div style="display:flex;flex-direction:column;gap:.5rem;">
+        {% for label, val, unit in [
+            ('Consumo total',       cierre.consumo_total_kwh,          'kWh'),
+            ('Autoconsumo directo', cierre.autoconsumo_directo_kwh,    'kWh'),
+            ('De batería',          cierre.energia_de_bateria_kwh,     'kWh'),
+            ('De red',              cierre.energia_de_red_kwh,         'kWh'),
+            ('Vertido a red',       cierre.vertido_a_red_kwh,          'kWh')
+        ] %}
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    padding:.5rem 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:.88rem;color:var(--text-muted);">{{ label }}</span>
+          <code>{{ val }} {{ unit }}</code>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {# Economía #}
+  <div style="background:var(--surface);border:1px solid var(--border);
+              border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);overflow:hidden;">
+    <div style="padding:1.1rem 1.3rem;border-bottom:1px solid var(--border);
+                background:var(--surface-2,#f8fafc);">
+      <h3 style="margin:0;font-size:1rem;display:inline-flex;align-items:center;gap:.4rem;">{{ trending_up(16) }} Desglose económico</h3>
+    </div>
+    <div style="padding:1.3rem;">
+      <div style="display:flex;flex-direction:column;gap:.5rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    padding:.5rem 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:.88rem;color:var(--text-muted);">Factura sin comunidad</span>
+          <code style="color:var(--red);">{{ "%.2f"|format(cierre.factura_escenario_base_eur) }} €</code>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    padding:.5rem 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:.88rem;color:var(--text-muted);">Factura con comunidad</span>
+          <code>{{ "%.2f"|format(cierre.factura_escenario_real_eur) }} €</code>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    padding:.6rem 0;border-bottom:1px solid var(--border);
+                    background:var(--teal-muted,#e6f7f2);margin:0 -.2rem;padding:.6rem .2rem;border-radius:6px;">
+          <span style="font-size:.95rem;font-weight:700;color:var(--teal);">Ahorro</span>
+          <code style="color:var(--teal);font-size:1rem;font-weight:700;">+{{ "%.2f"|format(cierre.ahorro_eur) }} €</code>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    padding:.5rem 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:.88rem;color:var(--text-muted);">% sobre ahorro global</span>
+          <code>{{ cierre.porcentaje_ahorro_global }}%</code>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    padding:.5rem 0;">
+          <span style="font-size:.88rem;color:var(--text-muted);">Coeficiente aplicado</span>
+          <code>{{ cierre.coeficiente_reparto_aplicado }}</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{# Gráfica de mezcla energética #}
+<div style="background:var(--surface);border:1px solid var(--border);
+            border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:1.4rem;">
+  <h3 style="margin:0 0 1rem;font-size:1rem;">Distribución de energía</h3>
+  <div style="max-width:320px;margin:0 auto;">
+    <canvas data-chart-type="doughnut-mix" data-chart='{{ chart_energia | safe }}'
+            style="max-height:280px;"></canvas>
+  </div>
+</div>
+
+{% endblock %}

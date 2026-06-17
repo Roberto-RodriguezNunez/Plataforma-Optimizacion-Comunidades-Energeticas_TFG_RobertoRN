@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block contenido %}
+
+<nav aria-label="breadcrumb"><ul>
+  <li><a href="{{ url_for('comunidades.lista') }}">Comunidades</a></li>
+  {% if com %}<li><a href="{{ url_for('comunidades.detalle', safe_oid=safe_oid) }}">{{ com.nombre }}</a></li>{% endif %}
+  <li>{{ titulo }}</li>
+</ul></nav>
+
+<div style="max-width:640px;">
+  <div style="margin-bottom:1.8rem;">
+    <h2 style="margin:0 0 .2rem;">{{ titulo }}</h2>
+    <p style="margin:0;color:var(--text-muted);font-size:.9rem;">
+      {% if com %}Modifica los datos de la comunidad{% else %}Registra una nueva comunidad energética{% endif %}
+    </p>
+  </div>
+
+  <div style="background:var(--surface);border:1px solid var(--border);
+              border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:2rem;">
+    <form method="POST">
+      {{ form.hidden_tag() }}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+        <div style="grid-column:1/-1;">
+          <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                        display:block;margin-bottom:.4rem;">{{ form.nombre.label.text }}</label>
+          {{ form.nombre(placeholder='Ej: Residencial Vigo Centro',
+                         **({'aria-invalid':'true'} if form.nombre.errors else {})) }}
+          {% for e in form.nombre.errors %}<small class="form-error">{{ e }}</small>{% endfor %}
+        </div>
+
+        <div style="grid-column:1/-1;">
+          <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                        display:block;margin-bottom:.4rem;">{{ form.ubicacion.label.text }}</label>
+          {{ form.ubicacion(placeholder='Ciudad o municipio',
+                            **({'aria-invalid':'true'} if form.ubicacion.errors else {})) }}
+          {% for e in form.ubicacion.errors %}<small class="form-error">{{ e }}</small>{% endfor %}
+        </div>
+
+        <div>
+          <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                        display:block;margin-bottom:.4rem;">{{ form.fecha_constitucion.label.text }}</label>
+          {{ form.fecha_constitucion(type='date',
+                                     **({'aria-invalid':'true'} if form.fecha_constitucion.errors else {})) }}
+          {% for e in form.fecha_constitucion.errors %}<small class="form-error">{{ e }}</small>{% endfor %}
+        </div>
+
+        <div>
+          <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                        display:block;margin-bottom:.4rem;">{{ form.estado.label.text }}</label>
+          {{ form.estado() }}
+        </div>
+
+        <div style="grid-column:1/-1;">
+          <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                        display:block;margin-bottom:.4rem;">{{ form.descripcion.label.text }}
+            <span style="font-weight:400;color:var(--text-muted);"> (opcional)</span>
+          </label>
+          {{ form.descripcion(rows=3, placeholder='Breve descripción de la comunidad…') }}
+        </div>
+      </div>
+
+      <div style="display:flex;gap:.75rem;margin-top:1.5rem;">
+        {{ form.enviar(style="flex:1;") }}
+        <a href="{{ url_for('comunidades.lista') }}" role="button" class="secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block contenido %}
+
+<nav aria-label="breadcrumb"><ul>
+  <li><a href="{{ url_for('viviendas.detalle', safe_oid=vivienda_safe_oid) }}">{{ viv.identificador }}</a></li>
+  <li><a href="{{ url_for('accesos.lista', vivienda_safe_oid=vivienda_safe_oid) }}">Accesos</a></li>
+  <li>{{ titulo }}</li>
+</ul></nav>
+
+<div style="max-width:520px;">
+  <div style="margin-bottom:1.8rem;">
+    <h2 style="margin:0 0 .2rem;">{{ titulo }}</h2>
+    <p style="margin:0;color:var(--text-muted);font-size:.9rem;">{{ viv.identificador }}</p>
+  </div>
+
+  <div style="background:var(--surface);border:1px solid var(--border);
+              border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:2rem;">
+    <form method="POST">
+      {{ form.hidden_tag() }}
+
+      <div style="margin-bottom:1rem;">
+        <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                      display:block;margin-bottom:.4rem;">{{ form.usuario_safe_oid.label.text }}</label>
+        {{ form.usuario_safe_oid() }}
+      </div>
+
+      <div style="margin-bottom:1rem;">
+        <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                      display:block;margin-bottom:.4rem;">{{ form.rol_en_vivienda.label.text }}</label>
+        {{ form.rol_en_vivienda() }}
+      </div>
+
+      <div style="margin-bottom:1.5rem;">
+        <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                      display:block;margin-bottom:.4rem;">{{ form.fecha_incorporacion.label.text }}</label>
+        {{ form.fecha_incorporacion(type='date') }}
+      </div>
+
+      <div style="display:flex;gap:.75rem;">
+        {{ form.enviar(style="flex:1;") }}
+        <a href="{{ url_for('accesos.lista', vivienda_safe_oid=vivienda_safe_oid) }}"
+           role="button" class="secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

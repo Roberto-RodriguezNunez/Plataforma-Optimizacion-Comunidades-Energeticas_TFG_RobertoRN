@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import search, x_icon, trash, users, edit %}
+{% block titulo %}Usuarios{% endblock %}
+{% block contenido %}
+
+<div class="section-header" style="margin-bottom:1.5rem;">
+  <div>
+    <h2 style="margin:0 0 .2rem;">Usuarios</h2>
+    <p style="margin:0;color:var(--text-muted);font-size:.9rem;">
+      {{ usuarios|length }} usuario{{ 's' if usuarios|length != 1 }}
+      {% if q %} · Filtrando por «{{ q }}»{% endif %}
+    </p>
+  </div>
+</div>
+
+{# Buscador #}
+<form method="GET" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.5rem;">
+  <div style="flex:1;min-width:180px;position:relative;">
+    <span style="position:absolute;left:.9rem;top:50%;transform:translateY(-50%);
+                 color:var(--text-muted);font-size:.95rem;pointer-events:none;">{{ search(15) }}</span>
+    <input name="q" type="search" placeholder="Nombre o email…" value="{{ q }}"
+           style="padding-left:2.5rem;width:100%;">
+  </div>
+  <button type="submit" class="secondary" style="white-space:nowrap;">Buscar</button>
+  {% if q %}
+  <a href="{{ url_for('usuarios.lista') }}" role="button" class="secondary outline"
+     style="white-space:nowrap;display:inline-flex;align-items:center;gap:.3rem;">{{ x_icon(13) }} Limpiar</a>
+  {% endif %}
+</form>
+
+{% if usuarios %}
+<div style="background:var(--surface);border:1px solid var(--border);
+            border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);overflow:hidden;">
+  <table style="margin:0;">
+    <thead>
+      <tr>
+        <th style="padding:1rem 1.2rem;">Usuario</th>
+        <th style="padding:1rem 1.2rem;">Email</th>
+        <th style="padding:1rem 1.2rem;">Rol</th>
+        <th style="padding:1rem 1.2rem;">Registrado</th>
+        <th style="padding:1rem 1.2rem;width:80px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in usuarios %}
+      <tr data-removable style="transition:background .15s;">
+        <td style="padding:.9rem 1.2rem;">
+          <div style="display:flex;align-items:center;gap:.85rem;">
+            {# Avatar con inicial #}
+            <div style="width:38px;height:38px;border-radius:50%;flex-shrink:0;
+                        background:linear-gradient(135deg,var(--navy),#2A5298);
+                        display:flex;align-items:center;justify-content:center;
+                        font-size:.95rem;font-weight:700;color:#fff;">
+              {{ u.nombre[0].upper() }}
+            </div>
+            <div>
+              <a href="{{ url_for('usuarios.detalle', safe_oid=oid_to_safe(u.__oid__)) }}"
+                 style="font-weight:600;font-size:.95rem;">{{ u.nombre }}</a>
+              {% if u.__oid__ == current_user.__oid__ %}
+              <span style="font-size:.72rem;color:var(--teal);font-weight:700;margin-left:.4rem;">Tú</span>
+              {% endif %}
+            </div>
+          </div>
+        </td>
+        <td style="padding:.9rem 1.2rem;font-size:.9rem;color:var(--text-muted);">
+          {{ u.email }}
+        </td>
+        <td style="padding:.9rem 1.2rem;">
+          <span class="badge badge-rol-{{ u.rol_global }}">{{ u.rol_global }}</span>
+        </td>
+        <td style="padding:.9rem 1.2rem;">
+          <code style="font-size:.83rem;">{{ u.fecha_registro[:10] }}</code>
+        </td>
+        <td style="padding:.9rem 1.2rem;">
+          <div style="display:flex;align-items:center;gap:.4rem;justify-content:center;">
+            <a href="{{ url_for('usuarios.detalle', safe_oid=oid_to_safe(u.__oid__)) }}"
+               class="btn-icon-sm" title="Ver / editar">{{ edit(15) }}</a>
+            {% if u.__oid__ != current_user.__oid__ %}
+            <form method="POST"
+                  action="{{ url_for('usuarios.eliminar', safe_oid=oid_to_safe(u.__oid__)) }}"
+                  data-ajax-action="{{ url_for('usuarios.eliminar', safe_oid=oid_to_safe(u.__oid__)) }}"
+                  style="display:inline;"
+                  onsubmit="return confirm('¿Eliminar a {{ u.nombre }}? Se perderán todos sus accesos.')">
+              {{ csrf_token_hidden() }}
+              <button type="submit" class="btn-danger-sm" title="Eliminar usuario">{{ trash(12) }}</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state" style="padding:5rem 1rem;">
+  <div class="empty-icon">{{ users(36) }}</div>
+  {% if q %}
+  <p>No se encontraron usuarios para «{{ q }}».</p>
+  <a href="{{ url_for('usuarios.lista') }}" class="secondary" role="button"
+     style="font-size:.88rem;margin-top:.5rem;">Ver todos</a>
+  {% else %}
+  <p>No hay usuarios registrados todavía.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

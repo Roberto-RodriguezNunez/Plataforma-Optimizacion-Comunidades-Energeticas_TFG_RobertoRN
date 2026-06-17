@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import home, sun, edit, users, trash, bar_chart, zap, trending_up %}
+{% block titulo %}{{ viv.identificador }}{% endblock %}
+{% block contenido %}
+
+<nav aria-label="breadcrumb"><ul>
+  {% if current_user.es_superadmin %}
+  <li><a href="{{ url_for('comunidades.lista') }}">Comunidades</a></li>
+  {% endif %}
+  <li><a href="{{ url_for('comunidades.detalle', safe_oid=com_safe_oid) }}">{{ com.nombre if com else 'Comunidad' }}</a></li>
+  <li>{{ viv.identificador }}</li>
+</ul></nav>
+
+{# Cabecera #}
+<div class="section-header" style="margin-bottom:1.5rem;">
+  <div>
+    <h2 style="margin:0 0 .3rem;display:inline-flex;align-items:center;gap:.5rem;">{{ home(20) }} {{ viv.identificador }}</h2>
+    <p style="margin:0;color:var(--text-muted);">
+      {{ viv.direccion_completa or 'Sin dirección' }}
+      {% if viv.cups %} · CUPS: <code>{{ viv.cups }}</code>{% endif %}
+    </p>
+    <p style="margin:.3rem 0 0;font-size:.88rem;color:var(--text-muted);">
+      Potencia: <code>{{ viv.potencia_contratada_kw }} kW</code>
+      &nbsp;·&nbsp; Coef. reparto: <code>{{ "%.3f"|format(viv.coeficiente_reparto) }}</code>
+      {% if viv.tiene_paneles %}
+        &nbsp;·&nbsp; {{ sun(14) }} {{ viv.numero_paneles }} paneles ({{ viv.potencia_pico_paneles_kwp }} kWp, {{ viv.orientacion_paneles }})
+      {% endif %}
+    </p>
+  </div>
+  {% if es_admin %}
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+    <a href="{{ url_for('viviendas.editar', safe_oid=safe_oid) }}" role="button" class="secondary" style="display:inline-flex;align-items:center;gap:.35rem;">{{ edit(14) }} Editar</a>
+    <a href="{{ url_for('accesos.lista', vivienda_safe_oid=safe_oid) }}" role="button" class="secondary" style="display:inline-flex;align-items:center;gap:.35rem;">{{ users(14) }} Accesos</a>
+    <a href="{{ url_for('cierres.nuevo', vivienda_safe_oid=safe_oid) }}" role="button" class="secondary">+ Nuevo cierre</a>
+    <form method="POST" action="{{ url_for('viviendas.eliminar', safe_oid=safe_oid) }}"
+          data-ajax-action="{{ url_for('viviendas.eliminar', safe_oid=safe_oid) }}"
+          onsubmit="return confirm('¿Eliminar vivienda y todos sus datos?')">
+      {{ csrf_token_hidden() }}
+      <button type="submit" class="btn-danger">{{ trash(14) }}</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+{# KPIs de ahorro — panel unificado estilo TR #}
+<div style="display:grid;grid-template-columns:repeat(4,1fr);
+            background:#fff;border:1px solid #e5e5e5;border-radius:12px;
+            overflow:hidden;margin-bottom:2rem;">
+  <div style="padding:1.4rem 1.6rem;border-right:1px solid #e5e5e5;">
+    <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:.55rem;">Ahorro acumulado</div>
+    <div style="font-size:1.75rem;font-weight:900;letter-spacing:-.04em;color:#0a0a0a;font-variant-numeric:tabular-nums;line-height:1;">{{ "%.2f"|format(ahorro_total) }} €</div>
+  </div>
+  <div style="padding:1.4rem 1.6rem;border-right:1px solid #e5e5e5;">
+    <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:.55rem;">Media mensual</div>
+    <div style="font-size:1.75rem;font-weight:900;letter-spacing:-.04em;color:#0a0a0a;font-variant-numeric:tabular-nums;line-height:1;">{{ "%.2f"|format(ahorro_medio) }} €</div>
+  </div>
+  <div style="padding:1.4rem 1.6rem;border-right:1px solid #e5e5e5;">
+    <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:.55rem;">Ahorro sobre factura</div>
+    <div style="font-size:1.75rem;font-weight:900;letter-spacing:-.04em;color:#0a0a0a;font-variant-numeric:tabular-nums;line-height:1;">{{ pct_ahorro }} %</div>
+  </div>
+  <div style="padding:1.4rem 1.6rem;">
+    <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:.55rem;">Cierres registrados</div>
+    <div style="font-size:1.75rem;font-weight:900;letter-spacing:-.04em;color:#0a0a0a;font-variant-numeric:tabular-nums;line-height:1;">{{ cierres|length }}</div>
+  </div>
+</div>
+
+{% if cierres %}
+{# Fila superior: Ahorro mensual + Comparativa factura #}
+<div class="grid-2" style="margin-bottom:2rem;">
+  <div>
+    <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:.9rem;">Ahorro mensual (€)</div>
+    <canvas data-chart-type="line-ahorro"
+            data-chart='{{ chart_ahorro }}'
+            style="max-height:200px;"></canvas>
+  </div>
+  <div>
+    <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:.9rem;">Sin comunidad vs con comunidad (€)</div>
+    <canvas data-chart-type="bar-compare"
+            data-chart='{{ chart_compare }}'
+            style="max-height:200px;"></canvas>
+  </div>
+</div>
+
+{# Fila inferior: Mix energético + Comparativa comunidad #}
+<div class="grid-2" style="margin-bottom:2rem;align-items:start;">
+  {% if chart_mix %}
+  <div>
+    <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:.9rem;">Origen de la energía — último mes</div>
+    <canvas data-chart-type="doughnut-mix"
+            data-chart='{{ chart_mix }}'
+            style="max-height:260px;"></canvas>
+  </div>
+  {% endif %}
+  {% if chart_community %}
+  <div>
+    <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:.9rem;">Ahorro medio mensual en la comunidad (€)</div>
+    <div class="chart-community-wrap" style="position:relative;height:260px;">
+      <canvas data-chart-type="bar-community"
+              data-chart='{{ chart_community }}'></canvas>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{# Tabla de cierres recientes #}
+<div class="section-header">
+  <h3 style="margin:0;display:inline-flex;align-items:center;gap:.4rem;">{{ bar_chart(16) }} Cierres recientes</h3>
+  <a href="{{ url_for('cierres.lista', vivienda_safe_oid=safe_oid) }}" role="button" class="secondary" style="font-size:.85rem;">Ver todos</a>
+</div>
+
+{% if cierres %}
+<table style="margin-top:1rem;">
+  <thead>
+    <tr>
+      <th>Mes</th>
+      <th>Consumo kWh</th>
+      <th>Factura sin comunidad</th>
+      <th>Factura real</th>
+      <th>Ahorro</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in cierres %}
+    <tr>
+      <td><code>{{ c.mes }}</code></td>
+      <td><code>{{ c.consumo_total_kwh }}</code></td>
+      <td style="color:var(--red);"><code>{{ "%.2f"|format(c.factura_escenario_base_eur) }} €</code></td>
+      <td><code>{{ "%.2f"|format(c.factura_escenario_real_eur) }} €</code></td>
+      <td style="color:var(--teal);font-weight:600;"><code>{{ "%.2f"|format(c.ahorro_eur) }} €</code></td>
+      <td><a href="{{ url_for('cierres.detalle', safe_oid=oid_to_safe(c.__oid__)) }}">→</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">{{ bar_chart(36) }}</div>
+  <p>Sin cierres mensuales todavía.</p>
+</div>
+{% endif %}
+
+{% endblock %}

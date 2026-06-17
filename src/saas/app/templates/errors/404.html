@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import search, home %}
+{% block titulo %}Página no encontrada{% endblock %}
+{% block contenido %}
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+            min-height:60vh;text-align:center;padding:2rem 1rem;">
+
+  <div style="width:100px;height:100px;border-radius:50%;
+              background:linear-gradient(135deg,var(--navy-muted,#e8eef7),var(--teal-muted,#e6f7f2));
+              display:flex;align-items:center;justify-content:center;
+              margin-bottom:2rem;
+              box-shadow:0 8px 32px rgba(27,58,110,.1);">
+    {{ search(48) }}
+  </div>
+
+  <div style="font-size:5rem;font-weight:900;color:var(--navy);line-height:1;margin-bottom:.5rem;
+              background:linear-gradient(135deg,var(--navy),var(--teal));
+              -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">
+    404
+  </div>
+  <h2 style="margin:.5rem 0 1rem;font-size:1.4rem;font-weight:700;">Página no encontrada</h2>
+  <p style="color:var(--text-muted);max-width:400px;margin-bottom:2rem;line-height:1.6;">
+    La página que buscas no existe o ha sido eliminada.
+    Puede que la URL sea incorrecta o que el recurso ya no esté disponible.
+  </p>
+
+  <div style="display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center;">
+    <a href="{{ url_for('main.index') }}" role="button"
+       style="display:flex;align-items:center;gap:.4rem;">
+      {{ home(14) }} Ir al inicio
+    </a>
+    <button onclick="history.back()" class="secondary"
+            style="display:flex;align-items:center;gap:.4rem;cursor:pointer;">
+      ← Volver atrás
+    </button>
+  </div>
+
+</div>
+{% endblock %}

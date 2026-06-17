@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import home, sun, edit, users, trash, plus, map_pin, search %}
+{% block titulo %}Viviendas{% endblock %}
+{% block contenido %}
+
+<div style="margin-bottom:2rem;">
+  <div style="margin-bottom:1rem;">
+    <h2 style="margin:0 0 .25rem;font-size:1.5rem;font-weight:800;letter-spacing:-.04em;">Viviendas</h2>
+    <p style="color:var(--text-muted);margin:0;font-size:.92rem;">{{ total }} vivienda{{ 's' if total != 1 }} en {{ grupos|length }} comunidad{{ 'es' if grupos|length != 1 }}</p>
+  </div>
+  <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center;margin-bottom:1.5rem;">
+    <div style="flex:1;min-width:180px;position:relative;">
+      <span style="position:absolute;left:.9rem;top:50%;transform:translateY(-50%);
+                   color:var(--text-muted);pointer-events:none;">{{ search(15) }}</span>
+      <input id="viv-search" type="search" placeholder="Buscar vivienda…"
+             style="padding-left:2.5rem;width:100%;margin:0;" oninput="aplicarFiltros()">
+    </div>
+    <select id="fil-comunidad" style="min-width:200px;margin:0;" onchange="aplicarFiltros()">
+      <option value="">Todas las comunidades</option>
+      {% for g in grupos %}{% if g.com %}
+      <option value="{{ g.com.nombre }}">{{ g.com.nombre }}</option>
+      {% endif %}{% endfor %}
+    </select>
+    <select id="fil-paneles" style="min-width:180px;margin:0;" onchange="aplicarFiltros()">
+      <option value="">Todos los paneles</option>
+      <option value="con">Con paneles</option>
+      <option value="sin">Sin paneles</option>
+    </select>
+  </div>
+</div>
+
+{% if grupos %}
+<div style="display:flex;flex-direction:column;gap:1.5rem;">
+  {% for g in grupos %}
+  {% if g.com %}
+  {% set com_safe = oid_to_safe(g.com.__oid__) %}
+  <div data-grupo="{{ g.com.nombre }}">
+    {# Cabecera comunidad #}
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.6rem;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:.55rem;">
+        <a href="{{ url_for('comunidades.detalle', safe_oid=com_safe) }}"
+           style="font-size:.9rem;font-weight:700;color:#0a0a0a;letter-spacing:-.02em;">{{ g.com.nombre }}</a>
+        <span class="badge badge-{{ g.com.estado }}">{{ g.com.estado }}</span>
+        <span style="font-size:.78rem;color:#999;display:inline-flex;align-items:center;gap:.25rem;">
+          {{ map_pin(11) }} {{ g.com.ubicacion }}
+        </span>
+      </div>
+      <a href="{{ url_for('viviendas.nueva', comunidad_safe_oid=com_safe) }}"
+         role="button" class="secondary" style="font-size:.8rem;display:inline-flex;align-items:center;gap:.3rem;">
+        {{ plus(12) }} Nueva vivienda
+      </a>
+    </div>
+
+    {# Tabla viviendas #}
+    <div style="background:#fff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;">
+      <table style="margin:0;">
+        <thead>
+          <tr>
+            <th>Vivienda</th>
+            <th>Dirección</th>
+            <th style="text-align:center;">Coef.</th>
+            <th style="text-align:center;">Potencia</th>
+            <th style="text-align:center;">Paneles</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in g.viviendas %}
+          {% set v_safe = oid_to_safe(v.__oid__) %}
+          <tr data-com="{{ g.com.nombre }}" data-paneles="{{ 'con' if v.tiene_paneles else 'sin' }}">
+            <td>
+              <a href="{{ url_for('viviendas.detalle', safe_oid=v_safe) }}"
+                 style="font-weight:700;">{{ v.identificador }}</a>
+            </td>
+            <td style="color:var(--text-muted);font-size:.85rem;">{{ v.direccion_completa or '—' }}</td>
+            <td style="text-align:center;"><code>{{ "%.3f"|format(v.coeficiente_reparto) }}</code></td>
+            <td style="text-align:center;"><code>{{ v.potencia_contratada_kw }} kW</code></td>
+            <td style="text-align:center;">
+              {% if v.tiene_paneles %}
+                {{ sun(13) }}{% if v.numero_paneles %} <span style="font-size:.8rem;color:var(--text-muted);">{{ v.numero_paneles }}</span>{% endif %}
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              <div style="display:flex;align-items:center;gap:.3rem;justify-content:flex-end;">
+                <a href="{{ url_for('viviendas.editar', safe_oid=v_safe) }}"
+                   class="btn-icon-sm" title="Editar">{{ edit(15) }}</a>
+                <a href="{{ url_for('accesos.lista', vivienda_safe_oid=v_safe) }}"
+                   class="btn-icon-sm" title="Accesos">{{ users(15) }}</a>
+                <form method="POST"
+                      action="{{ url_for('viviendas.eliminar', safe_oid=v_safe) }}"
+                      data-ajax-action="{{ url_for('viviendas.eliminar', safe_oid=v_safe) }}"
+                      style="margin:0;"
+                      onsubmit="return confirm('¿Eliminar vivienda «{{ v.identificador }}» y sus datos?')">
+                  {{ csrf_token_hidden() }}
+                  <button type="submit" class="btn-danger-sm" title="Eliminar">{{ trash(12) }}</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="empty-state" style="padding:5rem 1rem;">
+  <div class="empty-icon">{{ home(36) }}</div>
+  <p>No hay viviendas registradas todavía.</p>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function aplicarFiltros() {
+  const q       = document.getElementById('viv-search').value.toLowerCase().trim();
+  const filCom  = document.getElementById('fil-comunidad').value;
+  const filPan  = document.getElementById('fil-paneles').value;
+
+  document.querySelectorAll('[data-grupo]').forEach(grupo => {
+    const comNombre = grupo.dataset.grupo;
+    // Si hay filtro de comunidad y no coincide, ocultar todo el grupo
+    if (filCom && comNombre !== filCom) {
+      grupo.style.display = 'none';
+      return;
+    }
+    let hayFilas = false;
+    grupo.querySelectorAll('tbody tr').forEach(tr => {
+      const texto   = tr.textContent.toLowerCase();
+      const paneles = tr.dataset.paneles;
+      const okTexto  = !q || texto.includes(q);
+      const okPanel  = !filPan || paneles === filPan;
+      const visible  = okTexto && okPanel;
+      tr.style.display = visible ? '' : 'none';
+      if (visible) hayFilas = true;
+    });
+    grupo.style.display = hayFilas ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

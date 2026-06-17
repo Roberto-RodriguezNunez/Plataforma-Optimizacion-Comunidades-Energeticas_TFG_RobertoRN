@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import warning, plus %}
+{% block titulo %}Nueva incidencia{% endblock %}
+{% block contenido %}
+
+<nav aria-label="breadcrumb"><ul>
+  <li><a href="{{ url_for('incidencias.lista') }}">Incidencias</a></li>
+  <li>Nueva incidencia</li>
+</ul></nav>
+
+<div style="max-width:640px;">
+  <div style="margin-bottom:1.75rem;">
+    <h2 style="margin:0 0 .3rem;display:inline-flex;align-items:center;gap:.5rem;">
+      {{ plus(20) }} Nueva incidencia
+    </h2>
+    <p style="margin:0;color:var(--text-muted);font-size:.9rem;">
+      Describe el problema o consulta y te responderemos lo antes posible.
+    </p>
+  </div>
+
+  <div style="background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:1.75rem;">
+    <form method="POST" action="{{ url_for('incidencias.nueva') }}">
+      {{ csrf_token_hidden() }}
+
+      {# Selección de vivienda — solo si hay más de una #}
+      {% if viviendas_opciones|length > 1 %}
+      <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.35rem;">
+        Vivienda
+      </label>
+      <select name="vivienda_safe_oid" required
+              style="width:100%;margin-bottom:1rem;">
+        <option value="">— Selecciona una vivienda —</option>
+        {% for val, label in viviendas_opciones %}
+        <option value="{{ val }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      {% elif preseleccionada %}
+      <input type="hidden" name="vivienda_safe_oid"
+             value="{{ oid_to_safe(preseleccionada.__oid__) }}">
+      <div style="margin-bottom:1rem;font-size:.85rem;color:var(--text-muted);">
+        Vivienda: <strong style="color:var(--text);">{{ preseleccionada.identificador }}</strong>
+      </div>
+      {% endif %}
+
+      {# Tipo #}
+      <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.35rem;">
+        {{ form.tipo.label.text }}
+      </label>
+      {{ form.tipo(style='width:100%;max-width:260px;margin-bottom:1rem;') }}
+      {% if form.tipo.errors %}
+        {% for e in form.tipo.errors %}<small style="color:#b91c1c;">{{ e }}</small>{% endfor %}
+      {% endif %}
+
+      {# Título #}
+      <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.35rem;">
+        {{ form.titulo.label.text }}
+      </label>
+      {{ form.titulo(placeholder='Resumen breve del problema o consulta',
+                     style='width:100%;margin-bottom:1rem;') }}
+      {% if form.titulo.errors %}
+        {% for e in form.titulo.errors %}<small style="color:#b91c1c;">{{ e }}</small>{% endfor %}
+      {% endif %}
+
+      {# Descripción #}
+      <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.35rem;">
+        {{ form.descripcion.label.text }}
+      </label>
+      {{ form.descripcion(rows=5, placeholder='Describe con detalle el problema o tu consulta…',
+                          style='width:100%;resize:vertical;margin-bottom:1.25rem;') }}
+      {% if form.descripcion.errors %}
+        {% for e in form.descripcion.errors %}<small style="color:#b91c1c;">{{ e }}</small>{% endfor %}
+      {% endif %}
+
+      <button type="submit" style="white-space:nowrap;">
+        {{ warning(15) }} Enviar incidencia
+      </button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

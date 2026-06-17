@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import bar_chart, calendar, x_icon, trash %}
+{% block titulo %}Cierres — {{ viv.identificador }}{% endblock %}
+{% block contenido %}
+
+<nav aria-label="breadcrumb"><ul>
+  <li><a href="{{ url_for('comunidades.detalle', safe_oid=comunidad_safe_oid) }}">{{ com.nombre if com else 'Comunidad' }}</a></li>
+  <li><a href="{{ url_for('viviendas.detalle', safe_oid=vivienda_safe_oid) }}">{{ viv.identificador }}</a></li>
+  <li>Cierres mensuales</li>
+</ul></nav>
+
+<div class="section-header" style="margin-bottom:1.5rem;">
+  <div>
+    <h2 style="margin:0 0 .2rem;display:inline-flex;align-items:center;gap:.5rem;">{{ bar_chart(20) }} Cierres mensuales</h2>
+    <p style="margin:0;color:var(--text-muted);font-size:.9rem;">
+      {{ viv.identificador }}
+      {% if cierres %} · {{ cierres|length }} registro{{ 's' if cierres|length != 1 }}{% endif %}
+    </p>
+  </div>
+  {% if es_admin %}
+  <a href="{{ url_for('cierres.nuevo', vivienda_safe_oid=vivienda_safe_oid) }}"
+     role="button" style="white-space:nowrap;">+ Nuevo cierre</a>
+  {% endif %}
+</div>
+
+{# Filtro por mes #}
+<form method="GET" style="display:flex;gap:.75rem;margin-bottom:1.5rem;">
+  <div style="flex:1;position:relative;">
+    <span style="position:absolute;left:.9rem;top:50%;transform:translateY(-50%);
+                 color:var(--text-muted);pointer-events:none;">{{ calendar(15) }}</span>
+    <input name="mes" type="text" placeholder="Filtrar por mes (ej: 2024-01)"
+           value="{{ mes_filtro }}" style="padding-left:2.5rem;width:100%;">
+  </div>
+  <button type="submit" class="secondary">Buscar</button>
+  {% if mes_filtro %}
+  <a href="{{ url_for('cierres.lista', vivienda_safe_oid=vivienda_safe_oid) }}"
+     role="button" class="secondary">{{ x_icon(13) }}</a>
+  {% endif %}
+</form>
+
+{% if cierres %}
+<div style="background:var(--surface);border:1px solid var(--border);
+            border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);overflow:hidden;">
+  <table style="margin:0;">
+    <thead>
+      <tr>
+        <th style="padding:1rem 1.2rem;">Mes</th>
+        <th style="padding:1rem 1.2rem;text-align:right;">Consumo</th>
+        <th style="padding:1rem 1.2rem;text-align:right;">Factura base</th>
+        <th style="padding:1rem 1.2rem;text-align:right;">Factura real</th>
+        <th style="padding:1rem 1.2rem;text-align:right;">Ahorro</th>
+        <th style="padding:1rem 1.2rem;width:80px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in cierres %}
+      <tr data-removable>
+        <td style="padding:.9rem 1.2rem;">
+          <a href="{{ url_for('cierres.detalle', safe_oid=oid_to_safe(c.__oid__)) }}"
+             style="font-weight:600;">{{ c.mes }}</a>
+        </td>
+        <td style="padding:.9rem 1.2rem;text-align:right;">
+          <code>{{ c.consumo_total_kwh }} kWh</code>
+        </td>
+        <td style="padding:.9rem 1.2rem;text-align:right;">
+          <code style="color:var(--red);">{{ "%.2f"|format(c.factura_escenario_base_eur) }} €</code>
+        </td>
+        <td style="padding:.9rem 1.2rem;text-align:right;">
+          <code>{{ "%.2f"|format(c.factura_escenario_real_eur) }} €</code>
+        </td>
+        <td style="padding:.9rem 1.2rem;text-align:right;">
+          <code style="color:var(--teal);font-weight:700;">+{{ "%.2f"|format(c.ahorro_eur) }} €</code>
+        </td>
+        <td style="padding:.9rem 1.2rem;text-align:center;">
+          <div style="display:flex;align-items:center;gap:.3rem;justify-content:center;">
+            <a href="{{ url_for('cierres.detalle', safe_oid=oid_to_safe(c.__oid__)) }}"
+               style="color:var(--text-muted);font-size:.9rem;" title="Ver detalle">→</a>
+            {% if es_admin %}
+            <form method="POST"
+                  action="{{ url_for('cierres.eliminar', safe_oid=oid_to_safe(c.__oid__)) }}"
+                  data-ajax-action="{{ url_for('cierres.eliminar', safe_oid=oid_to_safe(c.__oid__)) }}"
+                  style="display:inline;" onsubmit="return confirm('¿Eliminar cierre {{ c.mes }}?')">
+              {{ csrf_token_hidden() }}
+              <button type="submit" class="btn-danger-sm" title="Eliminar">{{ trash(12) }}</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state" style="padding:5rem 1rem;">
+  <div class="empty-icon">{{ bar_chart(36) }}</div>
+  {% if mes_filtro %}
+  <p>No hay cierres para el mes «{{ mes_filtro }}».</p>
+  <a href="{{ url_for('cierres.lista', vivienda_safe_oid=vivienda_safe_oid) }}"
+     role="button" class="secondary" style="font-size:.88rem;margin-top:.5rem;">Ver todos</a>
+  {% else %}
+  <p>Sin cierres mensuales registrados.</p>
+  {% if es_admin %}
+  <a href="{{ url_for('cierres.nuevo', vivienda_safe_oid=vivienda_safe_oid) }}"
+     role="button" style="margin-top:.75rem;">+ Nuevo cierre</a>
+  {% endif %}
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

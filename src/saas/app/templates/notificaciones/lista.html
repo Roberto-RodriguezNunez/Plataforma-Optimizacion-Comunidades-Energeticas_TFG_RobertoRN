@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import check, bar_chart, battery, warning, info, trash, bell, plus %}
+{% block titulo %}Notificaciones{% endblock %}
+{% block contenido %}
+
+<div class="section-header" style="margin-bottom:1.5rem;">
+  <div>
+    <h2 style="margin:0 0 .2rem;">Notificaciones</h2>
+    <p style="margin:0;color:var(--text-muted);font-size:.9rem;">
+      {% if notificaciones %}
+        {{ notificaciones|selectattr('leida', 'equalto', false)|list|length }} sin leer
+        de {{ notificaciones|length }} totales
+      {% else %}
+        Estás al día
+      {% endif %}
+    </p>
+  </div>
+  <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+  {% if current_user.es_superadmin %}
+  <a href="{{ url_for('notificaciones.nueva') }}" role="button"
+     style="font-size:.85rem;display:inline-flex;align-items:center;gap:.35rem;white-space:nowrap;">
+    {{ plus(14) }} Enviar notificación
+  </a>
+  {% endif %}
+  {% if notificaciones %}
+  <form method="POST" action="{{ url_for('notificaciones.marcar_todas_leidas') }}"
+        data-ajax-action="{{ url_for('notificaciones.marcar_todas_leidas') }}"
+        data-ajax-mark-all="1">
+    {{ csrf_token_hidden() }}
+    <button type="submit" class="secondary" role="button" style="font-size:.85rem;display:inline-flex;align-items:center;gap:.35rem;">
+      {{ check(14) }} Marcar todas como leídas
+    </button>
+  </form>
+  {% endif %}
+  </div>
+</div>
+
+{% if notificaciones %}
+<div style="display:flex;flex-direction:column;gap:.75rem;">
+  {% for n in notificaciones %}
+  <div class="notif-item {{ 'notif-no-leida' if not n.leida }}" data-removable
+       style="display:flex;align-items:flex-start;gap:1rem;padding:1.1rem 1.3rem;">
+
+    {# Icono tipo #}
+    <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;
+                display:flex;align-items:center;justify-content:center;
+                background:var(--{% if n.tipo == 'cierre_disponible' %}teal{% elif n.tipo == 'bateria_mantenimiento' %}amber{% elif n.tipo == 'incidencia' %}red{% else %}navy{% endif %}-muted, var(--blue-muted));">
+      {% if n.tipo == 'cierre_disponible' %}{{ bar_chart(18) }}{% elif n.tipo == 'bateria_mantenimiento' %}{{ battery(18) }}{% elif n.tipo == 'incidencia' %}{{ warning(18) }}{% else %}{{ info(18) }}{% endif %}
+    </div>
+
+    {# Contenido #}
+    <div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;margin-bottom:.3rem;">
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+          {% if not n.leida %}
+          <span data-notif-dot style="width:8px;height:8px;background:#0a0a0a;border-radius:50%;flex-shrink:0;"></span>
+          {% endif %}
+          <span style="font-size:.95rem;font-weight:{% if not n.leida %}700{% else %}600{% endif %};">
+            {{ n.titulo }}
+          </span>
+          <span class="badge badge-notif-{{ n.tipo }}" style="font-size:.7rem;">
+            {{ n.tipo.replace('_', ' ') }}
+          </span>
+        </div>
+        <span style="font-size:.78rem;color:var(--text-muted);white-space:nowrap;flex-shrink:0;">
+          {{ n.fecha[:16].replace('T', ' ') }}
+        </span>
+      </div>
+      <p style="font-size:.88rem;color:var(--text-soft);margin:0 0 .75rem;line-height:1.5;">
+        {{ n.mensaje }}
+      </p>
+      <div style="display:flex;gap:.5rem;">
+        {% if not n.leida %}
+        <form method="POST"
+              action="{{ url_for('notificaciones.marcar_leida', safe_oid=oid_to_safe(n.__oid__)) }}"
+              data-ajax-action="{{ url_for('notificaciones.marcar_leida', safe_oid=oid_to_safe(n.__oid__)) }}"
+              data-ajax-notif="decrement"
+              data-notif-btn-leer
+              style="display:inline;">
+          {{ csrf_token_hidden() }}
+          <button type="submit" class="secondary"
+                  style="font-size:.78rem;padding:.25rem .7rem;border-radius:6px;display:inline-flex;align-items:center;gap:.3rem;">
+            {{ check(13) }} Marcar leída
+          </button>
+        </form>
+        {% endif %}
+        <form method="POST"
+              action="{{ url_for('notificaciones.eliminar', safe_oid=oid_to_safe(n.__oid__)) }}"
+              data-ajax-action="{{ url_for('notificaciones.eliminar', safe_oid=oid_to_safe(n.__oid__)) }}"
+              style="display:inline;" onsubmit="return confirm('¿Eliminar notificación?')">
+          {{ csrf_token_hidden() }}
+          <button type="submit" class="btn-danger-sm" style="font-size:.78rem;padding:.25rem .5rem;">
+            {{ trash(13) }}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="padding:5rem 1rem;">
+  <div class="empty-icon">{{ bell(36) }}</div>
+  <p>No tienes notificaciones. ¡Estás al día!</p>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block contenido %}
+
+<nav aria-label="breadcrumb"><ul>
+  <li><a href="{{ url_for('comunidades.lista') }}">Comunidades</a></li>
+  <li><a href="{{ url_for('comunidades.detalle', safe_oid=comunidad_safe_oid) }}">{{ com.nombre }}</a></li>
+  <li>{{ titulo }}</li>
+</ul></nav>
+
+<div style="max-width:640px;">
+  <div style="margin-bottom:1.8rem;">
+    <h2 style="margin:0 0 .2rem;">{{ titulo }}</h2>
+    <p style="margin:0;color:var(--text-muted);font-size:.9rem;">{{ com.nombre }}</p>
+  </div>
+
+  <div style="background:var(--surface);border:1px solid var(--border);
+              border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:2rem;">
+    <form method="POST">
+      {{ form.hidden_tag() }}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+
+        <div>
+          <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                        display:block;margin-bottom:.4rem;">{{ form.fabricante.label.text }}</label>
+          {{ form.fabricante(placeholder='Ej: BYD, CATL…') }}
+        </div>
+        <div>
+          <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                        display:block;margin-bottom:.4rem;">{{ form.modelo.label.text }}</label>
+          {{ form.modelo(placeholder='Modelo específico') }}
+        </div>
+
+        <div>
+          <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                        display:block;margin-bottom:.4rem;">{{ form.capacidad_nominal_kwh.label.text }}</label>
+          {{ form.capacidad_nominal_kwh(**({'aria-invalid':'true'} if form.capacidad_nominal_kwh.errors else {})) }}
+          {% for e in form.capacidad_nominal_kwh.errors %}<small class="form-error">{{ e }}</small>{% endfor %}
+        </div>
+        <div>
+          <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                        display:block;margin-bottom:.4rem;">{{ form.capacidad_util_actual_kwh.label.text }}</label>
+          {{ form.capacidad_util_actual_kwh(**({'aria-invalid':'true'} if form.capacidad_util_actual_kwh.errors else {})) }}
+          {% for e in form.capacidad_util_actual_kwh.errors %}<small class="form-error">{{ e }}</small>{% endfor %}
+        </div>
+
+        <div>
+          <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                        display:block;margin-bottom:.4rem;">{{ form.ciclos_acumulados.label.text }}</label>
+          {{ form.ciclos_acumulados() }}
+        </div>
+        <div>
+          <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                        display:block;margin-bottom:.4rem;">{{ form.fecha_instalacion.label.text }}</label>
+          {{ form.fecha_instalacion(type='date') }}
+        </div>
+
+        <div style="grid-column:1/-1;">
+          <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
+                        display:block;margin-bottom:.4rem;">{{ form.estado.label.text }}</label>
+          {{ form.estado() }}
+        </div>
+
+      </div>
+
+      <div style="display:flex;gap:.75rem;">
+        {{ form.enviar(style="flex:1;") }}
+        <a href="{{ url_for('baterias.detalle_comunidad', comunidad_safe_oid=comunidad_safe_oid) }}"
+           role="button" class="secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

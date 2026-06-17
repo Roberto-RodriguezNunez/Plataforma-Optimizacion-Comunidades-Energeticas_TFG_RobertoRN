@@ -1,0 +1,278 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import home, sun, battery, edit, trash, users %}
+{% block titulo %}{{ com.nombre }}{% endblock %}
+{% block contenido %}
+
+{% if current_user.es_superadmin %}
+<nav aria-label="breadcrumb"><ul>
+  <li><a href="{{ url_for('comunidades.lista') }}">Comunidades</a></li>
+  <li>{{ com.nombre }}</li>
+</ul></nav>
+{% endif %}
+
+{# Cabecera #}
+<div class="section-header" style="margin-bottom:1.5rem;">
+  <div>
+    <h2 style="margin:0 0 .35rem;display:flex;align-items:center;gap:.75rem;">
+      {{ com.nombre }}
+      <span class="badge badge-{{ com.estado }}">{{ com.estado }}</span>
+    </h2>
+    <p style="margin:0;color:var(--text-muted);font-size:.92rem;">
+      {{ com.ubicacion }}
+      {% if com.descripcion %} · {{ com.descripcion }}{% endif %}
+    </p>
+    <p style="margin:.3rem 0 0;font-size:.82rem;color:var(--text-muted);">
+      Constituida el {{ com.fecha_constitucion }}
+    </p>
+  </div>
+  {% if es_admin %}
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+    <a href="{{ url_for('comunidades.editar', safe_oid=safe_oid) }}" role="button" class="secondary">Editar</a>
+    {% if current_user.es_superadmin %}
+    <form method="POST" action="{{ url_for('comunidades.eliminar', safe_oid=safe_oid) }}"
+          data-ajax-action="{{ url_for('comunidades.eliminar', safe_oid=safe_oid) }}"
+          onsubmit="return confirm('¿Eliminar comunidad y TODOS sus datos? Esta acción es irreversible.')">
+      {{ csrf_token_hidden() }}
+      <button type="submit" class="btn-danger">Eliminar</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+{# KPIs rápidos #}
+<div class="kpi-grid" style="margin-bottom:2rem;">
+  <div class="kpi-card">
+    <div class="kpi-label">Viviendas</div>
+    <div class="kpi-value">{{ viviendas|length }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Con paneles solares</div>
+    <div class="kpi-value">{{ viviendas|selectattr('tiene_paneles')|list|length }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Ahorro total comunidad</div>
+    <div class="kpi-value">{{ "%.2f"|format(ahorro_total_com) }} €</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Batería comunitaria</div>
+    <div class="kpi-value" style="font-size:1rem;padding-top:.3rem;">
+      {% if bateria %}
+        <span class="badge badge-bat-{{ bateria.estado }}">{{ bateria.estado }}</span>
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:.2rem;">{{ bateria.capacidad_nominal_kwh }} kWh</div>
+      {% else %}—{% endif %}
+    </div>
+  </div>
+</div>
+
+{# Gráficas de la comunidad #}
+{% if chart_comunidad %}
+<div style="background:var(--surface);border:1px solid var(--border);
+            border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);
+            padding:1.4rem;margin-bottom:2rem;">
+  <div style="font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:1.2rem;">
+    Evolución del ahorro comunitario
+  </div>
+  <div class="grid-2" style="gap:1.5rem;">
+    <div>
+      <div style="font-size:.73rem;font-weight:600;text-transform:uppercase;
+                  letter-spacing:.06em;color:var(--text-muted);margin-bottom:.7rem;">
+        Ahorro mensual agregado (€)
+      </div>
+      <canvas data-chart-type="line-ahorro"
+              data-chart='{{ chart_comunidad }}'
+              style="max-height:180px;"></canvas>
+    </div>
+    <div>
+      <div style="font-size:.73rem;font-weight:600;text-transform:uppercase;
+                  letter-spacing:.06em;color:var(--text-muted);margin-bottom:.7rem;">
+        Sin comunidad vs con comunidad (€)
+      </div>
+      <canvas data-chart-type="bar-compare"
+              data-chart='{{ chart_comunidad }}'
+              style="max-height:180px;"></canvas>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid-2" style="align-items:start;">
+
+  {# Viviendas #}
+  <div>
+    <div class="section-header" style="margin-bottom:1rem;">
+      <h3 style="margin:0;">Viviendas</h3>
+      {% if es_admin %}
+      <a href="{{ url_for('viviendas.nueva', comunidad_safe_oid=safe_oid) }}" role="button"
+         style="font-size:.85rem;padding:.4rem .9rem;">+ Nueva</a>
+      {% endif %}
+    </div>
+
+    {% if viviendas %}
+    <table>
+      <thead>
+        <tr><th>Vivienda</th><th>Coef.</th><th>Paneles</th>{% if es_admin %}<th></th>{% endif %}</tr>
+      </thead>
+      <tbody>
+        {% for v in viviendas %}
+        <tr>
+          <td>
+            <a href="{{ url_for('viviendas.detalle', safe_oid=oid_to_safe(v.__oid__)) }}"
+               style="font-weight:600;">{{ v.identificador }}</a>
+            {% if v.direccion_completa %}
+            <br><small style="color:var(--text-muted);font-size:.78rem;">{{ v.direccion_completa }}</small>
+            {% endif %}
+          </td>
+          <td><code>{{ "%.3f"|format(v.coeficiente_reparto) }}</code></td>
+          <td style="text-align:center;">
+            {% if v.tiene_paneles %}
+              {{ sun(14) }}{% if v.numero_paneles %} <span style="font-size:.8rem;color:var(--text-muted);">{{ v.numero_paneles }}</span>{% endif %}
+            {% else %}—{% endif %}
+          </td>
+          {% if es_admin %}
+          <td>
+            <div style="display:flex;align-items:center;gap:.4rem;">
+              <a href="{{ url_for('viviendas.editar', safe_oid=oid_to_safe(v.__oid__)) }}"
+                 class="btn-icon-sm" title="Editar">{{ edit(15) }}</a>
+              <a href="{{ url_for('accesos.lista', vivienda_safe_oid=oid_to_safe(v.__oid__)) }}"
+                 class="btn-icon-sm" title="Accesos">{{ users(15) }}</a>
+              <form method="POST"
+                    action="{{ url_for('viviendas.eliminar', safe_oid=oid_to_safe(v.__oid__)) }}"
+                    data-ajax-action="{{ url_for('viviendas.eliminar', safe_oid=oid_to_safe(v.__oid__)) }}"
+                    style="display:inline;"
+                    onsubmit="return confirm('¿Eliminar vivienda «{{ v.identificador }}» y sus datos?')">
+                {{ csrf_token_hidden() }}
+                <button type="submit" class="btn-danger-sm" title="Eliminar">{{ trash(12) }}</button>
+              </form>
+            </div>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><div class="empty-icon">{{ home(36) }}</div><p>Sin viviendas todavía.</p></div>
+    {% endif %}
+  </div>
+
+  {# Batería #}
+  <div>
+    <div class="section-header" style="margin-bottom:1rem;">
+      <h3 style="margin:0;">Batería comunitaria</h3>
+      {% if es_admin %}
+      <a href="{{ url_for('baterias.detalle_comunidad', comunidad_safe_oid=safe_oid) }}"
+         role="button" class="secondary" style="font-size:.85rem;padding:.4rem .9rem;">Gestionar</a>
+      {% endif %}
+    </div>
+
+    {% if bateria %}
+    <div style="background:var(--surface);border:1px solid var(--border);
+                border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:1.4rem;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;">
+        <div>
+          <div style="font-size:1rem;font-weight:700;">{{ bateria.fabricante }} {{ bateria.modelo }}</div>
+          <div style="font-size:.85rem;color:var(--text-muted);margin-top:.2rem;">
+            Instalada el {{ bateria.fecha_instalacion }}
+          </div>
+        </div>
+        <span class="badge badge-bat-{{ bateria.estado }}">{{ bateria.estado }}</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:.6rem;">
+        <div style="display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:.88rem;color:var(--text-muted);">Capacidad nominal</span>
+          <code>{{ bateria.capacidad_nominal_kwh }} kWh</code>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:.88rem;color:var(--text-muted);">Capacidad útil actual</span>
+          <code>{{ bateria.capacidad_util_actual_kwh }} kWh</code>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:.5rem 0;">
+          <span style="font-size:.88rem;color:var(--text-muted);">Ciclos acumulados</span>
+          <code>{{ bateria.ciclos_acumulados }}</code>
+        </div>
+      </div>
+
+      {# Barra de salud #}
+      {% set pct = [(bateria.capacidad_util_actual_kwh / bateria.capacidad_nominal_kwh * 100)|round|int, 100]|min %}
+      <div style="margin-top:1rem;">
+        <div style="display:flex;justify-content:space-between;font-size:.8rem;color:var(--text-muted);margin-bottom:.35rem;">
+          <span>Salud de la batería</span><span>{{ pct }}%</span>
+        </div>
+        <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:{{ pct }}%;border-radius:3px;transition:width .6s;
+                      background:{% if pct > 70 %}var(--teal){% elif pct > 40 %}var(--amber){% else %}var(--red){% endif %};"></div>
+        </div>
+      </div>
+
+      {# SoC actual (actualizado por el controlador edge) #}
+      {% if bateria.soc_actual is not none %}
+      {% set soc_pct = (bateria.soc_actual * 100)|round|int %}
+      <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;font-size:.8rem;color:var(--text-muted);margin-bottom:.35rem;">
+          <span>Estado de carga actual (SoC)</span>
+          <span style="font-weight:700;color:{% if soc_pct > 60 %}var(--teal){% elif soc_pct > 25 %}var(--amber){% else %}var(--red){% endif %};">
+            {{ soc_pct }}%
+          </span>
+        </div>
+        <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:{{ soc_pct }}%;border-radius:4px;transition:width .6s;
+                      background:{% if soc_pct > 60 %}var(--teal){% elif soc_pct > 25 %}var(--amber){% else %}var(--red){% endif %};"></div>
+        </div>
+        <div style="font-size:.72rem;color:var(--text-muted);margin-top:.3rem;">
+          Actualizado por el controlador edge
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">{{ battery(36) }}</div>
+      <p>Sin batería registrada.</p>
+    </div>
+    {% if es_admin %}
+    <a href="{{ url_for('baterias.nueva', comunidad_safe_oid=safe_oid) }}" role="button"
+       style="width:100%;justify-content:center;display:flex;margin-top:1rem;">
+      + Añadir batería
+    </a>
+    {% endif %}
+    {% endif %}
+  </div>
+
+  {# Botón generar cierre desde operaciones edge (solo admin) #}
+  {% if es_admin %}
+  <div style="margin-top:1.5rem;padding:1.2rem;background:var(--surface);border:1px solid var(--border);
+              border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);">
+    <div style="font-size:.85rem;font-weight:600;margin-bottom:.8rem;">Cierre desde datos edge</div>
+    <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.8rem;">
+      Genera los cierres mensuales de todas las viviendas usando los datos reales
+      del controlador edge (OperacionHoraria). Introduce el mes en formato YYYY-MM.
+    </p>
+    <form method="post" id="form-generar-cierre"
+          action="{{ url_for('cierres.generar_desde_operaciones', comunidad_safe_oid=safe_oid, mes='__MES__') }}"
+          style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;">
+      {{ csrf_token_hidden() }}
+      <input type="month" id="mes-cierre" name="mes_input" required
+             style="padding:.4rem .6rem;border:1px solid var(--border);border-radius:var(--radius);
+                    font-size:.85rem;background:var(--bg);color:var(--text);"
+             placeholder="2025-01">
+      <button type="submit"
+              style="padding:.4rem 1rem;font-size:.85rem;white-space:nowrap;">
+        Generar cierre
+      </button>
+    </form>
+    <script>
+      document.getElementById('form-generar-cierre').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var mes = document.getElementById('mes-cierre').value;
+        if (!mes) return;
+        this.action = this.action.replace('__MES__', mes);
+        this.submit();
+      });
+    </script>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

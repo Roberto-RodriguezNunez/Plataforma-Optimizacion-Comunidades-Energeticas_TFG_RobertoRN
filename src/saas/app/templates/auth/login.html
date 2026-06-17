@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Iniciar sesión — LeaLink</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --black:  #0a0a0a;
+      --white:  #ffffff;
+      --off:    #f7f7f7;
+      --gray:   #e5e5e5;
+      --gray2:  #999999;
+      --red:    #d93025;
+    }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--off);
+      color: var(--black);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* nav */
+    nav {
+      position: sticky; top: 0; z-index: 200;
+      height: 64px; padding: 0 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--gray);
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .brand {
+      display: flex; align-items: center; gap: .6rem;
+      font-size: 1.1rem; font-weight: 800; letter-spacing: -.03em;
+      text-decoration: none; color: var(--black);
+    }
+    .brand-icon {
+      width: 34px; height: 34px;
+      background: transparent;
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      box-shadow: none;
+    }
+    .nav-link {
+      font-size: .88rem; color: #666666; text-decoration: none;
+      padding: .4rem .8rem; border-radius: 8px;
+      transition: color .18s ease, background .18s ease;
+    }
+    .nav-link:hover { color: var(--black); background: rgba(0,0,0,.04); }
+
+    /* main wrapper */
+    main {
+      flex: 1;
+      display: flex; align-items: center; justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    .auth-wrap { width: 100%; max-width: 400px; }
+
+    /* logo / heading */
+    .auth-head { text-align: center; margin-bottom: 2rem; }
+    .auth-icon {
+      width: 62px; height: 62px; margin: 0 auto 1rem;
+      background: transparent;
+      border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.9rem;
+      box-shadow: none;
+    }
+    .auth-head h1 {
+      font-size: 1.65rem; font-weight: 800; letter-spacing: -.035em;
+      margin-bottom: .3rem; color: var(--black);
+    }
+    .auth-head p { font-size: .9rem; color: var(--gray2); }
+
+    /* card */
+    .auth-card {
+      background: var(--white);
+      border: 1px solid var(--gray);
+      border-radius: 18px;
+      padding: 2.2rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,.08);
+    }
+
+    /* fields */
+    .field { margin-bottom: 1.1rem; }
+    .field label {
+      display: block;
+      font-size: .8rem; font-weight: 600; color: var(--gray2);
+      letter-spacing: .04em; text-transform: uppercase;
+      margin-bottom: .45rem;
+    }
+    .field input {
+      width: 100%;
+      background: rgba(0,0,0,.03);
+      border: 1.5px solid var(--gray);
+      border-radius: 10px;
+      padding: .72rem 1rem;
+      color: var(--black);
+      font-size: .95rem;
+      font-family: inherit;
+      transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+      outline: none;
+    }
+    .field input::placeholder { color: rgba(0,0,0,.25); }
+    .field input:focus {
+      border-color: var(--black);
+      background: var(--white);
+      box-shadow: 0 0 0 3px rgba(0,0,0,.08);
+    }
+    .field input[aria-invalid="true"] {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px rgba(220,38,38,.1);
+    }
+    .form-error { color: #b91c1c; font-size: .8rem; margin-top: .3rem; display: block; }
+
+    /* checkbox row */
+    .check-row {
+      display: flex; align-items: center; gap: .6rem;
+      margin-bottom: 1.5rem;
+    }
+    .check-row input[type="checkbox"] {
+      width: 16px; height: 16px; accent-color: var(--black); cursor: pointer;
+    }
+    .check-row label {
+      font-size: .88rem; color: #666666; cursor: pointer;
+      text-transform: none; letter-spacing: 0;
+    }
+
+    /* submit */
+    .btn-submit {
+      width: 100%;
+      background: var(--black);
+      color: var(--white);
+      border: none;
+      border-radius: 10px;
+      padding: .82rem;
+      font-size: 1rem; font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      letter-spacing: .01em;
+      transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
+    }
+    .btn-submit:hover {
+      background: #333333;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(0,0,0,.18);
+    }
+    .btn-submit:active { transform: translateY(0); }
+
+    /* flashes */
+    .flashes { margin-bottom: 1.2rem; }
+    .flash {
+      padding: .75rem 1rem;
+      border-radius: 10px;
+      font-size: .88rem; font-weight: 500;
+      margin-bottom: .5rem;
+      display: flex; align-items: center; gap: .6rem;
+    }
+    .flash-danger  { background: rgba(220,38,38,.08);  border: 1px solid rgba(220,38,38,.2);  color: #b91c1c; }
+    .flash-success { background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.2); color: #0f7a50; }
+    .flash-warning { background: rgba(217,119,6,.08);  border: 1px solid rgba(217,119,6,.2);  color: #92400e; }
+    .flash-info    { background: rgba(0,0,0,.05);      border: 1px solid rgba(0,0,0,.1);      color: #333333; }
+
+    /* footer links */
+    .auth-footer { text-align: center; margin-top: 1.4rem; font-size: .88rem; color: var(--gray2); }
+    .auth-footer a { color: var(--black); font-weight: 700; text-decoration: none; }
+    .auth-footer a:hover { text-decoration: underline; }
+    .back-link { display: block; text-align: center; margin-top: .6rem; font-size: .8rem; color: #bbbbbb; text-decoration: none; }
+    .back-link:hover { color: #666666; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="{{ url_for('main.index') }}" class="brand">
+    <div class="brand-icon" style="background:transparent;box-shadow:none;">
+      <svg width="22" height="22" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+        <line x1="18" y1="12" x2="18" y2="4" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="23.2" y1="15" x2="30.8" y2="10.5" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="23.2" y1="21" x2="30.8" y2="25.5" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="18" y1="24" x2="18" y2="32" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="12.8" y1="21" x2="5.2" y2="25.5" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="12.8" y1="15" x2="5.2" y2="10.5" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="18" cy="3" r="2" fill="#D97706"/>
+        <circle cx="32" cy="10.5" r="2" fill="#D97706"/>
+        <circle cx="32" cy="25.5" r="2" fill="#D97706"/>
+        <circle cx="18" cy="33" r="2" fill="#D97706"/>
+        <circle cx="4" cy="25.5" r="2" fill="#D97706"/>
+        <circle cx="4" cy="10.5" r="2" fill="#D97706"/>
+        <polygon points="18,11.5 23.2,14.5 23.2,20.5 18,23.5 12.8,20.5 12.8,14.5" fill="rgba(217,119,6,.15)" stroke="#D97706" stroke-width="1.8" stroke-linejoin="round"/>
+        <line x1="15" y1="18" x2="21" y2="18" stroke="#D97706" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="18" y1="15" x2="18" y2="21" stroke="#D97706" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </div>
+    LeaLink
+  </a>
+  <a href="{{ url_for('auth.registro') }}" class="nav-link">¿No tienes cuenta? Regístrate →</a>
+</nav>
+
+<main>
+  <div class="auth-wrap">
+    <div class="auth-head">
+      <div class="auth-icon" style="background:transparent;box-shadow:none;">
+        <svg width="48" height="48" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+          <line x1="18" y1="12" x2="18" y2="4" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="23.2" y1="15" x2="30.8" y2="10.5" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="23.2" y1="21" x2="30.8" y2="25.5" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="18" y1="24" x2="18" y2="32" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="12.8" y1="21" x2="5.2" y2="25.5" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="12.8" y1="15" x2="5.2" y2="10.5" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+          <circle cx="18" cy="3" r="2.2" fill="#D97706"/>
+          <circle cx="32" cy="10.5" r="2.2" fill="#D97706"/>
+          <circle cx="32" cy="25.5" r="2.2" fill="#D97706"/>
+          <circle cx="18" cy="33" r="2.2" fill="#D97706"/>
+          <circle cx="4" cy="25.5" r="2.2" fill="#D97706"/>
+          <circle cx="4" cy="10.5" r="2.2" fill="#D97706"/>
+          <polygon points="18,11.5 23.2,14.5 23.2,20.5 18,23.5 12.8,20.5 12.8,14.5" fill="rgba(217,119,6,.15)" stroke="#D97706" stroke-width="1.8" stroke-linejoin="round"/>
+          <line x1="15" y1="18" x2="21" y2="18" stroke="#D97706" stroke-width="2" stroke-linecap="round"/>
+          <line x1="18" y1="15" x2="18" y2="21" stroke="#D97706" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <h1>Bienvenido de nuevo</h1>
+      <p>Accede a tu panel de ahorro energético</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flashes">
+          {% for cat, msg in messages %}
+            <div class="flash flash-{{ cat }}">
+              {% if cat == 'danger' %}<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:inline-block;vertical-align:middle;flex-shrink:0;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>{% elif cat == 'success' %}<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>{% elif cat == 'warning' %}<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>{% else %}<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>{% endif %}
+              {{ msg }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="auth-card">
+      <form method="POST">
+        {{ form.hidden_tag() }}
+
+        <div class="field">
+          <label>Correo electrónico</label>
+          {{ form.email(placeholder="tu@email.com", autocomplete="email",
+                        **({'aria-invalid':'true'} if form.email.errors else {})) }}
+          {% for e in form.email.errors %}<span class="form-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="field">
+          <label>Contraseña</label>
+          {{ form.password(placeholder="••••••••", autocomplete="current-password",
+                           **({'aria-invalid':'true'} if form.password.errors else {})) }}
+          {% for e in form.password.errors %}<span class="form-error">{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="check-row">
+          {{ form.recordarme() }}
+          <label for="{{ form.recordarme.id }}">Mantener sesión iniciada</label>
+        </div>
+
+        <button type="submit" class="btn-submit">Iniciar sesión →</button>
+      </form>
+    </div>
+
+    <p class="auth-footer">
+      ¿No tienes cuenta? <a href="{{ url_for('auth.registro') }}">Regístrate gratis</a>
+    </p>
+  </div>
+</main>
+
+</body>
+</html>

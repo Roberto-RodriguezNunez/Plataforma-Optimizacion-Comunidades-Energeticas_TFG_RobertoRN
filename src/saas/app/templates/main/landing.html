@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LeaLink — Tu comunidad energética inteligente</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --black:   #0a0a0a;
+      --white:   #ffffff;
+      --off:     #f7f7f7;
+      --gray:    #e5e5e5;
+      --gray2:   #999;
+      --muted-l: #666;
+      --muted-d: rgba(255,255,255,.5);
+      --amber:   #D97706;
+      --amber-l: rgba(217,119,6,.12);
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--white);
+      color: var(--black);
+      overflow-x: hidden;
+    }
+    a { text-decoration: none; color: inherit; }
+
+    /* ── NAV (fixed, white, thin border) ── */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+      height: 60px; padding: 0 2.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid var(--gray);
+      transition: background .25s, border-color .25s;
+    }
+    .nav.dark-mode {
+      background: rgba(10,10,10,.92);
+      border-bottom-color: rgba(255,255,255,.08);
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: .5rem;
+      font-size: 1.1rem; font-weight: 800; letter-spacing: -.04em;
+      color: var(--black); transition: color .25s;
+    }
+    .nav.dark-mode .nav-brand { color: var(--white); }
+
+    .nav-links { display: flex; align-items: center; gap: .2rem; }
+    .nav-link {
+      padding: .38rem .85rem; border-radius: 7px;
+      font-size: .85rem; font-weight: 500; color: var(--muted-l);
+      transition: color .18s, background .18s;
+    }
+    .nav.dark-mode .nav-link { color: var(--muted-d); }
+    .nav-link:hover { color: var(--black); background: rgba(0,0,0,.05); }
+    .nav.dark-mode .nav-link:hover { color: var(--white); background: rgba(255,255,255,.08); }
+
+    .nav-login {
+      border: 1.5px solid var(--gray); color: var(--black);
+      border-radius: 7px; padding: .38rem .95rem;
+      font-size: .85rem; font-weight: 600;
+      transition: border-color .18s, color .18s, background .18s;
+    }
+    .nav.dark-mode .nav-login { border-color: rgba(255,255,255,.2); color: var(--white); }
+    .nav-login:hover { border-color: #999; background: rgba(0,0,0,.03); }
+    .nav.dark-mode .nav-login:hover { border-color: rgba(255,255,255,.5); background: rgba(255,255,255,.06); }
+
+    .nav-cta {
+      background: var(--black); color: var(--white);
+      border-radius: 7px; padding: .42rem 1.1rem;
+      font-size: .85rem; font-weight: 700;
+      transition: background .18s, transform .15s;
+    }
+    .nav.dark-mode .nav-cta { background: var(--white); color: var(--black); }
+    .nav-cta:hover { transform: translateY(-1px); opacity: .88; }
+
+    /* ── HERO (white) ── */
+    .hero {
+      min-height: 100vh;
+      background: var(--white);
+      padding: 10rem 2.5rem 7rem;
+      display: flex; align-items: center;
+      border-bottom: 1px solid var(--gray);
+    }
+    .hero-inner {
+      max-width: 1180px; margin: 0 auto; width: 100%;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6rem;
+      align-items: center;
+    }
+    .hero-eyebrow {
+      font-size: .68rem; font-weight: 700; letter-spacing: .16em;
+      text-transform: uppercase; color: var(--gray2);
+      margin-bottom: 2rem;
+    }
+    .hero h1 {
+      font-size: clamp(2.6rem, 5vw, 4.2rem);
+      font-weight: 900; line-height: 1.1; letter-spacing: -.05em;
+      color: var(--black); margin-bottom: 2rem;
+    }
+    .hero-sub {
+      font-size: 1.08rem; color: var(--muted-l); line-height: 1.85;
+      margin-bottom: 3rem; max-width: 420px;
+    }
+    .hero-cta { display: flex; gap: .75rem; flex-wrap: wrap; }
+
+    /* ── HERO RIGHT — VISUAL ── */
+    .hero-right { display: flex; flex-direction: column; gap: 1.5rem; }
+
+    /* ── BATTERY VISUAL CARD ── */
+    .bat-card {
+      background: var(--white);
+      border: 1px solid var(--gray);
+      border-radius: 16px;
+      padding: 1.6rem 1.8rem 0;
+    }
+    .bat-card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1.2rem;
+    }
+    .bat-card-title { font-size: .8rem; font-weight: 700; color: var(--black); }
+    .bat-status-pill {
+      display: flex; align-items: center; gap: .35rem;
+      background: var(--off); border: 1px solid var(--gray);
+      border-radius: 100px; padding: .2rem .65rem;
+      font-size: .7rem; font-weight: 600; color: #333;
+    }
+    .bat-status-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: #222;
+      animation: pulse-dot 2.4s ease-in-out infinite;
+    }
+    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.25} }
+    /* Stats row */
+    .bat-stats {
+      display: grid; grid-template-columns: repeat(3,1fr);
+      border-top: 1px solid var(--gray);
+    }
+    .bat-stat { padding: .9rem .5rem; text-align: center; border-right: 1px solid var(--gray); }
+    .bat-stat:last-child { border-right: none; }
+    .bat-stat-val { font-size: 1rem; font-weight: 800; color: var(--black); letter-spacing: -.03em; }
+    .bat-stat-lbl { font-size: .65rem; color: var(--gray2); margin-top: .1rem; }
+
+    /* Savings chart card */
+    .hero-card {
+      background: #111;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 16px; padding: 1.4rem 1.5rem;
+    }
+    .hc-label { font-size: .68rem; color: rgba(255,255,255,.4); margin-bottom: .2rem; }
+    .hc-amount { font-size: 1.7rem; font-weight: 900; letter-spacing: -.04em; color: #fff; line-height: 1; }
+    .hc-sub { font-size: .68rem; color: rgba(255,255,255,.3); margin-top: .18rem; }
+    .hc-pill {
+      background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18);
+      color: var(--white); border-radius: 100px; padding: .22rem .65rem;
+      font-size: .72rem; font-weight: 700; flex-shrink: 0;
+    }
+
+    .btn-black {
+      background: var(--black); color: var(--white);
+      border: none; border-radius: 9px;
+      padding: .82rem 1.9rem; font-size: .95rem; font-weight: 700;
+      font-family: inherit; cursor: pointer; letter-spacing: -.01em;
+      display: inline-flex; align-items: center; gap: .4rem;
+      transition: transform .15s, box-shadow .15s, background .18s;
+    }
+    .btn-black:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,.18); }
+
+    .btn-outline {
+      background: transparent; color: var(--black);
+      border: 1.5px solid var(--gray);
+      border-radius: 9px; padding: .82rem 1.9rem;
+      font-size: .95rem; font-weight: 600; font-family: inherit; cursor: pointer;
+      display: inline-flex; align-items: center; gap: .4rem;
+      transition: border-color .18s, background .18s;
+    }
+    .btn-outline:hover { border-color: #999; background: var(--off); }
+
+    /* (hero card styles now in hero-right section above) */
+
+    /* ── STATS (black) ── */
+    /* After the promise comes the proof. Dark = authority, weight. */
+    .stats-sec {
+      background: var(--black);
+      padding: 5.5rem 2.5rem;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    .stats-grid {
+      max-width: 1140px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(4,1fr);
+    }
+    .stat-item {
+      padding: 1.5rem 2.5rem; text-align: center;
+      border-right: 1px solid rgba(255,255,255,.08);
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-num {
+      display: block; font-size: 3.2rem; font-weight: 900;
+      letter-spacing: -.06em; color: var(--white); line-height: 1;
+      margin-bottom: .5rem;
+    }
+    .stat-label { font-size: .82rem; color: var(--muted-d); font-weight: 500; }
+
+    /* ── HOW IT WORKS (white) ── */
+    /* Back to white for clarity: explain the process. Light = understandable. */
+    .how-sec {
+      background: var(--white);
+      padding: 7rem 2.5rem;
+      border-top: 1px solid var(--gray);
+      border-bottom: 1px solid var(--gray);
+    }
+    .sec-inner { max-width: 1140px; margin: 0 auto; }
+    .sec-eyebrow {
+      font-size: .7rem; font-weight: 700; letter-spacing: .14em;
+      text-transform: uppercase; margin-bottom: .75rem;
+    }
+    .sec-eyebrow.on-light { color: var(--gray2); }
+    .sec-eyebrow.on-dark  { color: rgba(255,255,255,.45); }
+    .sec-h {
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      font-weight: 900; letter-spacing: -.05em; line-height: 1.08;
+      margin-bottom: .9rem;
+    }
+    .sec-h.on-light { color: var(--black); }
+    .sec-h.on-dark  { color: var(--white); }
+    .sec-sub { font-size: 1rem; line-height: 1.75; max-width: 500px; margin-bottom: 3.5rem; }
+    .sec-sub.on-light { color: var(--muted-l); }
+    .sec-sub.on-dark  { color: var(--muted-d); }
+
+    .steps { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5rem; }
+    .step { padding: 2.2rem 1.8rem; border: 1px solid var(--gray); border-radius: 14px; }
+    .step-n {
+      font-size: 3.8rem; font-weight: 900; letter-spacing: -.07em;
+      color: var(--gray); line-height: 1; margin-bottom: 1.2rem;
+    }
+    .step h3 { font-size: 1.05rem; font-weight: 700; color: var(--black); margin-bottom: .55rem; }
+    .step p  { font-size: .88rem; color: var(--muted-l); line-height: 1.7; }
+
+    /* ── FEATURES (black) ── */
+    /* Features on dark: rich, premium, powerful — like a feature showcase. */
+    .feat-sec {
+      background: var(--black);
+      padding: 7rem 2.5rem;
+    }
+    .feat-grid {
+      display: grid; grid-template-columns: repeat(3,1fr);
+      gap: 1px; background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px; overflow: hidden; margin-top: 3.5rem;
+    }
+    .feat {
+      background: var(--black); padding: 2.2rem;
+      transition: background .18s;
+    }
+    .feat:hover { background: #141414; }
+    .feat-num {
+      font-size: .7rem; font-weight: 700; letter-spacing: .1em;
+      color: rgba(255,255,255,.35); margin-bottom: 1.1rem;
+    }
+    .feat h3 { font-size: 1rem; font-weight: 700; color: var(--white); margin-bottom: .55rem; }
+    .feat p  { font-size: .86rem; color: var(--muted-d); line-height: 1.68; }
+
+    /* ── SAVINGS (white) ── */
+    /* Transparency = light. The formula on white feels like a real document. */
+    .savings-sec {
+      background: var(--white);
+      padding: 7rem 2.5rem;
+      border-top: 1px solid var(--gray);
+      border-bottom: 1px solid var(--gray);
+    }
+    .savings-inner {
+      max-width: 1140px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center;
+    }
+    .formula-card {
+      border: 1px solid var(--gray); border-radius: 14px; overflow: hidden;
+    }
+    .f-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--gray);
+    }
+    .f-row:last-child { border-bottom: none; }
+    .f-row-label { font-size: .88rem; color: var(--muted-l); }
+    .f-row-val { font-size: .88rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .f-row-val.red   { color: var(--black); }
+    .f-row-val.dim   { color: #333; }
+    .f-row-val.green { color: var(--black); font-size: 1rem; font-weight: 900; }
+    .f-row.total { background: var(--off); }
+    .f-row.total .f-row-label { color: var(--black); font-weight: 600; font-size: .95rem; }
+
+    /* ── CTA (white) ── */
+    .cta-sec {
+      background: var(--white);
+      padding: 9rem 2.5rem;
+      text-align: center;
+      border-top: 1px solid var(--gray);
+    }
+    .cta-sec h2 {
+      font-size: clamp(2.4rem, 5.5vw, 4.2rem);
+      font-weight: 900; letter-spacing: -.055em; color: var(--black);
+      margin-bottom: .9rem; line-height: 1.05;
+    }
+    .cta-sec p { font-size: 1.05rem; color: var(--muted-l); margin-bottom: 2.8rem; }
+    .cta-btns { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
+    .btn-green {
+      background: var(--black); color: var(--white);
+      border: none; border-radius: 9px; padding: .88rem 2.2rem;
+      font-size: 1rem; font-weight: 700; font-family: inherit; cursor: pointer;
+      display: inline-flex; align-items: center; gap: .4rem; letter-spacing: -.01em;
+      transition: background .18s, transform .15s, box-shadow .18s;
+    }
+    .btn-green:hover { background: #222; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+    .btn-ghost-d {
+      background: transparent; color: var(--black);
+      border: 1.5px solid var(--gray);
+      border-radius: 9px; padding: .88rem 2.2rem;
+      font-size: 1rem; font-weight: 600; font-family: inherit; cursor: pointer;
+      display: inline-flex; align-items: center; gap: .4rem;
+      transition: border-color .18s, background .18s;
+    }
+    .btn-ghost-d:hover { border-color: #999; background: var(--off); }
+
+    /* ── FOOTER (black, minimal) ── */
+    .footer {
+      background: var(--black);
+      border-top: 1px solid rgba(255,255,255,.07);
+      padding: 1.8rem 2.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: .78rem; color: rgba(255,255,255,.25);
+    }
+    .footer-brand {
+      display: flex; align-items: center; gap: .45rem;
+      font-weight: 700; color: rgba(255,255,255,.4);
+    }
+    .footer a { color: rgba(255,255,255,.55); }
+    .footer a:hover { text-decoration: underline; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 920px) {
+      .hero-inner { grid-template-columns: 1fr; gap: 3.5rem; }
+      .stats-grid { grid-template-columns: repeat(2,1fr); }
+      .stat-item:nth-child(2) { border-right: none; }
+      .stat-item:nth-child(1), .stat-item:nth-child(2) { border-bottom: 1px solid rgba(255,255,255,.08); }
+      .steps { grid-template-columns: 1fr; gap: 1rem; }
+      .feat-grid { grid-template-columns: 1fr 1fr; }
+      .savings-inner { grid-template-columns: 1fr; gap: 3rem; }
+      .footer { flex-direction: column; gap: .75rem; text-align: center; }
+    }
+    @media (max-width: 600px) {
+      .hero, .how-sec, .feat-sec, .savings-sec, .cta-sec, .stats-sec { padding-left: 1.2rem; padding-right: 1.2rem; }
+      .nav { padding: 0 1.2rem; }
+      .feat-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav" id="mainNav">
+  <a href="{{ url_for('main.index') }}" class="nav-brand">
+    <svg width="30" height="30" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- 6 spokes -->
+      <line x1="18" y1="12" x2="18" y2="3.5" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="23.2" y1="15" x2="31" y2="10.4" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="23.2" y1="21" x2="31" y2="25.6" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="18" y1="24" x2="18" y2="32.5" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="12.8" y1="21" x2="5" y2="25.6" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="12.8" y1="15" x2="5" y2="10.4" stroke="#D97706" stroke-width="1.6" stroke-linecap="round"/>
+      <!-- Outer nodes -->
+      <circle cx="18" cy="2.5" r="2.2" fill="#D97706"/>
+      <circle cx="32.2" cy="9.8" r="2.2" fill="#D97706"/>
+      <circle cx="32.2" cy="26.2" r="2.2" fill="#D97706"/>
+      <circle cx="18" cy="33.5" r="2.2" fill="#D97706"/>
+      <circle cx="3.8" cy="26.2" r="2.2" fill="#D97706"/>
+      <circle cx="3.8" cy="9.8" r="2.2" fill="#D97706"/>
+      <!-- Central hexagon -->
+      <polygon points="18,11.5 23.2,14.5 23.2,20.5 18,23.5 12.8,20.5 12.8,14.5" fill="rgba(217,119,6,.15)" stroke="#D97706" stroke-width="1.8" stroke-linejoin="round"/>
+      <!-- Battery cross -->
+      <line x1="14.8" y1="17.5" x2="21.2" y2="17.5" stroke="#D97706" stroke-width="1.8" stroke-linecap="round"/>
+      <line x1="18" y1="14.3" x2="18" y2="20.7" stroke="#D97706" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>
+    LeaLink
+  </a>
+  <div class="nav-links">
+    <a href="#como-funciona" class="nav-link">Cómo funciona</a>
+    <a href="#ahorro" class="nav-link">El ahorro</a>
+    <a href="{{ url_for('auth.login') }}" class="nav-login">Iniciar sesión</a>
+    <a href="{{ url_for('auth.registro') }}" class="nav-cta">Empezar gratis</a>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECCIÓN 1 — HERO (fondo blanco)
+     La primera pantalla es limpia y clara. El usuario ve la promesa
+     sobre blanco, como un extracto bancario: confianza, precisión.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <div class="hero-eyebrow">Optimización energética · Impulsado con IA</div>
+      <h1>
+        Paga menos.<br>
+        Consume inteligente.
+      </h1>
+      <p class="hero-sub">
+        LeaLink conecta tu hogar con la comunidad energética,
+        optimiza la batería compartida en tiempo real
+        y te muestra exactamente cuánto ahorras cada mes.
+      </p>
+      <div class="hero-cta">
+        <a href="{{ url_for('auth.registro') }}" class="btn-black">
+          Crear cuenta gratis →
+        </a>
+        <a href="{{ url_for('auth.login') }}" class="btn-outline">
+          Iniciar sesión
+        </a>
+      </div>
+    </div>
+
+    <!-- RIGHT: tarjeta de ahorro + batería -->
+    <div class="hero-right">
+
+      <!-- 1. Tarjeta de ahorro con gráfica -->
+      <div class="hero-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.1rem;">
+          <div>
+            <div class="hc-label">Ahorro acumulado · Casa 3</div>
+            <div class="hc-amount">1.284,50 €</div>
+            <div class="hc-sub">últimos 12 meses</div>
+          </div>
+          <div class="hc-pill">Activo</div>
+        </div>
+        <canvas id="heroChart" style="max-height:112px;"></canvas>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-top:1rem;">
+          <div style="background:rgba(255,255,255,.05);border-radius:8px;padding:.6rem .75rem;">
+            <div class="hc-label">Último mes</div>
+            <div style="font-size:.9rem;font-weight:700;color:#fff;">118 €</div>
+          </div>
+          <div style="background:rgba(255,255,255,.05);border-radius:8px;padding:.6rem .75rem;">
+            <div class="hc-label">De batería</div>
+            <div style="font-size:.9rem;font-weight:700;color:#fff;">34 kWh</div>
+          </div>
+          <div style="background:rgba(255,255,255,.05);border-radius:8px;padding:.6rem .75rem;">
+            <div class="hc-label">Autoconsumo</div>
+            <div style="font-size:.9rem;font-weight:700;color:#fff;">28 %</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Batería comunitaria — visual limpio y sereno -->
+      <div class="bat-card">
+        <div class="bat-card-header">
+          <span class="bat-card-title">Batería comunitaria</span>
+          <span class="bat-status-pill">
+            <span class="bat-status-dot"></span>
+            En línea
+          </span>
+        </div>
+
+        <svg viewBox="0 0 240 210" fill="none" xmlns="http://www.w3.org/2000/svg"
+             style="width:44%;display:block;margin:0 auto;">
+          <line x1="120" y1="108" x2="120" y2="26"  stroke="#ddd" stroke-width="1"/>
+          <line x1="120" y1="108" x2="191" y2="67"  stroke="#ddd" stroke-width="1"/>
+          <line x1="120" y1="108" x2="191" y2="149" stroke="#ddd" stroke-width="1"/>
+          <line x1="120" y1="108" x2="120" y2="190" stroke="#ddd" stroke-width="1"/>
+          <line x1="120" y1="108" x2="49"  y2="149" stroke="#ddd" stroke-width="1"/>
+          <line x1="120" y1="108" x2="49"  y2="67"  stroke="#ddd" stroke-width="1"/>
+          <circle cx="120" cy="108" r="46" stroke="#ebebeb" stroke-width="7" fill="none"/>
+          <circle cx="120" cy="108" r="46"
+                  stroke="#0a0a0a" stroke-width="7" fill="none"
+                  stroke-dasharray="220 69" stroke-dashoffset="72"
+                  stroke-linecap="round"
+                  style="transform-origin:120px 108px;transform:rotate(-90deg)"/>
+          <circle cx="120" cy="108" r="35" fill="#fff" stroke="#ebebeb" stroke-width="1"/>
+          <text x="120" y="102" text-anchor="middle"
+                font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="900"
+                fill="#0a0a0a" letter-spacing="-1">76%</text>
+          <text x="120" y="117" text-anchor="middle"
+                font-family="Inter,system-ui,sans-serif" font-size="8" font-weight="600"
+                fill="#bbb" letter-spacing="1.5">CARGA</text>
+          <polygon points="120,14 128,22 112,22" fill="#e8e8e8"/>
+          <rect x="113" y="22" width="14" height="10" rx="1" fill="#e8e8e8"/>
+          <polygon points="191,55 199,63 183,63" fill="#e8e8e8"/>
+          <rect x="184" y="63" width="14" height="10" rx="1" fill="#e8e8e8"/>
+          <polygon points="191,137 199,145 183,145" fill="#e8e8e8"/>
+          <rect x="184" y="145" width="14" height="10" rx="1" fill="#e8e8e8"/>
+          <polygon points="120,178 128,186 112,186" fill="#e8e8e8"/>
+          <rect x="113" y="186" width="14" height="10" rx="1" fill="#e8e8e8"/>
+          <polygon points="49,137 57,145 41,145" fill="#e8e8e8"/>
+          <rect x="42" y="145" width="14" height="10" rx="1" fill="#e8e8e8"/>
+          <polygon points="49,55 57,63 41,63" fill="#e8e8e8"/>
+          <rect x="42" y="63" width="14" height="10" rx="1" fill="#e8e8e8"/>
+        </svg>
+
+        <div class="bat-stats">
+          <div class="bat-stat">
+            <div class="bat-stat-val">6</div>
+            <div class="bat-stat-lbl">viviendas</div>
+          </div>
+          <div class="bat-stat">
+            <div class="bat-stat-val">18%</div>
+            <div class="bat-stat-lbl">ahorro medio</div>
+          </div>
+          <div class="bat-stat">
+            <div class="bat-stat-val">40 kWh</div>
+            <div class="bat-stat-lbl">capacidad</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECCIÓN 2 — CIFRAS (fondo negro)
+     El contraste hace que los números impacten. Después de la promesa,
+     los datos. El negro da autoridad y peso a las cifras.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div class="stats-sec">
+  <div class="stats-grid">
+    <div class="stat-item">
+      <span class="stat-num" id="sn0">27</span>
+      <span class="stat-label">Viviendas activas</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num" id="sn1">2</span>
+      <span class="stat-label">Comunidades energéticas</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num" id="sn2">18%</span>
+      <span class="stat-label">Ahorro medio mensual</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num" id="sn3">40 t</span>
+      <span class="stat-label">CO₂ evitado estimado</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECCIÓN 3 — CÓMO FUNCIONA (fondo blanco)
+     Volvemos al blanco para explicar. La claridad es blanca.
+     Los pasos en blanco se leen con calma, sin distracción.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="how-sec" id="como-funciona">
+  <div class="sec-inner">
+    <div class="sec-eyebrow on-light">¿Cómo funciona?</div>
+    <h2 class="sec-h on-light">Del sol a tu bolsillo<br>en tres pasos</h2>
+    <p class="sec-sub on-light">
+      El agente de inteligencia artificial decide en cada momento
+      de dónde viene tu energía, minimizando tu factura sin que
+      tengas que hacer nada.
+    </p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-n">01</div>
+        <h3>La comunidad genera</h3>
+        <p>Los paneles solares producen durante el día. El excedente
+           queda en la batería comunitaria, accesible para todos.</p>
+      </div>
+      <div class="step">
+        <div class="step-n">02</div>
+        <h3>La IA distribuye</h3>
+        <p>El agente RL elige en tiempo real: autoconsumo, batería
+           o red. Siempre el mix más barato para tu vivienda.</p>
+      </div>
+      <div class="step">
+        <div class="step-n">03</div>
+        <h3>Tú ahorras</h3>
+        <p>Cada mes recibes un cierre con tu ahorro real en euros
+           y la comparativa frente a lo que habrías pagado sin la comunidad.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECCIÓN 4 — CARACTERÍSTICAS (fondo negro)
+     Las funcionalidades merecen el negro: destacan, se sienten premium.
+     Cada feature en su celda, como un menú de producto sofisticado.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="feat-sec">
+  <div class="sec-inner">
+    <div class="sec-eyebrow on-dark">Características</div>
+    <h2 class="sec-h on-dark">Todo lo que necesitas<br>en un panel</h2>
+    <div class="feat-grid">
+      <div class="feat">
+        <div class="feat-num">01</div>
+        <h3>Gráficas en tiempo real</h3>
+        <p>Ahorro mensual, mix energético y comparativa con el resto de viviendas. Todo visual, todo claro.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-num">02</div>
+        <h3>Gestión de batería</h3>
+        <p>Estado, ciclos y rendimiento de la batería compartida. Alertas automáticas ante cualquier incidencia.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-num">03</div>
+        <h3>Multi-vivienda</h3>
+        <p>Una cuenta, todas tus viviendas. Cada una con su historial de consumo y cierres mensuales propios.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-num">04</div>
+        <h3>Notificaciones</h3>
+        <p>Avisos cuando tu cierre esté listo, cuando cambie el estado de la batería o ante incidencias.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-num">05</div>
+        <h3>Roles y permisos</h3>
+        <p>Administrador, titular y convivente. Cada usuario ve exactamente lo que le corresponde.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-num">06</div>
+        <h3>Agente RL integrado</h3>
+        <p>Los cierres son resultado directo del agente de optimización, no estimaciones ni medias del sector.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECCIÓN 5 — EL AHORRO (fondo blanco)
+     La transparencia va sobre blanco. Como un contrato o un justificante.
+     Da sensación de honestidad y claridad contable.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="savings-sec" id="ahorro">
+  <div class="savings-inner">
+    <div>
+      <div class="sec-eyebrow on-light">El ahorro</div>
+      <h2 class="sec-h on-light">Transparencia total<br>en cada euro</h2>
+      <p class="sec-sub on-light" style="margin-bottom:0;">
+        El ahorro no es una estimación. Es la diferencia exacta entre lo que
+        habrías pagado comprando toda la energía a la red y lo que realmente
+        pagas gracias a la comunidad y la batería compartida.
+        Tu coeficiente de reparto determina qué fracción te corresponde.
+      </p>
+    </div>
+    <div>
+      <div class="formula-card">
+        <div class="f-row" style="background:var(--off);">
+          <span class="f-row-label" style="font-weight:600;color:#333;">Sin comunidad</span>
+          <span class="f-row-val red">consumo × 0,22 €/kWh</span>
+        </div>
+        <div class="f-row">
+          <span class="f-row-label">Energía de red (real)</span>
+          <span class="f-row-val dim">kWh_red × 0,18 €</span>
+        </div>
+        <div class="f-row">
+          <span class="f-row-label">Autoconsumo + batería</span>
+          <span class="f-row-val dim">kWh_limpio × 0,05 €</span>
+        </div>
+        <div class="f-row total">
+          <span class="f-row-label">Tu ahorro mensual</span>
+          <span class="f-row-val green">base − real = €</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECCIÓN 6 — CTA FINAL (fondo negro)
+     El cierre es negro. La acción es oscura y decisiva.
+     El blanco del botón contrasta sobre el negro como llamada clara a la acción.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="cta-sec">
+  <div style="max-width:620px;margin:0 auto;">
+    <h2>Empieza a ver<br>cuánto ahorras</h2>
+    <p>Regístrate gratis y conecta con tu comunidad energética en menos de dos minutos.</p>
+    <div class="cta-btns">
+      <a href="{{ url_for('auth.registro') }}" class="btn-green">
+        Crear cuenta gratis →
+      </a>
+      <a href="{{ url_for('auth.login') }}" class="btn-ghost-d">
+        Ya tengo cuenta
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-brand">
+    <svg width="22" height="22" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="18" y1="12" x2="18" y2="3.5" stroke="rgba(255,255,255,.4)" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="23.2" y1="15" x2="31" y2="10.4" stroke="rgba(255,255,255,.4)" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="23.2" y1="21" x2="31" y2="25.6" stroke="rgba(255,255,255,.4)" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="18" y1="24" x2="18" y2="32.5" stroke="rgba(255,255,255,.4)" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="12.8" y1="21" x2="5" y2="25.6" stroke="rgba(255,255,255,.4)" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="12.8" y1="15" x2="5" y2="10.4" stroke="rgba(255,255,255,.4)" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="18" cy="2.5" r="2.2" fill="rgba(255,255,255,.4)"/>
+      <circle cx="32.2" cy="9.8" r="2.2" fill="rgba(255,255,255,.4)"/>
+      <circle cx="32.2" cy="26.2" r="2.2" fill="rgba(255,255,255,.4)"/>
+      <circle cx="18" cy="33.5" r="2.2" fill="rgba(255,255,255,.4)"/>
+      <circle cx="3.8" cy="26.2" r="2.2" fill="rgba(255,255,255,.4)"/>
+      <circle cx="3.8" cy="9.8" r="2.2" fill="rgba(255,255,255,.4)"/>
+      <polygon points="18,11.5 23.2,14.5 23.2,20.5 18,23.5 12.8,20.5 12.8,14.5" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.4)" stroke-width="1.8" stroke-linejoin="round"/>
+    </svg>
+    LeaLink
+  </div>
+  <span>© 2025 LeaLink · Universidade de Vigo</span>
+  <span>
+    <a href="{{ url_for('auth.login') }}">Iniciar sesión</a>
+    &nbsp;·&nbsp;
+    <a href="{{ url_for('auth.registro') }}">Registrarse</a>
+  </span>
+</footer>
+
+<script>
+// Navbar: cambia a modo oscuro cuando scrollas a una sección negra
+(function() {
+  const nav  = document.getElementById('mainNav');
+  // Altura aproximada de cada sección para saber el color de fondo
+  // hero=blanco, stats=negro, how=blanco, feat=negro, savings=blanco, cta=negro
+  const darkSections = ['stats-sec', 'feat-sec'];
+
+  function updateNav() {
+    // Buscar qué sección ocupa el centro del viewport
+    const mid = window.scrollY + 32; // top del nav
+    let isDark = false;
+    darkSections.forEach(cls => {
+      const el = document.querySelector('.' + cls);
+      if (!el) return;
+      if (mid >= el.offsetTop && mid < el.offsetTop + el.offsetHeight) isDark = true;
+    });
+    nav.classList.toggle('dark-mode', isDark);
+  }
+  window.addEventListener('scroll', updateNav, { passive: true });
+  updateNav();
+})();
+
+// Animated counters
+function animCount(el, to, suffix) {
+  const dur = 1500, start = performance.now();
+  const run = now => {
+    const p = Math.min((now - start) / dur, 1);
+    const e = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(to * e) + suffix;
+    if (p < 1) requestAnimationFrame(run);
+  };
+  requestAnimationFrame(run);
+}
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(en => {
+    if (en.isIntersecting) {
+      animCount(document.getElementById('sn0'), 27, '');
+      animCount(document.getElementById('sn1'), 2,  '');
+      animCount(document.getElementById('sn2'), 18, '%');
+      animCount(document.getElementById('sn3'), 40, ' t');
+      obs.disconnect();
+    }
+  });
+}, { threshold: 0.5 });
+const sg = document.querySelector('.stats-grid');
+if (sg) obs.observe(sg);
+
+// Hero chart (ahorro mensual — demo data)
+const ctx = document.getElementById('heroChart');
+if (ctx) {
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+      datasets: [{
+        data: [88, 72, 96, 110, 105, 98, 115, 122, 108, 118, 103, 149],
+        backgroundColor: 'rgba(255,255,255,.72)',
+        hoverBackgroundColor: 'rgba(255,255,255,.92)',
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      animation: { duration: 900, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,.85)', titleColor: 'rgba(255,255,255,.5)',
+          bodyColor: '#fff', borderColor: 'rgba(255,255,255,.1)', borderWidth: 1, padding: 9,
+          callbacks: { label: c => ` ${c.parsed.y} € ahorrados` }
+        }
+      },
+      scales: {
+        x: { ticks: { color: 'rgba(255,255,255,.3)', font:{size:9} }, grid: { display: false } },
+        y: { ticks: { color: 'rgba(255,255,255,.3)', font:{size:9} }, grid: { color: 'rgba(255,255,255,.05)' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import home, search, x_icon, edit, trash, calendar, map_pin %}
+{% block titulo %}Comunidades{% endblock %}
+{% block contenido %}
+
+<div class="section-header" style="margin-bottom:1.5rem;">
+  <div>
+    <h2 style="margin:0 0 .2rem;">Comunidades energéticas</h2>
+    <p style="margin:0;color:var(--text-muted);font-size:.9rem;">
+      {{ comunidades|length }} comunidad{{ 'es' if comunidades|length != 1 }}
+      {% if q or estado_filtro %} · Filtradas{% endif %}
+    </p>
+  </div>
+  <a href="{{ url_for('comunidades.nueva') }}" role="button"
+     style="display:flex;align-items:center;gap:.4rem;white-space:nowrap;">
+    + Nueva comunidad
+  </a>
+</div>
+
+{# Filtros #}
+<form method="GET" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.5rem;">
+  <div style="flex:1;min-width:180px;position:relative;">
+    <span style="position:absolute;left:.9rem;top:50%;transform:translateY(-50%);
+                 color:var(--text-muted);pointer-events:none;">{{ search(15) }}</span>
+    <input name="q" type="search" placeholder="Nombre o ubicación…" value="{{ q }}"
+           style="padding-left:2.5rem;width:100%;">
+  </div>
+  <select name="estado" style="min-width:160px;">
+    <option value="">Todos los estados</option>
+    <option value="activa"     {{ 'selected' if estado_filtro=='activa' }}>Activa</option>
+    <option value="suspendida" {{ 'selected' if estado_filtro=='suspendida' }}>Suspendida</option>
+  </select>
+  <button type="submit" class="secondary" style="white-space:nowrap;">Buscar</button>
+  {% if q or estado_filtro %}
+  <a href="{{ url_for('comunidades.lista') }}" role="button" class="secondary"
+     style="white-space:nowrap;display:inline-flex;align-items:center;gap:.3rem;">{{ x_icon(13) }} Limpiar</a>
+  {% endif %}
+</form>
+
+{% if comunidades %}
+<div style="display:flex;flex-direction:column;gap:.75rem;">
+  {% for com in comunidades %}
+  <div data-removable
+       style="background:var(--surface);border:1px solid var(--border);
+              border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);
+              padding:1.2rem 1.4rem;display:flex;align-items:center;gap:1.2rem;
+              transition:box-shadow .2s,border-color .2s;">
+
+    {# Icono comunidad #}
+    <div style="width:46px;height:46px;border-radius:12px;flex-shrink:0;
+                background:linear-gradient(135deg,var(--navy),#2A5298);
+                display:flex;align-items:center;justify-content:center;">
+      {{ home(22) }}
+    </div>
+
+    {# Info principal #}
+    <div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.25rem;">
+        <a href="{{ url_for('comunidades.detalle', safe_oid=oid_to_safe(com.__oid__)) }}"
+           style="font-weight:700;font-size:1rem;">{{ com.nombre }}</a>
+        <span class="badge badge-{{ com.estado }}">{{ com.estado }}</span>
+      </div>
+      <div style="font-size:.85rem;color:var(--text-muted);display:flex;gap:1rem;flex-wrap:wrap;">
+        <span style="display:inline-flex;align-items:center;gap:.3rem;">{{ map_pin(13) }} {{ com.ubicacion }}</span>
+        <span style="display:inline-flex;align-items:center;gap:.3rem;">{{ calendar(13) }} Constituida el {{ com.fecha_constitucion }}</span>
+      </div>
+    </div>
+
+    {# Acciones #}
+    <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0;">
+      <a href="{{ url_for('comunidades.editar', safe_oid=oid_to_safe(com.__oid__)) }}"
+         class="btn-icon-sm" title="Editar comunidad">{{ edit(15) }}</a>
+      <form method="POST"
+            action="{{ url_for('comunidades.eliminar', safe_oid=oid_to_safe(com.__oid__)) }}"
+            data-ajax-action="{{ url_for('comunidades.eliminar', safe_oid=oid_to_safe(com.__oid__)) }}"
+            style="display:inline;"
+            onsubmit="return confirm('¿Eliminar «{{ com.nombre }}» y TODOS sus datos? Esta acción es irreversible.')">
+        {{ csrf_token_hidden() }}
+        <button type="submit" class="btn-danger-sm" title="Eliminar comunidad">{{ trash(12) }}</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="padding:5rem 1rem;">
+  <div class="empty-icon">{{ home(36) }}</div>
+  {% if q or estado_filtro %}
+  <p>No se encontraron comunidades con esos filtros.</p>
+  <a href="{{ url_for('comunidades.lista') }}" role="button" class="secondary"
+     style="font-size:.88rem;margin-top:.5rem;">Ver todas</a>
+  {% else %}
+  <p>No hay comunidades registradas. ¡Crea la primera!</p>
+  <a href="{{ url_for('comunidades.nueva') }}" role="button"
+     style="margin-top:.75rem;">+ Nueva comunidad</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

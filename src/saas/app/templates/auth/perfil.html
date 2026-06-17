@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import check, key %}
+{% block titulo %}Mi perfil{% endblock %}
+{% block contenido %}
+
+<div style="margin-bottom:2rem;">
+  <h2 style="margin-bottom:.2rem;">Mi perfil</h2>
+  <p style="color:var(--text-muted);margin:0;">Gestiona tus datos personales</p>
+</div>
+
+<div class="grid-2" style="align-items:start;">
+
+  {# --- Datos personales --- #}
+  <div style="background:var(--surface);border:1px solid var(--border);
+              border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);overflow:hidden;
+              backdrop-filter:blur(8px);">
+    {# Header con avatar — gradiente verde-azul sobre fondo oscuro #}
+    <div style="background:linear-gradient(135deg,rgba(0,200,150,.25),rgba(59,130,246,.2));
+                border-bottom:1px solid var(--border);
+                padding:2rem;display:flex;align-items:center;gap:1.2rem;">
+      <div style="width:64px;height:64px;border-radius:50%;
+                  background:var(--green);border:3px solid rgba(255,255,255,.25);
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:1.6rem;font-weight:800;color:#000;flex-shrink:0;">
+        {{ current_user.nombre[0].upper() }}
+      </div>
+      <div>
+        <div style="font-size:1.2rem;font-weight:700;color:var(--text);">{{ current_user.nombre }}</div>
+        <div style="font-size:.88rem;color:var(--text-soft);margin-top:.1rem;">{{ current_user.email }}</div>
+        <span class="badge badge-rol-{{ current_user.rol_global }}" style="margin-top:.4rem;display:inline-block;">
+          {{ current_user.rol_global }}
+        </span>
+      </div>
+    </div>
+
+    <div style="padding:1.8rem;">
+      <h3 style="margin:0 0 1.2rem;font-size:1rem;">Editar datos</h3>
+      <form method="POST">
+        {{ form.hidden_tag() }}
+        <div style="margin-bottom:1rem;">
+          {{ form.nombre(**({'aria-invalid':'true'} if form.nombre.errors else {})) }}
+          {% for e in form.nombre.errors %}<small class="form-error">{{ e }}</small>{% endfor %}
+        </div>
+        <div style="margin-bottom:1.5rem;">
+          <input type="text" value="{{ current_user.email }}" disabled
+                 style="opacity:.5;cursor:not-allowed;">
+        </div>
+        {{ form.enviar() }}
+      </form>
+    </div>
+  </div>
+
+  {# --- Info + Seguridad --- #}
+  <div style="display:flex;flex-direction:column;gap:1rem;">
+    <div style="background:var(--surface);border:1px solid var(--border);
+                border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:1.5rem;
+                backdrop-filter:blur(8px);">
+      <h3 style="margin:0 0 1.2rem;font-size:1rem;">Información de cuenta</h3>
+      <div style="display:flex;flex-direction:column;gap:.6rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    padding:.6rem 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:.88rem;color:var(--text-muted);">Miembro desde</span>
+          <code>{{ current_user.fecha_registro[:10] }}</code>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    padding:.6rem 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:.88rem;color:var(--text-muted);">Rol en la plataforma</span>
+          <span class="badge badge-rol-{{ current_user.rol_global }}">{{ current_user.rol_global }}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;">
+          <span style="font-size:.88rem;color:var(--text-muted);">Email verificado</span>
+          <span style="color:var(--green);font-weight:600;font-size:.88rem;display:inline-flex;align-items:center;gap:.3rem;">{{ check(14) }} Verificado</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);
+                border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:1.5rem;
+                backdrop-filter:blur(8px);">
+      <h3 style="margin:0 0 .4rem;font-size:1rem;">Seguridad</h3>
+      <p style="font-size:.88rem;color:var(--text-muted);margin-bottom:1.2rem;">
+        Mantén tu cuenta protegida con una contraseña segura.
+      </p>
+      <a href="{{ url_for('auth.cambiar_password') }}" role="button" class="secondary"
+         style="width:100%;justify-content:center;display:inline-flex;align-items:center;gap:.4rem;">
+        {{ key(14) }} Cambiar contraseña
+      </a>
+    </div>
+
+    <a href="{{ url_for('main.index') }}"
+       style="text-align:center;font-size:.85rem;color:var(--text-muted);">
+      ← Volver al inicio
+    </a>
+  </div>
+
+</div>
+{% endblock %}

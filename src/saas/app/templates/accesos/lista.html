@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import users, calendar, edit, trash %}
+{% block titulo %}Accesos — {{ viv.identificador }}{% endblock %}
+{% block contenido %}
+
+<nav aria-label="breadcrumb"><ul>
+  <li><a href="{{ url_for('comunidades.detalle', safe_oid=oid_to_safe(com.__oid__)) }}">{{ com.nombre if com else 'Comunidad' }}</a></li>
+  <li><a href="{{ url_for('viviendas.detalle', safe_oid=vivienda_safe_oid) }}">{{ viv.identificador }}</a></li>
+  <li>Accesos</li>
+</ul></nav>
+
+<div class="section-header" style="margin-bottom:1.5rem;">
+  <div>
+    <h2 style="margin:0 0 .2rem;display:inline-flex;align-items:center;gap:.5rem;">{{ users(20) }} Accesos</h2>
+    <p style="margin:0;color:var(--text-muted);font-size:.9rem;">
+      {{ viv.identificador }}
+      {% if accesos_detalle %} · {{ accesos_detalle|length }} persona{{ 's' if accesos_detalle|length != 1 }} con acceso{% endif %}
+    </p>
+  </div>
+  <a href="{{ url_for('accesos.nuevo', vivienda_safe_oid=vivienda_safe_oid) }}"
+     role="button" style="white-space:nowrap;">+ Nuevo acceso</a>
+</div>
+
+{% if accesos_detalle %}
+<div style="display:flex;flex-direction:column;gap:.75rem;">
+  {% for item in accesos_detalle %}
+  <div data-removable
+       style="background:var(--surface);border:1px solid var(--border);
+              border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);
+              padding:1.1rem 1.3rem;display:flex;align-items:center;gap:1rem;">
+
+    {# Avatar usuario #}
+    <div style="width:42px;height:42px;border-radius:50%;flex-shrink:0;
+                background:linear-gradient(135deg,var(--navy),#2A5298);
+                display:flex;align-items:center;justify-content:center;
+                font-size:1rem;font-weight:700;color:#fff;">
+      {{ item.usuario.nombre[0].upper() if item.usuario else '?' }}
+    </div>
+
+    {# Info usuario #}
+    <div style="flex:1;min-width:0;">
+      <div style="font-weight:600;font-size:.95rem;margin-bottom:.15rem;">
+        {{ item.usuario.nombre if item.usuario else '—' }}
+      </div>
+      <div style="font-size:.83rem;color:var(--text-muted);display:flex;gap:.75rem;flex-wrap:wrap;">
+        {% if item.usuario %}
+        <span>{{ item.usuario.email }}</span>
+        {% endif %}
+        <span style="display:inline-flex;align-items:center;gap:.3rem;">{{ calendar(13) }} Desde {{ item.acceso.fecha_incorporacion }}</span>
+      </div>
+    </div>
+
+    {# Rol #}
+    <div style="flex-shrink:0;">
+      <span class="badge">{{ item.acceso.rol_en_vivienda }}</span>
+    </div>
+
+    {# Acciones #}
+    <div style="display:flex;align-items:center;gap:.4rem;flex-shrink:0;">
+      <a href="{{ url_for('accesos.editar', safe_oid=item.safe_oid) }}"
+         class="secondary" role="button" style="font-size:.82rem;padding:.3rem .7rem;">
+        {{ edit(13) }}
+      </a>
+      <form method="POST"
+            action="{{ url_for('accesos.eliminar', safe_oid=item.safe_oid) }}"
+            data-ajax-action="{{ url_for('accesos.eliminar', safe_oid=item.safe_oid) }}"
+            style="display:inline;"
+            onsubmit="return confirm('¿Eliminar acceso de {{ item.usuario.nombre if item.usuario else 'este usuario' }}?')">
+        {{ csrf_token_hidden() }}
+        <button type="submit" class="btn-danger-sm" title="Eliminar acceso">{{ trash(12) }}</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="padding:5rem 1rem;">
+  <div class="empty-icon">{{ users(36) }}</div>
+  <p>Ningún usuario tiene acceso a esta vivienda.</p>
+  <a href="{{ url_for('accesos.nuevo', vivienda_safe_oid=vivienda_safe_oid) }}"
+     role="button" style="margin-top:.75rem;">+ Nuevo acceso</a>
+</div>
+{% endif %}
+
+{% endblock %}

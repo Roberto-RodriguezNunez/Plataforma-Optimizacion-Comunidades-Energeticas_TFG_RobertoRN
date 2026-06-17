@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import home, users, battery, edit, trash, plus, map_pin, search %}
+{% block titulo %}Panel de plataforma{% endblock %}
+{% block contenido %}
+
+{# Cabecera #}
+<div style="margin-bottom:2.5rem;">
+  <h2 style="margin:0 0 .25rem;font-size:1.5rem;font-weight:800;letter-spacing:-.04em;">Panel de plataforma</h2>
+  <p style="color:var(--text-muted);margin:0;font-size:.92rem;">Vista global · superadministrador</p>
+</div>
+
+{# KPIs — panel unificado #}
+<div style="display:grid;grid-template-columns:repeat(3,1fr);
+            background:#fff;border:1px solid #e5e5e5;border-radius:12px;
+            overflow:hidden;margin-bottom:2.5rem;">
+  <div style="padding:1.4rem 1.6rem;border-right:1px solid #e5e5e5;">
+    <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:.55rem;">Comunidades</div>
+    <div style="font-size:1.75rem;font-weight:900;letter-spacing:-.04em;color:#0a0a0a;line-height:1;">{{ total_comunidades }}</div>
+  </div>
+  <div style="padding:1.4rem 1.6rem;border-right:1px solid #e5e5e5;">
+    <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:.55rem;">Viviendas</div>
+    <div style="font-size:1.75rem;font-weight:900;letter-spacing:-.04em;color:#0a0a0a;line-height:1;">{{ total_viviendas }}</div>
+  </div>
+  <div style="padding:1.4rem 1.6rem;">
+    <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:.55rem;">Usuarios</div>
+    <div style="font-size:1.75rem;font-weight:900;letter-spacing:-.04em;color:#0a0a0a;line-height:1;">{{ total_usuarios }}</div>
+  </div>
+</div>
+
+{# Comunidades #}
+<div class="section-header" style="margin-bottom:1rem;">
+  <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;">Comunidades</div>
+  <a href="{{ url_for('comunidades.nueva') }}" role="button" style="font-size:.82rem;display:inline-flex;align-items:center;gap:.35rem;">
+    {{ plus(13) }} Nueva comunidad
+  </a>
+</div>
+
+{% if comunidades %}
+<div style="background:#fff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;margin-bottom:2.5rem;">
+  {% for com in comunidades %}
+  {% set com_safe = oid_to_safe(com.__oid__) %}
+  {% set com_viviendas = viviendas_por_com.get(com.__oid__|string, []) %}
+  <div style="padding:1rem 1.4rem;
+              {% if not loop.last %}border-bottom:1px solid #e5e5e5;{% endif %}
+              display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+    <div>
+      <div style="display:flex;align-items:center;gap:.55rem;margin-bottom:.2rem;">
+        <a href="{{ url_for('comunidades.detalle', safe_oid=com_safe) }}"
+           style="font-size:.95rem;font-weight:700;letter-spacing:-.02em;color:#0a0a0a;">{{ com.nombre }}</a>
+        <span class="badge badge-{{ com.estado }}">{{ com.estado }}</span>
+      </div>
+      <span style="font-size:.8rem;color:#999;display:inline-flex;align-items:center;gap:.3rem;">
+        {{ map_pin(12) }} {{ com.ubicacion }}
+        &nbsp;·&nbsp; {{ com_viviendas|length }} vivienda{{ 's' if com_viviendas|length != 1 }}
+      </span>
+    </div>
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+      <a href="{{ url_for('baterias.detalle_comunidad', comunidad_safe_oid=com_safe) }}"
+         role="button" class="secondary" style="font-size:.8rem;display:inline-flex;align-items:center;gap:.3rem;">
+        {{ battery(12) }} Batería
+      </a>
+      <a href="{{ url_for('comunidades.editar', safe_oid=com_safe) }}"
+         role="button" class="secondary" style="font-size:.8rem;display:inline-flex;align-items:center;gap:.3rem;">
+        {{ edit(12) }} Editar
+      </a>
+      <a href="{{ url_for('comunidades.detalle', safe_oid=com_safe) }}"
+         role="button" class="secondary" style="font-size:.8rem;">
+        Ver →
+      </a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="empty-state" style="padding:4rem 1rem;margin-bottom:2.5rem;">
+  <p>No hay comunidades todavía.</p>
+  <a href="{{ url_for('comunidades.nueva') }}" role="button" style="margin-top:.75rem;">
+    {{ plus(14) }} Crear primera comunidad
+  </a>
+</div>
+{% endif %}
+
+{# Gestión de viviendas #}
+<div class="section-header" style="margin-bottom:1rem;">
+  <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;">Viviendas</div>
+  <a href="{{ url_for('viviendas.lista_global') }}" role="button" class="secondary" style="font-size:.82rem;">Ver por comunidad →</a>
+</div>
+
+<div style="background:#fff;border:1px solid #e5e5e5;border-radius:12px;
+            padding:1.1rem 1.4rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:2.5rem;">
+  <div>
+    <div style="font-size:.9rem;font-weight:700;color:#0a0a0a;margin-bottom:.2rem;">
+      {{ total_viviendas }} viviendas registradas
+    </div>
+    <div style="font-size:.82rem;color:#999;">
+      Gestiona datos, coeficientes, paneles y accesos por vivienda
+    </div>
+  </div>
+  <a href="{{ url_for('viviendas.lista_global') }}" role="button" style="font-size:.82rem;white-space:nowrap;">
+    Gestionar →
+  </a>
+</div>
+
+{# Gestión de usuarios #}
+<div class="section-header" style="margin-bottom:1rem;">
+  <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;">Usuarios</div>
+  <a href="{{ url_for('usuarios.lista') }}" role="button" class="secondary" style="font-size:.82rem;">Ver todos →</a>
+</div>
+
+<div style="background:#fff;border:1px solid #e5e5e5;border-radius:12px;
+            padding:1.1rem 1.4rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+  <div>
+    <div style="font-size:.9rem;font-weight:700;color:#0a0a0a;margin-bottom:.2rem;">
+      {{ total_usuarios }} usuarios registrados
+    </div>
+    <div style="font-size:.82rem;color:#999;">
+      Gestiona accesos, roles y asignaciones de viviendas
+    </div>
+  </div>
+  <a href="{{ url_for('usuarios.lista') }}" role="button" style="font-size:.82rem;white-space:nowrap;">
+    Gestionar →
+  </a>
+</div>
+
+{% endblock %}

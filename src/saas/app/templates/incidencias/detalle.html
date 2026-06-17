@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import warning, trash, check, edit %}
+{% block titulo %}{{ inc.titulo }}{% endblock %}
+{% block contenido %}
+
+{# Breadcrumb #}
+<nav aria-label="breadcrumb"><ul>
+  <li><a href="{{ url_for('incidencias.lista') }}">Incidencias</a></li>
+  <li>{{ inc.titulo }}</li>
+</ul></nav>
+
+{# Cabecera #}
+<div style="margin-bottom:2rem;">
+  <div style="display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:.5rem;">
+    <h2 style="margin:0;flex:1;min-width:0;">{{ inc.titulo }}</h2>
+    {% if inc.estado == 'abierta' %}
+      <span style="display:inline-block;padding:.3rem .75rem;border-radius:8px;
+                   font-size:.75rem;font-weight:700;letter-spacing:.05em;flex-shrink:0;
+                   background:#fee2e2;color:#b91c1c;">ABIERTA</span>
+    {% elif inc.estado == 'en_proceso' %}
+      <span style="display:inline-block;padding:.3rem .75rem;border-radius:8px;
+                   font-size:.75rem;font-weight:700;letter-spacing:.05em;flex-shrink:0;
+                   background:#fef3c7;color:#92400e;">EN PROCESO</span>
+    {% else %}
+      <span style="display:inline-block;padding:.3rem .75rem;border-radius:8px;
+                   font-size:.75rem;font-weight:700;letter-spacing:.05em;flex-shrink:0;
+                   background:#d1fae5;color:#065f46;">CERRADA</span>
+    {% endif %}
+  </div>
+  <div style="font-size:.83rem;color:var(--text-muted);display:flex;gap:1rem;flex-wrap:wrap;">
+    <span>
+      Tipo:
+      {% if inc.tipo == 'averia' %}Avería{% elif inc.tipo == 'consulta' %}Consulta{% else %}Otro{% endif %}
+    </span>
+    {% if viv %}<span>Vivienda: <strong>{{ viv.identificador }}</strong></span>{% endif %}
+    <span>Abierta el {{ inc.fecha_creacion }}</span>
+    {% if inc.fecha_cierre %}<span>Cerrada el {{ inc.fecha_cierre }}</span>{% endif %}
+  </div>
+</div>
+
+{# Descripción #}
+<div style="background:#fff;border:1px solid #e5e5e5;border-radius:12px;
+            padding:1.4rem;margin-bottom:1.5rem;">
+  <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+              color:var(--text-muted);margin-bottom:.75rem;">Descripción</div>
+  <p style="margin:0;white-space:pre-wrap;line-height:1.7;">{{ inc.descripcion }}</p>
+</div>
+
+{# Respuesta admin #}
+<div style="background:#fff;border:1px solid #e5e5e5;border-radius:12px;
+            padding:1.4rem;margin-bottom:1.5rem;">
+  <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+              color:var(--text-muted);margin-bottom:.75rem;">Respuesta del administrador</div>
+  {% if inc.respuesta_admin %}
+  <div style="background:#f5f5f5;border-radius:8px;padding:1rem;
+              white-space:pre-wrap;line-height:1.7;font-size:.92rem;">
+    {{ inc.respuesta_admin }}
+  </div>
+  {% else %}
+  <p style="margin:0;color:var(--text-muted);font-style:italic;">Sin respuesta todavía.</p>
+  {% endif %}
+</div>
+
+{# Formulario de respuesta — solo admin/superadmin #}
+{% if current_user.es_superadmin %}
+<div style="background:#fff;border:1px solid #e5e5e5;border-radius:12px;
+            padding:1.4rem;margin-bottom:1.5rem;">
+  <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+              color:var(--text-muted);margin-bottom:1rem;">{{ edit(15) }} Añadir / editar respuesta</div>
+  <form method="POST" action="{{ url_for('incidencias.responder', safe_oid=safe_oid) }}">
+    {{ csrf_token_hidden() }}
+
+    <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.35rem;">
+      {{ form_respuesta.respuesta.label.text }}
+    </label>
+    {{ form_respuesta.respuesta(rows=4, style='width:100%;resize:vertical;',
+                                placeholder='Escribe aquí la respuesta para el usuario…') }}
+    {% if form_respuesta.respuesta.errors %}
+      {% for e in form_respuesta.respuesta.errors %}
+        <small style="color:#b91c1c;">{{ e }}</small>
+      {% endfor %}
+    {% endif %}
+
+    <label style="font-size:.82rem;font-weight:600;display:block;margin:.9rem 0 .35rem;">
+      {{ form_respuesta.estado.label.text }}
+    </label>
+    {{ form_respuesta.estado(style='width:100%;max-width:240px;') }}
+
+    <div style="margin-top:1rem;">
+      <button type="submit" style="white-space:nowrap;">{{ check(15) }} Guardar respuesta</button>
+    </div>
+  </form>
+</div>
+
+{# Botón eliminar — solo superadmin #}
+<div style="margin-top:1.5rem;">
+  <form method="POST"
+        action="{{ url_for('incidencias.eliminar', safe_oid=safe_oid) }}"
+        data-ajax-action="{{ url_for('incidencias.eliminar', safe_oid=safe_oid) }}"
+        onsubmit="return confirm('¿Eliminar esta incidencia definitivamente?')">
+    {{ csrf_token_hidden() }}
+    <button type="submit" class="btn-danger-sm">{{ trash(14) }} Eliminar incidencia</button>
+  </form>
+</div>
+{% endif %}
+
+{% endblock %}
