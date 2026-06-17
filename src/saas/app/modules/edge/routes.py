@@ -71,3 +71,26 @@ def recibir_decision():
 
     db.session.commit()
     return jsonify({'ok': True, 'id': op.id}), 201
+
+
+@edge_bp.route('/generar-cierre', methods=['POST'])
+def generar_cierre_edge():
+    """Genera el CierreMensual de un mes completo a partir de OperacionHoraria.
+
+    Llamado automáticamente por el edge al cruzar el límite de mes.
+    Autenticación: mismo Bearer token que /decision.
+    Body JSON: { "comunidad_id": 1, "mes": "2025-01" }
+    """
+    if not _check_auth():
+        return jsonify({'error': 'No autorizado'}), 401
+
+    data = request.get_json(silent=True) or {}
+    comunidad_id = data.get('comunidad_id')
+    mes = data.get('mes')
+    if not comunidad_id or not mes:
+        return jsonify({'error': 'comunidad_id y mes requeridos'}), 400
+
+    from app.modules.cierres.routes import _calcular_cierre_desde_operaciones
+    n, msg = _calcular_cierre_desde_operaciones(int(comunidad_id), str(mes))
+    status = 201 if n > 0 else 400
+    return jsonify({'ok': n > 0, 'n_viviendas': n, 'msg': msg}), status

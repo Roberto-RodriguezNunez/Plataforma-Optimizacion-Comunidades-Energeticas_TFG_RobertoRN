@@ -39,7 +39,8 @@ services:
     #   docker buildx build --platform linux/arm64 -f docker/Dockerfile.edge -t energycomm-edge:arm64 .
     environment:
       - FEED_MODE=simulado
-      - N_STEPS=168
+      - N_STEPS=8760        # 1 año completo (365 días × 24 h) ≈ 6-7 min
+      - START_DATE=2025-01-01  # step 0 = 2025-01-01 00:00 UTC
       - SAAS_API_URL=http://web:5000
       - EDGE_API_KEY=lealink-edge-secret
       - COMUNIDAD_ID=1

@@ -13,8 +13,10 @@ Configuración por variables de entorno:
   ONNX_PATH    : ruta al .onnx              (default: models/residual_sac_actor.onnx)
   NPZ_PATH     : ruta al .npz              (default: models/vec_normalize_v5_1M.npz)
   DELTA_MAX    : float                      (default: 0.15)
-  N_STEPS      : enteros ≥ 1               (default: 168 — una semana)
+  N_STEPS      : enteros ≥ 1               (default: 2160 — tres meses)
   START_STEP   : índice de inicio en el dataset (default: 0)
+  START_DATE   : fecha de inicio simulada ISO-8601 (default: 2025-01-01)
+                 Cada step avanza 1 hora → step 0 = START_DATE 00:00 UTC
   SAAS_API_URL : URL base del SaaS Flask (ej. http://web:5000) — opcional
   EDGE_API_KEY : clave API para autenticar POST al SaaS — opcional
   COMUNIDAD_ID : id numérico de la comunidad en el SaaS — opcional
@@ -29,6 +31,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import yaml
@@ -80,11 +83,15 @@ def run(
     delta_max: float | None = None,
 ) -> None:
     """Ejecuta el bucle de operación edge durante n_steps horas."""
-    n_steps   = n_steps   or int(os.environ.get('N_STEPS', EPISODE_LENGTH))
+    n_steps    = n_steps   or int(os.environ.get('N_STEPS', 2160))  # 3 meses por defecto
     start_step = start_step or int(os.environ.get('START_STEP', 0))
     onnx_path  = onnx_path  or os.environ.get('ONNX_PATH', _DEFAULT_ONNX)
     npz_path   = npz_path   or os.environ.get('NPZ_PATH',  _DEFAULT_NPZ)
     delta_max  = delta_max  or float(os.environ.get('DELTA_MAX', _DEFAULT_DELTA_MAX))
+
+    # Timestamp simulado: START_DATE + 1 hora por step
+    _start_date_str = os.environ.get('START_DATE', '2025-01-01')
+    _sim_t0 = datetime.fromisoformat(_start_date_str).replace(tzinfo=timezone.utc)
 
     # DataFeed
     feed = get_feed(feed_mode)
@@ -107,29 +114,57 @@ def run(
     )
 
     # Config de integración SaaS (opcional)
-    saas_url    = os.environ.get('SAAS_API_URL', '').rstrip('/')
-    edge_key    = os.environ.get('EDGE_API_KEY', '')
+    saas_url     = os.environ.get('SAAS_API_URL', '').rstrip('/')
+    edge_key     = os.environ.get('EDGE_API_KEY', '')
     comunidad_id = os.environ.get('COMUNIDAD_ID', '')
-    _post_saas = bool(saas_url and edge_key and comunidad_id and _HAS_REQUESTS)
+    _post_saas   = bool(saas_url and edge_key and comunidad_id and _HAS_REQUESTS)
+
+    _auth_headers = {'Authorization': f'Bearer {edge_key}'}
+
+    def _publicar_cierre(mes: str) -> None:
+        """Llama al SaaS para generar el CierreMensual del mes indicado."""
+        try:
+            r = _requests.post(
+                f'{saas_url}/api/edge/generar-cierre',
+                json={'comunidad_id': int(comunidad_id), 'mes': mes},
+                headers=_auth_headers,
+                timeout=60,
+            )
+            data = r.json() if r.content else {}
+            print(json.dumps({'event': 'cierre_publicado', 'mes': mes,
+                              'n_viviendas': data.get('n_viviendas', 0),
+                              'msg': data.get('msg', '')}), flush=True)
+        except Exception as exc:
+            print(f'[edge] WARN cierre {mes} falló: {exc}', file=sys.stderr)
 
     # Estado inicial
     sim.current_step = start_step
     sim.soc = SOC_INICIAL
-    ben_total = 0.0
+    ben_total  = 0.0
+    mes_actual = _sim_t0.strftime('%Y-%m')
 
     print(json.dumps({'event': 'start', 'n_steps': n_steps,
                       'feed_mode': os.environ.get('FEED_MODE', 'historico'),
                       'delta_max': delta_max, 'start_step': start_step,
+                      'start_date': _start_date_str,
                       'saas_integration': _post_saas}),
           flush=True)
 
     for i in range(n_steps):
-        step = sim.current_step
-        forecast = feed.get_window(step, HORIZON)
-        state = {'soc': sim.soc, 'step': step}
+        step     = sim.current_step
+        sim_ts   = _sim_t0 + timedelta(hours=i)
+        sim_ts_s = sim_ts.isoformat()
+        mes_step = sim_ts.strftime('%Y-%m')
 
-        # Datos del DataFeed para la hora actual (columnas: consumo, gen, precio_kWh, precio_exc)
-        row = forecast[0]
+        # Detectar cambio de mes → publicar cierre del mes que acaba de cerrar
+        if _post_saas and mes_step != mes_actual:
+            _publicar_cierre(mes_actual)
+            mes_actual = mes_step
+
+        forecast = feed.get_window(step, HORIZON)
+        state    = {'soc': sim.soc, 'step': step}
+
+        row           = forecast[0]
         consumo_total = float(row[0])
         gen_total     = float(row[1])
         precio_compra = float(row[2])
@@ -148,6 +183,7 @@ def run(
 
         record = {
             'step':               step,
+            'ts':                 sim_ts_s,
             'soc':                round(sim.soc, 4),
             'consumo_total_kwh':  round(consumo_total, 4),
             'gen_total_kwh':      round(gen_total, 4),
@@ -162,7 +198,6 @@ def run(
         }
         print(json.dumps(record), flush=True)
 
-        # POST al SaaS si está configurado
         if _post_saas:
             payload = dict(record)
             payload['comunidad_id'] = int(comunidad_id)
@@ -171,11 +206,15 @@ def run(
                 _requests.post(
                     f'{saas_url}/api/edge/decision',
                     json=payload,
-                    headers={'Authorization': f'Bearer {edge_key}'},
+                    headers=_auth_headers,
                     timeout=5,
                 )
             except Exception as exc:
                 print(f'[edge] WARN POST SaaS falló step={step}: {exc}', file=sys.stderr)
+
+    # Publicar cierre del último mes al terminar
+    if _post_saas:
+        _publicar_cierre(mes_actual)
 
     print(json.dumps({
         'event': 'done',

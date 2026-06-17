@@ -1,8 +1,12 @@
-"""Tests del blueprint edge: POST /api/edge/decision."""
+"""Tests del blueprint edge: POST /api/edge/decision y /api/edge/generar-cierre."""
 import os
+from datetime import datetime, timezone
 import pytest
+from app.extensions import db
 from app.models.bateria import Bateria
+from app.models.cierre import CierreMensual
 from app.models.operacion import OperacionHoraria
+from app.models.vivienda import Vivienda
 
 
 PAYLOAD_OK = {
@@ -107,3 +111,64 @@ class TestEdgeDecision:
             client.post('/api/edge/decision',
                         json=_payload(comunidad.__oid__, step=step, soc=0.5 - step * 0.05))
         assert srp.num_objs(OperacionHoraria) == 5
+
+
+class TestGenerarCierreEdge:
+    """Tests de POST /api/edge/generar-cierre."""
+
+    def _insertar_op(self, comunidad_oid, mes='2025-01'):
+        year, month = int(mes[:4]), int(mes[5:])
+        op = OperacionHoraria(
+            comunidad_oid=comunidad_oid,
+            ts=datetime(year, month, 15, 12, tzinfo=timezone.utc),
+            step=0,
+            consumo_total_kwh=10.0, gen_total_kwh=4.0,
+            precio_compra=0.20, precio_exc=0.06, soc=0.6,
+            p_carga_solar=2.0, p_carga_red=0.0,
+            p_descarga_casa=1.5, p_descarga_red=0.0,
+            beneficio_marginal=0.15,
+        )
+        db.session.add(op)
+
+    def _vivienda(self, comunidad_oid):
+        v = Vivienda(
+            comunidad_oid=comunidad_oid, identificador='V1', cups='ES9999',
+            potencia_contratada_kw=4.6, coeficiente_reparto=1.0,
+            tiene_paneles=True, potencia_pico_paneles_kwp=4.0,
+            numero_paneles=10, orientacion_paneles='sur',
+        )
+        db.session.add(v)
+        db.session.commit()
+
+    def test_generar_cierre_crea_cierre_mensual(self, client, comunidad, srp):
+        os.environ.pop('EDGE_API_KEY', None)
+        self._vivienda(comunidad.__oid__)
+        self._insertar_op(comunidad.__oid__, '2025-01')
+        db.session.commit()
+
+        resp = client.post('/api/edge/generar-cierre',
+                           json={'comunidad_id': comunidad.__oid__, 'mes': '2025-01'})
+        assert resp.status_code == 201
+        data = resp.get_json()
+        assert data['ok'] is True
+        assert data['n_viviendas'] == 1
+        assert srp.num_objs(CierreMensual) == 1
+
+    def test_generar_cierre_sin_operaciones_400(self, client, comunidad, srp):
+        os.environ.pop('EDGE_API_KEY', None)
+        self._vivienda(comunidad.__oid__)
+        resp = client.post('/api/edge/generar-cierre',
+                           json={'comunidad_id': comunidad.__oid__, 'mes': '2025-06'})
+        assert resp.status_code == 400
+        assert srp.num_objs(CierreMensual) == 0
+
+    def test_generar_cierre_requiere_auth(self, client, comunidad, monkeypatch):
+        monkeypatch.setenv('EDGE_API_KEY', 'secreto')
+        resp = client.post('/api/edge/generar-cierre',
+                           json={'comunidad_id': comunidad.__oid__, 'mes': '2025-01'})
+        assert resp.status_code == 401
+
+    def test_generar_cierre_campos_requeridos(self, client):
+        os.environ.pop('EDGE_API_KEY', None)
+        resp = client.post('/api/edge/generar-cierre', json={'mes': '2025-01'})
+        assert resp.status_code == 400
