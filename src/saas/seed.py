@@ -85,23 +85,23 @@ USUARIOS_DATA = [
 VIVIENDAS_VIGO = [
     # (identificador, direccion, cups_suffix, potencia, coef, paneles, kwp, npaneles, orient)
     # Coeficientes proporcionales a la potencia contratada, suman exactamente 1.0
-    # Todas las viviendas participan con paneles (comunidad de autoconsumo colectivo RD 244/2019)
-    # kwp ≈ 0.7–1.0× potencia contratada; numero_paneles = round(kwp / 0.36)
-    ('Portal A - 1ºIzq', 'Rúa do Príncipe 12, 1ºIzq', 'A001', 3.45, 0.0526, True, 3.2,  9, 'sur'),
-    ('Portal A - 1ºDch', 'Rúa do Príncipe 12, 1ºDch', 'A002', 4.60, 0.0702, True, 3.2,  9, 'sur'),
-    ('Portal A - 2ºIzq', 'Rúa do Príncipe 12, 2ºIzq', 'A003', 3.45, 0.0526, True, 2.8,  8, 'sur'),
-    ('Portal A - 2ºDch', 'Rúa do Príncipe 12, 2ºDch', 'A004', 3.45, 0.0526, True, 2.4,  7, 'mixta'),
-    ('Portal A - 3ºIzq', 'Rúa do Príncipe 12, 3ºIzq', 'A005', 4.60, 0.0702, True, 4.0, 11, 'mixta'),
-    ('Portal A - 3ºDch', 'Rúa do Príncipe 12, 3ºDch', 'A006', 3.45, 0.0526, True, 2.8,  8, 'este'),
-    ('Portal B - 1ºIzq', 'Rúa do Príncipe 14, 1ºIzq', 'B001', 5.75, 0.0877, True, 5.6, 16, 'sur'),
-    ('Portal B - 1ºDch', 'Rúa do Príncipe 14, 1ºDch', 'B002', 4.60, 0.0702, True, 3.6, 10, 'sur'),
-    ('Portal B - 2ºIzq', 'Rúa do Príncipe 14, 2ºIzq', 'B003', 3.45, 0.0526, True, 2.4,  7, 'este'),
-    ('Portal B - 2ºDch', 'Rúa do Príncipe 14, 2ºDch', 'B004', 4.60, 0.0702, True, 3.2,  9, 'mixta'),
-    ('Portal B - 3ºIzq', 'Rúa do Príncipe 14, 3ºIzq', 'B005', 5.75, 0.0877, True, 6.4, 18, 'sur'),
-    ('Portal B - 3ºDch', 'Rúa do Príncipe 14, 3ºDch', 'B006', 4.60, 0.0702, True, 3.6, 10, 'sur'),
-    ('Portal C - 1ºIzq', 'Rúa do Príncipe 16, 1ºIzq', 'C001', 3.45, 0.0526, True, 3.2,  9, 'sur'),
-    ('Portal C - 1ºDch', 'Rúa do Príncipe 16, 1ºDch', 'C002', 4.60, 0.0702, True, 3.2,  9, 'sur'),
-    ('Portal C - 2ºIzq', 'Rúa do Príncipe 16, 2ºIzq', 'C003', 5.75, 0.0878, True, 4.8, 13, 'sur'),
+    # Todas las viviendas participan con paneles (comunidad autoconsumo colectivo RD 244/2019)
+    # Panel estándar 400 Wp → numero_paneles = kwp / 0.4 (exacto en todos los casos)
+    ('Portal A - 1ºIzq', 'Rúa do Príncipe 12, 1ºIzq', 'A001', 3.45, 0.0526, True, 3.2,  8, 'sur'),
+    ('Portal A - 1ºDch', 'Rúa do Príncipe 12, 1ºDch', 'A002', 4.60, 0.0702, True, 3.2,  8, 'sur'),
+    ('Portal A - 2ºIzq', 'Rúa do Príncipe 12, 2ºIzq', 'A003', 3.45, 0.0526, True, 2.8,  7, 'sur'),
+    ('Portal A - 2ºDch', 'Rúa do Príncipe 12, 2ºDch', 'A004', 3.45, 0.0526, True, 2.4,  6, 'mixta'),
+    ('Portal A - 3ºIzq', 'Rúa do Príncipe 12, 3ºIzq', 'A005', 4.60, 0.0702, True, 4.0, 10, 'mixta'),
+    ('Portal A - 3ºDch', 'Rúa do Príncipe 12, 3ºDch', 'A006', 3.45, 0.0526, True, 2.8,  7, 'este'),
+    ('Portal B - 1ºIzq', 'Rúa do Príncipe 14, 1ºIzq', 'B001', 5.75, 0.0877, True, 5.6, 14, 'sur'),
+    ('Portal B - 1ºDch', 'Rúa do Príncipe 14, 1ºDch', 'B002', 4.60, 0.0702, True, 3.6,  9, 'sur'),
+    ('Portal B - 2ºIzq', 'Rúa do Príncipe 14, 2ºIzq', 'B003', 3.45, 0.0526, True, 2.4,  6, 'este'),
+    ('Portal B - 2ºDch', 'Rúa do Príncipe 14, 2ºDch', 'B004', 4.60, 0.0702, True, 3.2,  8, 'mixta'),
+    ('Portal B - 3ºIzq', 'Rúa do Príncipe 14, 3ºIzq', 'B005', 5.75, 0.0877, True, 6.4, 16, 'sur'),
+    ('Portal B - 3ºDch', 'Rúa do Príncipe 14, 3ºDch', 'B006', 4.60, 0.0702, True, 3.6,  9, 'sur'),
+    ('Portal C - 1ºIzq', 'Rúa do Príncipe 16, 1ºIzq', 'C001', 3.45, 0.0526, True, 3.2,  8, 'sur'),
+    ('Portal C - 1ºDch', 'Rúa do Príncipe 16, 1ºDch', 'C002', 4.60, 0.0702, True, 3.2,  8, 'sur'),
+    ('Portal C - 2ºIzq', 'Rúa do Príncipe 16, 2ºIzq', 'C003', 5.75, 0.0878, True, 4.8, 12, 'sur'),
 ]
 
 # Viviendas de Eco-Barrio Santiago (12 viviendas)

@@ -4,9 +4,9 @@ Autenticación: header  Authorization: Bearer <EDGE_API_KEY>
 La clave se configura con la variable de entorno EDGE_API_KEY en el SaaS.
 """
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
-from flask import current_app, jsonify, request
+from flask import jsonify, request
 
 from app.extensions import db
 from app.models.bateria import Bateria
@@ -45,7 +45,7 @@ def recibir_decision():
         return jsonify({'error': f'Campos requeridos: {missing}'}), 400
 
     ts_raw = data.get('ts')
-    ts = datetime.fromisoformat(ts_raw) if ts_raw else datetime.utcnow()
+    ts = datetime.fromisoformat(ts_raw) if ts_raw else datetime.now(timezone.utc)
 
     op = OperacionHoraria(
         comunidad_oid=int(data['comunidad_id']),
