@@ -4,3 +4,5 @@ matplotlib
 gymnasium
 stable-baselines3
 tensorboard
+onnx>=1.16
+onnxruntime>=1.17

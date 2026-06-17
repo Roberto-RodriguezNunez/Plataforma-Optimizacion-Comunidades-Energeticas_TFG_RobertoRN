@@ -176,6 +176,21 @@ def crear_residual_sac(model_path: str, vec_norm_path: str,
     )
 
 
+def crear_onnx_residual_sac(onnx_path: str, npz_path: str,
+                            delta_max: float) -> BaseController:
+    """Crea OnnxResidualController (sin SB3/torch) con el MPC configurado."""
+    from src.production.onnx_inference import OnnxResidualController
+    sim = ComunidadSimulador(DATASET_PATH)
+    mpc = crear_mpc()
+    return OnnxResidualController(
+        mpc=mpc,
+        sim=sim,
+        onnx_path=onnx_path,
+        npz_path=npz_path,
+        delta_max=delta_max,
+    )
+
+
 def crear_discrete_rl(model_path: str, vec_norm_path: str,
                       algo: str = 'DQN') -> BaseController:
     """Crea DiscreteRLController para DQN o PPO."""
@@ -207,6 +222,10 @@ def main():
                         help='Ruta a modelo PPO (.zip). Repetible.')
     parser.add_argument('--rl-norm', type=str, default=None,
                         help='Ruta a VecNormalize stats para DQN/PPO (.pkl)')
+    parser.add_argument('--onnx-model', type=str, default=None,
+                        help='Ruta al actor ONNX (.onnx)')
+    parser.add_argument('--onnx-npz', type=str, default=None,
+                        help='Ruta a VecNormalize stats (.npz)')
     parser.add_argument('--skip-baselines', action='store_true',
                         help='No evaluar MPC oraculo/realista/IDLE')
     args = parser.parse_args()
@@ -249,7 +268,15 @@ def main():
         res_sac = evaluar_controlador(sac_ctrl, forecast_mode='realista')
         resultados[sac_ctrl.nombre()] = res_sac
 
-    # 5. DQN (puede haber varios modelos)
+    # 5. ONNX Residual SAC
+    if args.onnx_model:
+        npz = args.onnx_npz or os.path.join(ROOT, 'models', 'vec_normalize_v5_1M.npz')
+        print(f"  Evaluando ONNX ResidualSAC ({os.path.basename(args.onnx_model)})...")
+        onnx_ctrl = crear_onnx_residual_sac(args.onnx_model, npz, args.delta_max)
+        res_onnx = evaluar_controlador(onnx_ctrl, forecast_mode='realista')
+        resultados[onnx_ctrl.nombre()] = res_onnx
+
+    # 6. DQN (puede haber varios modelos)
     for dqn_path in (args.dqn_model or []):
         label = os.path.splitext(os.path.basename(dqn_path))[0]
         print(f"  Evaluando DQN ({label})...")

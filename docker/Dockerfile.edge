@@ -1,0 +1,44 @@
+FROM python:3.11-slim
+
+# Sin plataforma hardcodeada: la imagen base tiene variantes oficiales para
+# amd64 (x86) y arm64 (Raspberry Pi 4/5).
+# Construir para RPi:
+#   docker buildx build --platform linux/arm64 -f docker/Dockerfile.edge -t energycomm-edge:arm64 .
+# Construir para x86 (desarrollo):
+#   docker build -f docker/Dockerfile.edge -t energycomm-edge .
+
+WORKDIR /app
+
+# Dependencias del runtime edge (sin SB3 / torch / gymnasium)
+# Todas tienen wheels oficiales para arm64 en PyPI.
+COPY docker/requirements.edge.txt .
+RUN pip install --no-cache-dir -r requirements.edge.txt
+
+# Código fuente — solo módulos necesarios en el edge
+COPY src/production/                       src/production/
+COPY src/api/                              src/api/
+COPY src/controllers/base.py               src/controllers/base.py
+COPY src/controllers/__init__.py           src/controllers/__init__.py
+COPY src/benchmarks/mpc_benchmark.py       src/benchmarks/mpc_benchmark.py
+COPY src/benchmarks/__init__.py            src/benchmarks/__init__.py
+COPY src/core/                             src/core/
+COPY src/utils/generador_datos.py          src/utils/generador_datos.py
+COPY src/utils/__init__.py                 src/utils/__init__.py
+COPY config/                               config/
+
+# Artefactos de producción (generados por src/production/export_onnx.py)
+COPY models/residual_sac_actor.onnx        models/residual_sac_actor.onnx
+COPY models/vec_normalize_v5_1M.npz        models/vec_normalize_v5_1M.npz
+
+# Dataset para DataFeed simulado
+COPY data/processed/dataset_final.csv      data/processed/dataset_final.csv
+
+ENV PYTHONPATH=/app
+ENV FEED_MODE=simulado
+
+# Verificación en build: torch y SB3 NO deben estar presentes
+RUN python -c "import torch" 2>/dev/null && echo "ERROR: torch no deberia estar en edge" && exit 1 || true
+RUN python -c "import stable_baselines3" 2>/dev/null && echo "ERROR: sb3 no deberia estar en edge" && exit 1 || true
+RUN python -c "import onnxruntime; import numpy; import pandas; import scipy; print('OK deps edge')"
+
+CMD ["python", "-m", "src.production.edge_loop"]

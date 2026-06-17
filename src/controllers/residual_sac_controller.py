@@ -21,6 +21,7 @@ if ROOT not in sys.path:
 
 from src.controllers.base import BaseController
 from src.benchmarks.mpc_benchmark import LinearMPC
+from src.production.obs_builder import build_obs
 
 
 class ResidualSACController(BaseController):
@@ -107,43 +108,4 @@ class ResidualSACController(BaseController):
         return f"ResidualSAC(dmax={self._delta_max})"
 
     def _build_obs(self, state: Dict, forecast: np.ndarray) -> np.ndarray:
-        soc = state['soc']
-        step = state['step']
-
-        datos_hoy = self._sim.get_data_window(step, horizon=1)[0]
-        cons, gen, precio_compra, precio_venta = datos_hoy
-        balance = gen - cons
-        exc = max(0.0, balance)
-        def_ = abs(min(0.0, balance))
-
-        H = min(24, len(forecast))
-        forecast_padded = np.zeros((24, 4), dtype=np.float32)
-        forecast_padded[:H] = forecast[:H]
-        forecast_flat = forecast_padded.flatten()
-
-        hora = step % 24
-        dia_sem = (step // 24) % 7
-        mes = 0
-        temp_feats = np.array([
-            np.sin(2 * np.pi * hora / 24),
-            np.cos(2 * np.pi * hora / 24),
-            np.sin(2 * np.pi * dia_sem / 7),
-            np.cos(2 * np.pi * dia_sem / 7),
-            np.sin(2 * np.pi * mes / 12),
-            np.cos(2 * np.pi * mes / 12),
-        ], dtype=np.float32)
-
-        window_clean = self._sim.get_data_window(step + 1, horizon=24)
-        solar_exc_24h = float(np.sum(np.maximum(0.0, window_clean[:, 1] - window_clean[:, 0])))
-        espacio_bat = max(0.0, (self._sim.SOC_MAX - soc) * self._sim.BATERIA_CAPACIDAD)
-        margen_solar = np.float32(
-            max(0.0, solar_exc_24h - espacio_bat) / self._sim.BATERIA_CAPACIDAD
-        )
-
-        obs = np.concatenate((
-            [soc, precio_compra, precio_venta, exc, def_],
-            forecast_flat,
-            temp_feats,
-            [margen_solar],
-        ))
-        return obs.astype(np.float32)
+        return build_obs(state, forecast, self._sim)

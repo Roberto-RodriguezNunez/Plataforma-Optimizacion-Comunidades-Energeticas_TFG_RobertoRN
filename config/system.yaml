@@ -140,3 +140,13 @@ residual_sac:
   norm_obs: true
   norm_reward: false
   clip_obs: 10.0
+
+# --- Producción: runtime edge ONNX ---
+produccion:
+  onnx_path: models/residual_sac_actor.onnx   # generado por src/production/export_onnx.py
+  npz_path:  models/vec_normalize_v5_1M.npz   # generado por src/production/export_onnx.py
+  delta_max: 0.15                              # debe coincidir con residual_sac.delta_max
+
+# --- API: conectores de datos ---
+api:
+  feed_mode: historico   # historico | simulado  (var entorno FEED_MODE lo sobreescribe)

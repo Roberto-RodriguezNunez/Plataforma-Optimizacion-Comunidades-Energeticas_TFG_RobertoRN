@@ -559,7 +559,52 @@ Resto de hiperparámetros idénticos.
 pero el rango ±15% puede ser demasiado conservador. v5b prueba ±20% para ver
 si un rango intermedio entre v4 (30%) y v5 (15%) mejora la convergencia.
 
-**Resultados**: *(en curso — lanzado 22/05/2026)*
+**Resultados** *(completado — 1M pasos, 22/05/2026)*:
+- Mejor eval reward (env): +45.36 a 840k
+- Delta L1 medio: 0.17-0.22 kW — correcciones más grandes que v5
+
+**eval_unificada (3 seeds × 50 semanas = 150 semanas, best_model 1M)**:
+
+| Seed | MPC realista | ResidualSAC v5b | Δ vs MPC |
+|-----:|:-:|:-:|:-:|
+| 42 | +48.71 | +48.94 | **+0.23** |
+| 1337 | +48.70 | +48.96 | **+0.26** |
+| 2024 | +48.78 | +49.28 | **+0.50** |
+| **Agregado** | **+48.73** | **+49.06** | **+0.33** |
+
+**Conclusión**: delta_max=0.20 inferior a v5 (0.15). Rango más amplio no mejora.
+
+---
+
+## Residual SAC v5c (multiplicativo, delta_max=0.15, warmup=200k)
+| Parámetro | Valor |
+|-----------|-------|
+| Algoritmo | SAC |
+| Arquitectura | Residual **multiplicativo**: flow × (1 + delta × 0.15) |
+| Observación | 112 dims (108 base + 4 flujos MPC normalizados) |
+| Acción | Box(4) in [-1,1] |
+| delta_max | 0.15 → ±15% de cada flujo MPC |
+| DAWN warmup | **200,000** (v5: 100k) |
+| LR | 1e-4 |
+| Buffer | 100k |
+| Batch size | 256 |
+| GAMMA | 0.99 |
+| TAU | 0.005 |
+| ent_coef | 0.01 |
+| Red actor/critic | 112→256→256→4 |
+| Pasos totales | 1M |
+| Entorno | EnergyEnvContinuo con neteo + ruido precios 3 capas |
+| Seed | 42 |
+| Tag | v5c (modelos en `models/v5c/`, logs en `logs/v5c/`) |
+
+**Cambios respecto a v5**: dawn_warmup 100k→200k (doble pre-llenado del buffer con MPC puro).
+Resto de hiperparámetros idénticos.
+
+**Motivación**: con warmup=200k el buffer arranca con más experiencia MPC diversa
+(~1190 episodios vs ~595), lo que puede dar mejor calibración de VecNormalize
+y arranque más estable del aprendizaje.
+
+**Resultados**: *(en curso — lanzado 26/05/2026)*
 
 ---
 
@@ -567,7 +612,8 @@ si un rango intermedio entre v4 (30%) y v5 (15%) mejora la convergencia.
 | Controlador | EUR/semana | Notas |
 |-------------|-----------|-------|
 | MPC oráculo | **+57.71** | Techo teórico (forecast perfecto) |
-| **Residual SAC v5** | **+49.23** | **Agregado 3 seeds (150 sem), best a 240k, en curso** |
+| **Residual SAC v5** | **+49.25** | **Agregado 3 seeds (150 sem), 1M pasos completos** |
+| Residual SAC v5b | +49.06 | Agregado 3 seeds, delta_max=0.20, 1M completos |
 | MPC realista (AR(1)) | **+48.73** | Cota práctica (agregado 3 seeds) |
 | Residual SAC v2 | +48.80 | Env sin neteo, OOM a 280k (no comparable) |
 | DQN_13 | +45.23 | 101 dims, [256,128], gamma=0.995 |

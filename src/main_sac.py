@@ -329,6 +329,8 @@ if __name__ == '__main__':
                         help='Delta max override (default: config)')
     parser.add_argument('--ent-coef', type=float, default=None,
                         help='Entropy coef override (default: config)')
+    parser.add_argument('--warmup', type=int, default=None,
+                        help='DAWN warmup steps override (default: config)')
     parser.add_argument('--tag', type=str, default=None,
                         help='Tag para separar modelos/logs (ej: v5b)')
     args = parser.parse_args()
@@ -336,4 +338,6 @@ if __name__ == '__main__':
         _SAC_CFG['delta_max'] = args.delta_max
     if args.ent_coef is not None:
         _SAC_CFG['ent_coef'] = args.ent_coef
+    if args.warmup is not None:
+        _SAC_CFG['dawn_warmup_steps'] = args.warmup
     main(seed=args.seed, total_timesteps=args.timesteps, tag=args.tag)

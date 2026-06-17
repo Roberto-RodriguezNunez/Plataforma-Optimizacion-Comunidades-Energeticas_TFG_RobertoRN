@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: lealink
+      POSTGRES_PASSWORD: lealink
+      POSTGRES_DB: lealink
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lealink"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  web:
+    build: src/saas
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://lealink:lealink@postgres:5432/lealink
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./src/saas:/app
+
+  edge:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.edge
+    # Para desplegar en Raspberry Pi 4/5 (ARM64), añadir:
+    #   platform: linux/arm64
+    # o construir con:
+    #   docker buildx build --platform linux/arm64 -f docker/Dockerfile.edge -t energycomm-edge:arm64 .
+    environment:
+      - FEED_MODE=simulado
+      - N_STEPS=168
+      - SAAS_API_URL=http://web:5000
+      - EDGE_API_KEY=lealink-edge-secret
+      - COMUNIDAD_ID=1
+    depends_on:
+      web:
+        condition: service_started
+    restart: on-failure
+
+volumes:
+  pgdata:
