@@ -4,7 +4,7 @@ Seed de datos de ejemplo para LeaLink.
 Idempotente: no hace nada si ya hay usuarios en la base de datos.
 
 Genera:
-  - 2 comunidades: Residencial Vigo Centro (15 viviendas) y Eco-Barrio Santiago (12 viviendas)
+  - 2 comunidades: Comunidade Solar de Vilarín (15 viviendas, O Courel) y Comunidade Enerxética de Brañas de Ulla (12 viviendas, Palas de Rei)
   - ~40 usuarios con nombres realistas
   - 1-3 usuarios por vivienda (titular obligatorio + conviventes opcionales)
   - La mayoría de usuarios tienen 1 vivienda; unos pocos tienen 2
@@ -80,44 +80,48 @@ USUARIOS_DATA = [
     ('Amparo Nieto Sousa',     'amparo.nieto@vecinos.es',    'amparo1234'),
 ]
 
-# Viviendas de Residencial Vigo Centro (15 viviendas)
-# coeficientes: suman exactamente 1.00
-VIVIENDAS_VIGO = [
+# Comunidade Solar de Vilarín — O Courel, Lugo (15 viviendas)
+# Pueblo rural de montaña en la Serra do Courel (Lugo).
+# Tres rutas: Rúa da Igrexa (6 casas), Camiño do Río (6 casas), Lugar de Outeiro (3 casas).
+# Coeficientes proporcionales a la potencia contratada, suman exactamente 1.0.
+# Todas con paneles (comunidad autoconsumo colectivo RD 244/2019). Panel estándar 400 Wp.
+VIVIENDAS_VILARIN = [
     # (identificador, direccion, cups_suffix, potencia, coef, paneles, kwp, npaneles, orient)
-    # Coeficientes proporcionales a la potencia contratada, suman exactamente 1.0
-    # Todas las viviendas participan con paneles (comunidad autoconsumo colectivo RD 244/2019)
-    # Panel estándar 400 Wp → numero_paneles = kwp / 0.4 (exacto en todos los casos)
-    ('Portal A - 1ºIzq', 'Rúa do Príncipe 12, 1ºIzq', 'A001', 3.45, 0.0526, True, 3.2,  8, 'sur'),
-    ('Portal A - 1ºDch', 'Rúa do Príncipe 12, 1ºDch', 'A002', 4.60, 0.0702, True, 3.2,  8, 'sur'),
-    ('Portal A - 2ºIzq', 'Rúa do Príncipe 12, 2ºIzq', 'A003', 3.45, 0.0526, True, 2.8,  7, 'sur'),
-    ('Portal A - 2ºDch', 'Rúa do Príncipe 12, 2ºDch', 'A004', 3.45, 0.0526, True, 2.4,  6, 'mixta'),
-    ('Portal A - 3ºIzq', 'Rúa do Príncipe 12, 3ºIzq', 'A005', 4.60, 0.0702, True, 4.0, 10, 'mixta'),
-    ('Portal A - 3ºDch', 'Rúa do Príncipe 12, 3ºDch', 'A006', 3.45, 0.0526, True, 2.8,  7, 'este'),
-    ('Portal B - 1ºIzq', 'Rúa do Príncipe 14, 1ºIzq', 'B001', 5.75, 0.0877, True, 5.6, 14, 'sur'),
-    ('Portal B - 1ºDch', 'Rúa do Príncipe 14, 1ºDch', 'B002', 4.60, 0.0702, True, 3.6,  9, 'sur'),
-    ('Portal B - 2ºIzq', 'Rúa do Príncipe 14, 2ºIzq', 'B003', 3.45, 0.0526, True, 2.4,  6, 'este'),
-    ('Portal B - 2ºDch', 'Rúa do Príncipe 14, 2ºDch', 'B004', 4.60, 0.0702, True, 3.2,  8, 'mixta'),
-    ('Portal B - 3ºIzq', 'Rúa do Príncipe 14, 3ºIzq', 'B005', 5.75, 0.0877, True, 6.4, 16, 'sur'),
-    ('Portal B - 3ºDch', 'Rúa do Príncipe 14, 3ºDch', 'B006', 4.60, 0.0702, True, 3.6,  9, 'sur'),
-    ('Portal C - 1ºIzq', 'Rúa do Príncipe 16, 1ºIzq', 'C001', 3.45, 0.0526, True, 3.2,  8, 'sur'),
-    ('Portal C - 1ºDch', 'Rúa do Príncipe 16, 1ºDch', 'C002', 4.60, 0.0702, True, 3.2,  8, 'sur'),
-    ('Portal C - 2ºIzq', 'Rúa do Príncipe 16, 2ºIzq', 'C003', 5.75, 0.0878, True, 4.8, 12, 'sur'),
+    ('Casa 1 — Rúa da Igrexa',   'Rúa da Igrexa 1', 'I001', 3.45, 0.0526, True, 3.2,  8, 'sur'),
+    ('Casa 2 — Rúa da Igrexa',   'Rúa da Igrexa 3', 'I002', 4.60, 0.0702, True, 3.2,  8, 'sur'),
+    ('Casa 3 — Rúa da Igrexa',   'Rúa da Igrexa 5', 'I003', 3.45, 0.0526, True, 2.8,  7, 'sur'),
+    ('Casa 4 — Rúa da Igrexa',   'Rúa da Igrexa 7', 'I004', 3.45, 0.0526, True, 2.4,  6, 'mixta'),
+    ('Casa 5 — Rúa da Igrexa',   'Rúa da Igrexa 9', 'I005', 4.60, 0.0702, True, 4.0, 10, 'mixta'),
+    ('Casa 6 — Rúa da Igrexa',   'Rúa da Igrexa 11','I006', 3.45, 0.0526, True, 2.8,  7, 'este'),
+    ('Casa 1 — Camiño do Río',   'Camiño do Río 2', 'R001', 5.75, 0.0877, True, 5.6, 14, 'sur'),
+    ('Casa 2 — Camiño do Río',   'Camiño do Río 4', 'R002', 4.60, 0.0702, True, 3.6,  9, 'sur'),
+    ('Casa 3 — Camiño do Río',   'Camiño do Río 6', 'R003', 3.45, 0.0526, True, 2.4,  6, 'este'),
+    ('Casa 4 — Camiño do Río',   'Camiño do Río 8', 'R004', 4.60, 0.0702, True, 3.2,  8, 'mixta'),
+    ('Casa 5 — Camiño do Río',   'Camiño do Río 10','R005', 5.75, 0.0877, True, 6.4, 16, 'sur'),
+    ('Casa 6 — Camiño do Río',   'Camiño do Río 12','R006', 4.60, 0.0702, True, 3.6,  9, 'sur'),
+    ('Casa 1 — Lugar de Outeiro','Lugar de Outeiro 1','O001', 3.45, 0.0526, True, 3.2,  8, 'sur'),
+    ('Casa 2 — Lugar de Outeiro','Lugar de Outeiro 3','O002', 4.60, 0.0702, True, 3.2,  8, 'sur'),
+    ('Casa 3 — Lugar de Outeiro','Lugar de Outeiro 5','O003', 5.75, 0.0878, True, 4.8, 12, 'sur'),
 ]
 
-# Viviendas de Eco-Barrio Santiago (12 viviendas)
-VIVIENDAS_SANTIAGO = [
-    ('Casa 1 — Bloque A', 'Rúa das Hortas 3, Bloque A', 'H001', 5.75, 0.090, True,  6.0, 15, 'sur'),
-    ('Casa 2 — Bloque A', 'Rúa das Hortas 3, Bloque A', 'H002', 4.60, 0.082, False, None,None,None),
-    ('Casa 3 — Bloque A', 'Rúa das Hortas 3, Bloque A', 'H003', 4.60, 0.082, True,  4.0, 10, 'sur'),
-    ('Casa 4 — Bloque A', 'Rúa das Hortas 3, Bloque A', 'H004', 3.45, 0.078, False, None,None,None),
-    ('Casa 5 — Bloque B', 'Rúa das Hortas 5, Bloque B', 'H005', 5.75, 0.090, True,  5.6, 14, 'mixta'),
-    ('Casa 6 — Bloque B', 'Rúa das Hortas 5, Bloque B', 'H006', 4.60, 0.082, False, None,None,None),
-    ('Casa 7 — Bloque B', 'Rúa das Hortas 5, Bloque B', 'H007', 4.60, 0.082, True,  3.6, 9,  'sur'),
-    ('Casa 8 — Bloque B', 'Rúa das Hortas 5, Bloque B', 'H008', 3.45, 0.078, False, None,None,None),
-    ('Casa 9 — Bloque C', 'Rúa das Hortas 7, Bloque C', 'H009', 5.75, 0.090, True,  7.2, 18, 'sur'),
-    ('Casa 10 — Bloque C','Rúa das Hortas 7, Bloque C', 'H010', 4.60, 0.082, False, None,None,None),
-    ('Casa 11 — Bloque C','Rúa das Hortas 7, Bloque C', 'H011', 4.60, 0.082, True,  4.8, 12, 'este'),
-    ('Casa 12 — Bloque C','Rúa das Hortas 7, Bloque C', 'H012', 3.45, 0.082, False, None,None,None),
+# Comunidade Enerxética de Brañas de Ulla — Palas de Rei, Lugo (12 viviendas)
+# Aldea en la comarca de Lugo próxima al Camino de Santiago.
+# Dos zonas: Rúa do Muíño (6 casas), Lugar da Carballeira (6 casas).
+# Coeficientes no están normalizados al 100% (comunidad en expansión).
+VIVIENDAS_BRANAS = [
+    # (identificador, direccion, cups_suffix, potencia, coef, paneles, kwp, npaneles, orient)
+    ('Casa 1 — Rúa do Muíño',        'Rúa do Muíño 1',         'M001', 5.75, 0.090, True,  6.0, 15, 'sur'),
+    ('Casa 2 — Rúa do Muíño',        'Rúa do Muíño 3',         'M002', 4.60, 0.082, False, None,None,None),
+    ('Casa 3 — Rúa do Muíño',        'Rúa do Muíño 5',         'M003', 4.60, 0.082, True,  4.0, 10, 'sur'),
+    ('Casa 4 — Rúa do Muíño',        'Rúa do Muíño 7',         'M004', 3.45, 0.078, False, None,None,None),
+    ('Casa 5 — Rúa do Muíño',        'Rúa do Muíño 9',         'M005', 5.75, 0.090, True,  5.6, 14, 'mixta'),
+    ('Casa 6 — Rúa do Muíño',        'Rúa do Muíño 11',        'M006', 4.60, 0.082, False, None,None,None),
+    ('Casa 1 — Lugar da Carballeira','Lugar da Carballeira 1',  'C001', 4.60, 0.082, True,  3.6,  9, 'sur'),
+    ('Casa 2 — Lugar da Carballeira','Lugar da Carballeira 3',  'C002', 3.45, 0.078, False, None,None,None),
+    ('Casa 3 — Lugar da Carballeira','Lugar da Carballeira 5',  'C003', 5.75, 0.090, True,  7.2, 18, 'sur'),
+    ('Casa 4 — Lugar da Carballeira','Lugar da Carballeira 7',  'C004', 4.60, 0.082, False, None,None,None),
+    ('Casa 5 — Lugar da Carballeira','Lugar da Carballeira 9',  'C005', 4.60, 0.082, True,  4.8, 12, 'este'),
+    ('Casa 6 — Lugar da Carballeira','Lugar da Carballeira 11', 'C006', 3.45, 0.082, False, None,None,None),
 ]
 
 # Plan de accesos: (índice_vivienda_0based, índice_usuario_0based, rol)
@@ -239,11 +243,11 @@ def seed():
         print("🌱 Iniciando seed...")
 
         # Verificar coherencia de coeficientes
-        suma_vigo = coef_suma(VIVIENDAS_VIGO)
-        suma_stgo = coef_suma(VIVIENDAS_SANTIAGO)
-        print(f"   Coeficientes Vigo: {suma_vigo} | Santiago: {suma_stgo}")
-        assert abs(suma_vigo - 1.0) < 0.01, f"Coef Vigo no suman 1: {suma_vigo}"
-        assert abs(suma_stgo - 1.0) < 0.01, f"Coef Santiago no suman 1: {suma_stgo}"
+        suma_vilarin = coef_suma(VIVIENDAS_VILARIN)
+        suma_branas  = coef_suma(VIVIENDAS_BRANAS)
+        print(f"   Coeficientes Vilarín: {suma_vilarin} | Brañas: {suma_branas}")
+        assert abs(suma_vilarin - 1.0) < 0.01, f"Coef Vilarín no suman 1: {suma_vilarin}"
+        assert abs(suma_branas  - 1.0) < 0.01, f"Coef Brañas no suman 1: {suma_branas}"
 
         # ------------------------------------------------------------------
         # Usuarios
@@ -260,39 +264,39 @@ def seed():
         # ------------------------------------------------------------------
         # Comunidades
         # ------------------------------------------------------------------
-        vigo = Comunidad(
-            nombre='Residencial Vigo Centro',
-            ubicacion='Vigo, Pontevedra',
+        vilarin = Comunidad(
+            nombre='Comunidade Solar de Vilarín',
+            ubicacion='O Courel, Lugo',
             fecha_constitucion='2022-03-15',
             estado='activa',
-            descripcion='Comunidad de autoconsumo colectivo (RD 244/2019) en el centro de Vigo. '
-                        '15 viviendas, todas con paneles fotovoltaicos. Batería compartida de 20 kWh. '
-                        'Coeficientes de reparto proporcionales a la potencia contratada.'
+            descripcion='Comunidade de autoconsumo colectivo (RD 244/2019) no concello de O Courel. '
+                        '15 vivendas rurais, todas con paneis fotovoltaicos de 400 Wp. '
+                        'Batería compartida de 20 kWh. Coeficientes proporcionais á potencia contratada.'
         )
-        vigo_oid = save(vigo)
+        vilarin_oid = save(vilarin)
 
-        santiago = Comunidad(
-            nombre='Eco-Barrio Santiago',
-            ubicacion='Santiago de Compostela, A Coruña',
+        branas = Comunidad(
+            nombre='Comunidade Enerxética de Brañas de Ulla',
+            ubicacion='Palas de Rei, Lugo',
             fecha_constitucion='2023-04-01',
             estado='activa',
-            descripcion='Proyecto piloto de comunidad energética en 3 bloques residenciales '
-                        'de Santiago de Compostela. 12 viviendas con batería de 30 kWh.'
+            descripcion='Proxecto piloto de comunidade enerxética na aldea de Brañas de Ulla, '
+                        'próxima ao Camiño de Santiago. 12 vivendas con batería de 30 kWh.'
         )
-        santiago_oid = save(santiago)
+        branas_oid = save(branas)
         print(f"\n🏘️  2 comunidades creadas")
 
         # ------------------------------------------------------------------
-        # Viviendas — Vigo
+        # Viviendas — Vilarín
         # ------------------------------------------------------------------
-        print(f"\n🏠 Creando viviendas Vigo ({len(VIVIENDAS_VIGO)})...")
-        vigo_viv_oids = []
-        for i, (ident, dir_, cups_suf, pot, coef, paneles, kwp, npan, orient) in enumerate(VIVIENDAS_VIGO):
+        print(f"\n🏠 Creando viviendas Vilarín ({len(VIVIENDAS_VILARIN)})...")
+        vilarin_viv_oids = []
+        for i, (ident, dir_, cups_suf, pot, coef, paneles, kwp, npan, orient) in enumerate(VIVIENDAS_VILARIN):
             v = Vivienda(
-                comunidad_oid=vigo_oid,
+                comunidad_oid=vilarin_oid,
                 identificador=ident,
-                direccion_completa=f'{dir_}, 36202 Vigo',
-                cups=f'ES003140500000{cups_suf}F',
+                direccion_completa=f'{dir_}, 27123 Vilarín (O Courel)',
+                cups=f'ES002700000000{cups_suf}F',
                 potencia_contratada_kw=pot,
                 coeficiente_reparto=coef,
                 fecha_alta='2022-04-01',
@@ -303,19 +307,19 @@ def seed():
                 orientacion_paneles=orient
             )
             oid = save(v)
-            vigo_viv_oids.append(oid)
+            vilarin_viv_oids.append(oid)
 
         # ------------------------------------------------------------------
-        # Viviendas — Santiago
+        # Viviendas — Brañas de Ulla
         # ------------------------------------------------------------------
-        print(f"🏠 Creando viviendas Santiago ({len(VIVIENDAS_SANTIAGO)})...")
-        stgo_viv_oids = []
-        for i, (ident, dir_, cups_suf, pot, coef, paneles, kwp, npan, orient) in enumerate(VIVIENDAS_SANTIAGO):
+        print(f"🏠 Creando viviendas Brañas ({len(VIVIENDAS_BRANAS)})...")
+        branas_viv_oids = []
+        for i, (ident, dir_, cups_suf, pot, coef, paneles, kwp, npan, orient) in enumerate(VIVIENDAS_BRANAS):
             v = Vivienda(
-                comunidad_oid=santiago_oid,
+                comunidad_oid=branas_oid,
                 identificador=ident,
-                direccion_completa=f'{dir_}, 15705 Santiago de Compostela',
-                cups=f'ES002130100000{cups_suf}F',
+                direccion_completa=f'{dir_}, 27200 Brañas de Ulla (Palas de Rei)',
+                cups=f'ES002700000001{cups_suf}F',
                 potencia_contratada_kw=pot,
                 coeficiente_reparto=coef,
                 fecha_alta='2023-05-01',
@@ -326,13 +330,13 @@ def seed():
                 orientacion_paneles=orient
             )
             oid = save(v)
-            stgo_viv_oids.append(oid)
+            branas_viv_oids.append(oid)
 
         # ------------------------------------------------------------------
         # Baterías
         # ------------------------------------------------------------------
         save(Bateria(
-            comunidad_oid=vigo_oid,
+            comunidad_oid=vilarin_oid,
             capacidad_nominal_kwh=20.0,
             capacidad_util_actual_kwh=18.4,
             ciclos_acumulados=487,
@@ -342,7 +346,7 @@ def seed():
             estado='operativa'
         ))
         save(Bateria(
-            comunidad_oid=santiago_oid,
+            comunidad_oid=branas_oid,
             capacidad_nominal_kwh=30.0,
             capacidad_util_actual_kwh=29.1,
             ciclos_acumulados=203,
@@ -361,18 +365,18 @@ def seed():
         for (viv_idx, usr_idx, rol) in ACCESOS_VIGO:
             a = AccesoVivienda(
                 usuario_oid=usuarios_oids[usr_idx],
-                vivienda_oid=vigo_viv_oids[viv_idx],
+                vivienda_oid=vilarin_viv_oids[viv_idx],
                 rol_en_vivienda=rol,
                 fecha_incorporacion='2022-04-01'
             )
             save(a)
             n_accesos += 1
 
-        # Accesos — Santiago
+        # Accesos — Brañas de Ulla
         for (viv_idx, usr_idx, rol) in ACCESOS_SANTIAGO:
             a = AccesoVivienda(
                 usuario_oid=usuarios_oids[usr_idx],
-                vivienda_oid=stgo_viv_oids[viv_idx],
+                vivienda_oid=branas_viv_oids[viv_idx],
                 rol_en_vivienda=rol,
                 fecha_incorporacion='2023-05-01'
             )
@@ -384,16 +388,16 @@ def seed():
         # ------------------------------------------------------------------
         # Cierres mensuales
         # ------------------------------------------------------------------
-        print(f"\n📊 Creando cierres mensuales ({len(MESES)} meses × {len(VIVIENDAS_VIGO)+len(VIVIENDAS_SANTIAGO)} viviendas)...")
+        print(f"\n📊 Creando cierres mensuales ({len(MESES)} meses × {len(VIVIENDAS_VILARIN)+len(VIVIENDAS_BRANAS)} viviendas)...")
         n_cierres = 0
-        for idx, (viv_data, viv_oid) in enumerate(zip(VIVIENDAS_VIGO, vigo_viv_oids)):
+        for idx, (viv_data, viv_oid) in enumerate(zip(VIVIENDAS_VILARIN, vilarin_viv_oids)):
             coef = viv_data[4]
             for mes in MESES:
                 c = cierre_para_vivienda(viv_oid, mes, coef, idx)
                 save(c)
                 n_cierres += 1
 
-        for idx, (viv_data, viv_oid) in enumerate(zip(VIVIENDAS_SANTIAGO, stgo_viv_oids)):
+        for idx, (viv_data, viv_oid) in enumerate(zip(VIVIENDAS_BRANAS, branas_viv_oids)):
             coef = viv_data[4]
             tiene_paneles = viv_data[5]
             for mes in MESES:
@@ -435,21 +439,21 @@ def seed():
             n.leida = leida
             save(n)
 
-        # Para Carmen (admin Vigo)
+        # Para Carmen (admin Vilarín)
         notif(1, 'general', '¡Bienvenida, administradora!',
-              'Tu cuenta de administradora de Residencial Vigo Centro está activa.', leida=True)
+              'Tu cuenta de administradora de Comunidade Solar de Vilarín está activa.', leida=True)
         notif(1, 'cierre_disponible', 'Cierres de diciembre publicados',
               'Los cierres de 2024-12 ya están disponibles para todas las viviendas de tu comunidad.')
         notif(1, 'bateria_mantenimiento', 'Revisión anual de batería programada',
               'La batería BYD HVS 20.0 tiene programado su mantenimiento anual para enero de 2025.')
 
-        # Para Marcos (admin Santiago)
+        # Para Marcos (admin Brañas de Ulla)
         notif(2, 'general', '¡Bienvenido, administrador!',
-              'Tu cuenta de administrador de Eco-Barrio Santiago está activa.', leida=True)
+              'Tu cuenta de administrador de Comunidade Enerxética de Brañas de Ulla está activa.', leida=True)
         notif(2, 'cierre_disponible', 'Cierres de diciembre publicados',
-              'Los cierres de 2024-12 ya están disponibles para todas las viviendas.')
+              'Os peches de 2024-12 xa están dispoñibles para todas as vivendas.')
         notif(2, 'incidencia', 'Incidencia en inversor resuelta',
-              'El fallo detectado en el inversor del Bloque C ha sido corregido por el técnico.')
+              'O fallo detectado no inversor do Lugar da Carballeira foi corrixido polo técnico.')
 
         # Para usuarios normales (los primeros 6 vecinos)
         for usr_idx, nombre_corto in [(3,'Ana'), (4,'Luis'), (5,'María'), (6,'José'), (9,'Sara'), (10,'Pablo')]:
@@ -473,13 +477,13 @@ def seed():
 ╔══════════════════════════════════════════════════════╗
 ║           ✨ Seed completado correctamente           ║
 ╠══════════════════════════════════════════════════════╣
-║  Usuarios:   {len(usuarios_oids):3}   Viviendas: {len(vigo_viv_oids)+len(stgo_viv_oids):3}         ║
+║  Usuarios:   {len(usuarios_oids):3}   Viviendas: {len(vilarin_viv_oids)+len(branas_viv_oids):3}         ║
 ║  Accesos:    {n_accesos:3}   Cierres:   {n_cierres:3}         ║
 ╠══════════════════════════════════════════════════════╣
 ║  Credenciales:                                       ║
 ║  roberto@lealink.es     /  roberto1234  (superadmin) ║
-║  carmen.vidal@vecinos.es / carmen1234   (admin Vigo) ║
-║  marcos.iglesias@vecinos.es / marcos1234 (admin Stgo)║
+║  carmen.vidal@vecinos.es / carmen1234 (admin Vilarín) ║
+║  marcos.iglesias@vecinos.es / marcos1234 (admin Brañas)║
 ║  ana.garcia@vecinos.es  /  ana1234      (vecina)     ║
 ╚══════════════════════════════════════════════════════╝
 """)
