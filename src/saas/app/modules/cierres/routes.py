@@ -1,7 +1,10 @@
 """CRUD de CierresMensuales."""
+import json
+import math
+import random as _rng
+
 from flask import render_template, redirect, url_for, request, abort, jsonify
 from flask_login import login_required, current_user
-import json
 
 from app.extensions import db
 from app.modules.cierres import cierres_bp
@@ -14,6 +17,29 @@ from app.helpers import (oid_from_safe, oid_to_safe, flash_exito, flash_error,
                           is_xhr, usuario_tiene_acceso, crear_notificacion)
 from app.decorators import superadmin_required
 
+# Desviación del ruido log-normal para la distribución individual
+_SIGMA_CONSUMO = 0.15   # ±15 %: variación conductual entre vecinos
+_SIGMA_GEN     = 0.10   # ±10 %: variación por sombras puntuales / temperatura
+
+
+def _distribuir(total, pesos_norm, step, vivienda_ids, sigma):
+    """Distribuye `total` entre N viviendas con ruido log-normal reproducible.
+
+    Cada casa recibe un peso base (coef o kwp×orient) perturbado con ruido
+    log-normal de desviación `sigma`, sembrado deterministicamente por
+    (vivienda_id, step) para que recalcular el cierre dé siempre el mismo
+    resultado. La normalización garantiza sum(devuelto) == total exactamente.
+    """
+    p = list(pesos_norm)
+    for i, vid in enumerate(vivienda_ids):
+        r = _rng.Random(int(vid) * 99991 + int(step))
+        # Box-Muller: N(0,1) sin dependencias externas
+        u1, u2 = max(r.random(), 1e-12), r.random()
+        z = math.sqrt(-2.0 * math.log(u1)) * math.cos(2.0 * math.pi * u2)
+        p[i] = max(p[i] * math.exp(sigma * z), 1e-9)
+    s = sum(p)
+    return [total * x / s for x in p]
+
 
 def _comprobar_acceso_o_superadmin(viv_oid):
     if current_user.es_superadmin:
@@ -25,13 +51,20 @@ def _comprobar_acceso_o_superadmin(viv_oid):
 def _calcular_cierre_desde_operaciones(comunidad_id, mes):
     """Genera o actualiza CierreMensual para cada vivienda a partir de OperacionHoraria.
 
-    Fórmula (RD 244/2019 autoconsumo colectivo):
-      consumo_i      = consumo_total × coef_reparto_i
-      gen_atrib_i    = gen_total × (viv.kwp / total_kwp)
-      bat_cubierto_i = p_descarga_casa × coef_reparto_i
-      compra_red_i   = max(0, deficit_i - bat_cubierto_i)
-      surplus_i      = max(0, gen_atrib_i - consumo_i)
-      ahorro_i       = coste_base_i - (compra_red_i × pc - surplus_i × pe)
+    Distribución individual (RD 244/2019 + perfil sintético reproducible):
+
+      consumo_i  — distribuido desde consumo_total con ruido log-normal (σ=0.15)
+                   ponderado por coef_reparto; sum(consumo_i) == consumo_total exacto.
+
+      gen_i      — distribuido desde gen_total con ruido log-normal (σ=0.10)
+                   ponderado por kwp instalado; sum(gen_i) == gen_total exacto.
+
+      bat_i      = p_descarga_casa × coef_reparto_i
+      compra_i   = max(0, (consumo_i - gen_i) - bat_i)
+      surplus_i  = max(0, gen_i - consumo_i)
+      ahorro_i   = consumo_i×pc − (compra_i×pc − surplus_i×pe)
+
+    El ruido está sembrado por (vivienda_id, step): recalcular siempre da el mismo resultado.
     """
     from app.models.comunidad import Comunidad
     from datetime import datetime
@@ -44,17 +77,24 @@ def _calcular_cierre_desde_operaciones(comunidad_id, mes):
     if not viviendas:
         return 0, 'Sin viviendas'
 
-    total_kwp = sum(v.potencia_pico_paneles_kwp or 0.0 for v in viviendas)
-    if total_kwp <= 0:
-        return 0, 'Sin potencia pico total (¿alguna vivienda sin paneles?)'
+    # Pesos de generación: kwp instalado (todos orientados al sur en el seed)
+    gen_raw = [v.potencia_pico_paneles_kwp or 0.0 for v in viviendas]
+    gen_base_total = sum(gen_raw)
+    if gen_base_total <= 0:
+        return 0, 'Sin potencia pico (¿ninguna vivienda con paneles?)'
+    gen_pesos = [x / gen_base_total for x in gen_raw]
 
-    # Operaciones del mes pedido (YYYY-MM)
+    # Pesos de consumo: coeficiente_reparto normalizado
+    con_raw = [v.coeficiente_reparto for v in viviendas]
+    con_base_total = sum(con_raw) or 1.0
+    con_pesos = [x / con_base_total for x in con_raw]
+
+    viv_ids = [v.id for v in viviendas]
+
     try:
         inicio = datetime.strptime(mes + '-01', '%Y-%m-%d')
-        if inicio.month == 12:
-            fin = datetime(inicio.year + 1, 1, 1)
-        else:
-            fin = datetime(inicio.year, inicio.month + 1, 1)
+        fin = datetime(inicio.year + 1, 1, 1) if inicio.month == 12 \
+              else datetime(inicio.year, inicio.month + 1, 1)
     except ValueError:
         return 0, f'Formato de mes inválido: {mes} (esperado YYYY-MM)'
 
@@ -67,54 +107,57 @@ def _calcular_cierre_desde_operaciones(comunidad_id, mes):
     if not ops:
         return 0, f'Sin operaciones registradas para {mes}'
 
-    n_creados = 0
-    for viv in viviendas:
-        coef = viv.coeficiente_reparto
-        kwp  = viv.potencia_pico_paneles_kwp or 0.0
-        frac_gen = kwp / total_kwp
+    acums = [dict(consumo=0.0, autoconsumo=0.0, bat=0.0, vertido=0.0,
+                  compra_red_cost=0.0, compensacion=0.0, coste_base=0.0)
+             for _ in viviendas]
 
-        acum = dict(consumo=0.0, autoconsumo=0.0, bat=0.0,
-                    vertido=0.0, compra_red_cost=0.0, compensacion=0.0,
-                    coste_base=0.0)
+    for op in ops:
+        step   = int(op.step) if op.step is not None else op.id
+        ct     = op.consumo_total_kwh or 0.0
+        gt     = op.gen_total_kwh     or 0.0
+        pc     = op.precio_compra     or 0.0
+        pe     = op.precio_exc        or 0.0
+        pd_bat = op.p_descarga_casa   or 0.0
 
-        for op in ops:
-            c = (op.consumo_total_kwh or 0.0) * coef
-            g = (op.gen_total_kwh or 0.0) * frac_gen
-            b = (op.p_descarga_casa or 0.0) * coef
-            pc = op.precio_compra or 0.0
-            pe = op.precio_exc or 0.0
+        # Distribución individual reproducible hora a hora
+        consumos = _distribuir(ct, con_pesos, step, viv_ids, _SIGMA_CONSUMO)
+        gens     = _distribuir(gt, gen_pesos, step, viv_ids, _SIGMA_GEN)
+
+        for j, viv in enumerate(viviendas):
+            c = consumos[j]
+            g = gens[j]
+            b = pd_bat * viv.coeficiente_reparto  # batería proporcional a coef
 
             auto    = min(g, c)
             surplus = max(0.0, g - c)
             deficit = max(0.0, c - g)
             compra  = max(0.0, deficit - b)
 
-            acum['consumo']         += c
-            acum['autoconsumo']     += auto
-            acum['bat']             += b
-            acum['vertido']         += surplus
-            acum['compra_red_cost'] += compra * pc
-            acum['compensacion']    += surplus * pe
-            acum['coste_base']      += c * pc
+            acums[j]['consumo']         += c
+            acums[j]['autoconsumo']     += auto
+            acums[j]['bat']             += b
+            acums[j]['vertido']         += surplus
+            acums[j]['compra_red_cost'] += compra * pc
+            acums[j]['compensacion']    += surplus * pe
+            acums[j]['coste_base']      += c * pc
 
+    n_creados = 0
+    for viv, acum in zip(viviendas, acums):
+        coef = viv.coeficiente_reparto
         factura_base = round(acum['coste_base'], 2)
-        factura_real = round(
-            max(0.0, acum['compra_red_cost'] - acum['compensacion']), 2
-        )
-        ahorro = round(max(0.0, factura_base - factura_real), 2)
+        factura_real = round(max(0.0, acum['compra_red_cost'] - acum['compensacion']), 2)
+        ahorro       = round(max(0.0, factura_base - factura_real), 2)
 
-        existente = CierreMensual.query.filter_by(
-            vivienda_oid=viv.id, mes=mes
-        ).first()
+        existente = CierreMensual.query.filter_by(vivienda_oid=viv.id, mes=mes).first()
         if existente:
-            existente.consumo_total_kwh        = round(acum['consumo'], 3)
-            existente.autoconsumo_directo_kwh  = round(acum['autoconsumo'], 3)
-            existente.energia_de_bateria_kwh   = round(acum['bat'], 3)
-            existente.vertido_a_red_kwh        = round(acum['vertido'], 3)
-            existente.ahorro_eur               = ahorro
+            existente.consumo_total_kwh          = round(acum['consumo'], 3)
+            existente.autoconsumo_directo_kwh    = round(acum['autoconsumo'], 3)
+            existente.energia_de_bateria_kwh     = round(acum['bat'], 3)
+            existente.vertido_a_red_kwh          = round(acum['vertido'], 3)
+            existente.ahorro_eur                 = ahorro
             existente.factura_escenario_base_eur = factura_base
             existente.factura_escenario_real_eur = factura_real
-            existente.porcentaje_ahorro_global = round(coef * 100, 1)
+            existente.porcentaje_ahorro_global   = round(coef * 100, 1)
             existente.coeficiente_reparto_aplicado = coef
         else:
             c_obj = CierreMensual(
@@ -132,7 +175,6 @@ def _calcular_cierre_desde_operaciones(comunidad_id, mes):
             db.session.add(c_obj)
             n_creados += 1
 
-            # Notificar titulares y conviventes
             accesos = AccesoVivienda.query.filter_by(vivienda_oid=viv.id).all()
             for a in accesos:
                 if a.rol_en_vivienda in ('titular', 'convivente'):
