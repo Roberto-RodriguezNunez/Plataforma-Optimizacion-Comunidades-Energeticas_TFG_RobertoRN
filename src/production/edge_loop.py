@@ -137,6 +137,24 @@ def run(
         except Exception as exc:
             print(f'[edge] WARN cierre {mes} falló: {exc}', file=sys.stderr)
 
+    # Esperar a que el SaaS esté disponible antes de empezar
+    if _post_saas:
+        import time as _time
+        print(json.dumps({'event': 'waiting_saas', 'url': saas_url}), flush=True)
+        for _t in range(24):  # hasta 2 minutos (24 × 5 s)
+            try:
+                r = _requests.get(f'{saas_url}/health', timeout=3)
+                if r.status_code == 200:
+                    print(json.dumps({'event': 'saas_ready'}), flush=True)
+                    break
+            except Exception:
+                pass
+            _time.sleep(5)
+        else:
+            print('[edge] WARN SaaS no disponible tras 120 s, continuando sin integración',
+                  file=sys.stderr)
+            _post_saas = False
+
     # Estado inicial
     sim.current_step = start_step
     sim.soc = SOC_INICIAL

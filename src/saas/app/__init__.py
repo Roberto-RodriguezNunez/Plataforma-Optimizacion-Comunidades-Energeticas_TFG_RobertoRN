@@ -114,6 +114,14 @@ def create_app(config_name=None):
     app.register_blueprint(notificaciones_bp, url_prefix='/notificaciones')
     app.register_blueprint(incidencias_bp)
     app.register_blueprint(edge_bp, url_prefix='/api/edge')
+    csrf.exempt(edge_bp)  # API machine-to-machine: auth por Bearer token, no CSRF
+
+    # Healthcheck para Docker Compose
+    from flask import jsonify as _jsonify
+
+    @app.route('/health')
+    def health():
+        return _jsonify({'status': 'ok'}), 200
 
     # Manejadores de error personalizados
     @app.errorhandler(401)

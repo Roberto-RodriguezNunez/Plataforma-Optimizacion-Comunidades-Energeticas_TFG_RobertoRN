@@ -5,8 +5,6 @@ services:
       POSTGRES_USER: lealink
       POSTGRES_PASSWORD: lealink
       POSTGRES_DB: lealink
-    ports:
-      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -18,11 +16,17 @@ services:
   web:
     build: src/saas
     ports:
-      - "5000:5000"
+      - "5001:5000"
     env_file:
       - .env
     environment:
       - DATABASE_URL=postgresql://lealink:lealink@postgres:5432/lealink
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
@@ -40,13 +44,14 @@ services:
     environment:
       - FEED_MODE=simulado
       - N_STEPS=8760        # 1 año completo (365 días × 24 h) ≈ 6-7 min
+      - START_STEP=5137     # dataset row 5137 = 2022-01-01 → estaciones alineadas
       - START_DATE=2025-01-01  # step 0 = 2025-01-01 00:00 UTC
       - SAAS_API_URL=http://web:5000
       - EDGE_API_KEY=lealink-edge-secret
       - COMUNIDAD_ID=1
     depends_on:
       web:
-        condition: service_started
+        condition: service_healthy
     restart: on-failure
 
 volumes:

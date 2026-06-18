@@ -31,6 +31,39 @@ def _payload(comunidad_id, **overrides):
     return p
 
 
+class TestHealth:
+    def test_health_devuelve_200(self, client):
+        resp = client.get('/health')
+        assert resp.status_code == 200
+        assert resp.get_json()['status'] == 'ok'
+
+    def test_health_no_requiere_login(self, client):
+        """El healthcheck debe responder sin sesión autenticada."""
+        resp = client.get('/health')
+        assert resp.status_code == 200
+
+
+class TestEdgeCsrfExento:
+    """El blueprint edge debe funcionar sin token CSRF (API machine-to-machine)."""
+
+    def test_decision_sin_csrf_token_acepta(self, app, comunidad):
+        """Con CSRF activo y sin X-CSRFToken, el endpoint debe devolver 201."""
+        app.config['WTF_CSRF_ENABLED'] = True
+        import os
+        os.environ.pop('EDGE_API_KEY', None)
+        client = app.test_client()
+        resp = client.post(
+            '/api/edge/decision',
+            json=_payload(comunidad.__oid__),
+            # Sin header X-CSRFToken — simula llamada desde el edge real
+        )
+        app.config['WTF_CSRF_ENABLED'] = False  # restaurar para no afectar otros tests
+        assert resp.status_code == 201, (
+            f'Edge devolvió {resp.status_code} con CSRF activo — '
+            f'falta csrf.exempt(edge_bp): {resp.get_json()}'
+        )
+
+
 class TestEdgeDecision:
     def test_sin_clave_configurada_acepta(self, client, comunidad):
         """Sin EDGE_API_KEY en entorno → cualquier petición se acepta."""
