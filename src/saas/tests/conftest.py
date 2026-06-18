@@ -128,8 +128,8 @@ def bateria(app, srp, comunidad):
     """Crea una batería en la comunidad de test."""
     b = Bateria(
         comunidad_oid=comunidad.__oid__,
-        capacidad_nominal_kwh=20.0,
-        capacidad_util_actual_kwh=18.0,
+        capacidad_nominal_kwh=80.0,
+        capacidad_util_actual_kwh=72.0,  # 90% del nominal (ratio original del fixture)
         ciclos_acumulados=100,
         fecha_instalacion='2024-01-01',
         fabricante='TestBrand',

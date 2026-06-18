@@ -60,7 +60,7 @@
   </div>
   <div style="padding:1.4rem 1.6rem;">
     <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:.55rem;">Cierres registrados</div>
-    <div style="font-size:1.75rem;font-weight:900;letter-spacing:-.04em;color:#0a0a0a;font-variant-numeric:tabular-nums;line-height:1;">{{ cierres|length }}</div>
+    <div style="font-size:1.75rem;font-weight:900;letter-spacing:-.04em;color:#0a0a0a;font-variant-numeric:tabular-nums;line-height:1;">{{ n_cierres }}</div>
   </div>
 </div>
 
@@ -74,7 +74,7 @@
             style="max-height:200px;"></canvas>
   </div>
   <div>
-    <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:.9rem;">Sin comunidad vs con comunidad (€)</div>
+    <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:.9rem;">Comparativa de escenarios (€)</div>
     <canvas data-chart-type="bar-compare"
             data-chart='{{ chart_compare }}'
             style="max-height:200px;"></canvas>
@@ -115,17 +115,19 @@
     <tr>
       <th>Mes</th>
       <th>Consumo kWh</th>
-      <th>Factura sin comunidad</th>
-      <th>Factura real</th>
+      <th>Sin paneles</th>
+      <th>Solo paneles</th>
+      <th>Con comunidad</th>
       <th>Ahorro</th>
       <th></th>
     </tr>
   </thead>
   <tbody>
-    {% for c in cierres %}
+    {% for c in cierres_tabla %}
     <tr>
       <td><code>{{ c.mes }}</code></td>
       <td><code>{{ c.consumo_total_kwh }}</code></td>
+      <td style="color:var(--red);opacity:.7;"><code>{{ "%.2f"|format(c.factura_sin_paneles_eur) }} €</code></td>
       <td style="color:var(--red);"><code>{{ "%.2f"|format(c.factura_escenario_base_eur) }} €</code></td>
       <td><code>{{ "%.2f"|format(c.factura_escenario_real_eur) }} €</code></td>
       <td style="color:var(--teal);font-weight:600;"><code>{{ "%.2f"|format(c.ahorro_eur) }} €</code></td>

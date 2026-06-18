@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     },
 
-    /** Barras agrupadas — factura base vs factura real */
+    /** Barras agrupadas — 3 escenarios: sin paneles / solo paneles / con comunidad */
     'bar-compare': (canvas, datos) => {
       new Chart(canvas, {
         type: 'bar',
@@ -119,16 +119,24 @@ document.addEventListener('DOMContentLoaded', () => {
           labels: datos.labels,
           datasets: [
             {
-              label: 'Sin comunidad (€)',
-              data: datos.base,
-              backgroundColor: C.redBg,
+              label: 'Sin paneles (€)',
+              data: datos.sin_paneles,
+              backgroundColor: 'rgba(229,62,62,.18)',
               borderColor: C.red,
               borderWidth: 1,
               borderRadius: 4,
             },
             {
+              label: 'Solo paneles (€)',
+              data: datos.solo_paneles,
+              backgroundColor: C.amberBg,
+              borderColor: C.amber,
+              borderWidth: 1,
+              borderRadius: 4,
+            },
+            {
               label: 'Con comunidad (€)',
-              data: datos.real,
+              data: datos.con_comunidad,
               backgroundColor: C.greenBg,
               borderColor: C.green,
               borderWidth: 1,

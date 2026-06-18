@@ -13,7 +13,7 @@ source/
 .env
 
 # Modelos entrenados y logs (generados al entrenar, no versionar)
-models/
+/models/
 logs/
 .DS_Store
 

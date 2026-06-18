@@ -224,7 +224,7 @@ Transformar el perfil de consumo nacional en 15 perfiles individuales de viviend
 
 **Como** administrador del sistema,
 **quiero** transformar los datos brutos de PVGIS en la generación real de la instalación fotovoltaica,
-**para que** la producción refleje la potencia pico instalada de 50 kWp de la comunidad.
+**para que** la producción refleje la potencia pico instalada de 42 kWp de la comunidad.
 
 ### Objetivo
 
@@ -233,16 +233,16 @@ Escalar la producción unitaria de PVGIS (kWh/kWp) a la potencia pico real de la
 ### Criterios de aceptación
 
 - CA-05.1: Se lee `data/raw/solar_pvgis_2023.csv` como entrada.
-- CA-05.2: La producción unitaria se multiplica por la potencia pico instalada (50 kWp por defecto).
+- CA-05.2: La producción unitaria se multiplica por la potencia pico instalada (42 kWp por defecto).
 - CA-05.3: La columna resultante `generacion_total` contiene la generación horaria en kWh.
 - CA-05.4: Los valores son ≥ 0 (no hay generación negativa).
 - CA-05.5: Las horas nocturnas tienen generación = 0.
-- CA-05.6: La producción anual total es coherente con la irradiancia de la zona (~1300–1700 kWh/kWp/año × 50 kWp).
+- CA-05.6: La producción anual total es coherente con la irradiancia de la zona (~1300–1700 kWh/kWp/año × 42 kWp).
 
 ### Tareas
 
 - [ ] T-05.1: Leer el fichero CSV de PVGIS y extraer la columna de producción unitaria.
-- [ ] T-05.2: Multiplicar por la potencia pico instalada (parámetro configurable, defecto 50 kWp).
+- [ ] T-05.2: Multiplicar por la potencia pico instalada (parámetro configurable, defecto 42 kWp).
 - [ ] T-05.3: Generar la columna `generacion_total` en kWh.
 - [ ] T-05.4: Validar valores no negativos y producción anual total en rango esperado.
 
@@ -690,7 +690,7 @@ Parametrizar las variables que definen el tamaño y composición de la comunidad
 ### Criterios de aceptación
 
 - CA-17.1: Se puede configurar el número de viviendas (por defecto: 15).
-- CA-17.2: Se puede configurar la potencia pico instalada en kWp (por defecto: 50 kWp).
+- CA-17.2: Se puede configurar la potencia pico instalada en kWp (por defecto: 42 kWp).
 - CA-17.3: Se puede configurar el consumo base anual por vivienda en kWh (por defecto: 3500 kWh).
 - CA-17.4: Los cambios se reflejan en la generación del `dataset_final.csv`.
 - CA-17.5: El simulador se adapta automáticamente al dataset generado (no asume 15 viviendas fijas).

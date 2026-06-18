@@ -156,9 +156,10 @@ def detalle(safe_oid):
     # Gráfica 2: Factura base vs real — barras agrupadas
     # ----------------------------------------------------------------
     chart_compare = json.dumps({
-        'labels': [c.mes for c in grafica],
-        'base':   [round(c.factura_escenario_base_eur, 2) for c in grafica],
-        'real':   [round(c.factura_escenario_real_eur, 2) for c in grafica],
+        'labels':        [c.mes for c in grafica],
+        'sin_paneles':   [round(c.factura_sin_paneles_eur, 2) for c in grafica],
+        'solo_paneles':  [round(c.factura_escenario_base_eur, 2) for c in grafica],
+        'con_comunidad': [round(c.factura_escenario_real_eur, 2) for c in grafica],
     })
 
     # ----------------------------------------------------------------
@@ -211,7 +212,9 @@ def detalle(safe_oid):
     return render_template('viviendas/detalle.html',
                            viv=viv, safe_oid=safe_oid,
                            com=com, com_safe_oid=com_safe_oid,
-                           cierres=cierres[:6],
+                           cierres=cierres,
+                           cierres_tabla=cierres[:6],
+                           n_cierres=len(cierres),
                            es_admin=current_user.es_superadmin,
                            chart_ahorro=chart_ahorro,
                            chart_compare=chart_compare,

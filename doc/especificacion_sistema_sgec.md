@@ -9,7 +9,7 @@
 
 Una comunidad energética es una agrupación de consumidores (viviendas, comercios, edificios) que comparten una instalación de generación renovable y opcionalmente un sistema de almacenamiento. El objetivo es maximizar el autoconsumo colectivo: que la energía generada se consuma internamente antes de exportarla a la red.
 
-En este proyecto la comunidad está formada por **15 viviendas** con una instalación fotovoltaica compartida de **50 kWp** y una batería de almacenamiento compartida de **100 kWh**.
+En este proyecto la comunidad está formada por **15 viviendas** con una instalación fotovoltaica compartida de **42 kWp** y una batería de almacenamiento compartida de **80 kWh**.
 
 ### 0.2 Marco Legal Español
 
@@ -86,7 +86,7 @@ El modelo económico implementado es conservador: la batería opera bajo el mism
 - Proporciona series temporales horarias de generación fotovoltaica para cualquier ubicación de Europa
 - Datos para localización representativa de Galicia (noroeste de España), tecnología Si-cristalino, 1 kWp de potencia instalada, inclinación óptima
 - Unidades originales: W/hora → convertido a kWh dividiendo entre 1.000
-- El perfil de 1 kWp se escala luego a 50 kWp con la distribución entre viviendas
+- El perfil de 1 kWp se escala luego a 42 kWp con la distribución entre viviendas
 
 ### 1.4 Sistema eléctrico español — actores relevantes
 
@@ -127,12 +127,13 @@ El precio de compensación de excedentes (ind. 1739) equivale aproximadamente al
 - Con 15 vecinos, el ruido individual (~10%) se atenúa al agregarse: std_agregado ≈ 10%/√15 ≈ 2.6%
 - Resultado: suma de los 15 perfiles, recortada a ≥ 0
 
-**Solar**: PVGIS proporciona generación para 1 kWp en la ubicación. Se escala a 50 kWp distribuyendo entre 15 instalaciones individuales para modelar la heterogeneidad real de una comunidad:
-- Capacidad por vivienda: `uniform(2.0, 5.0)` kWp, normalizada para que la suma sea exactamente 50 kWp
+**Solar**: PVGIS proporciona generación para 1 kWp en la ubicación. Se escala a 42 kWp distribuyendo entre 15 instalaciones individuales para modelar la heterogeneidad real de una comunidad:
+- Capacidad por vivienda: valores fijos por casa (seed.py), suma exactamente 42 kWp
 - Factor de rendimiento por vivienda: `uniform(0.80, 1.0)` → representa diferencias de orientación (sur perfecto ~1.0, sureste/suroeste ~0.90), inclinación subóptima y sombras parciales
 - Ruido horario: `normal(1.0, 0.03)` → suciedad puntual, sombras de nubes locales
 - Con 15 instalaciones el ruido se atenúa considerablemente (3%/√15 ≈ 0.8% a nivel agregado)
 - Resultado: suma de las 15 instalaciones, recortada a ≥ 0
+- Justificación 42 kWp: 15 × 3.500 kWh/año ÷ 1.250 h_eq/año (Galicia) = 42 kWp → generación ≈ consumo anual, maximizando autoconsumo bajo compensación simplificada (RD 244/2019)
 
 **Precios**: Descargados directamente de ESIOS sin modificación. Conversión: EUR/MWh ÷ 1.000 = EUR/kWh. No se aplica ningún ruido ni transformación (son datos reales históricos).
 

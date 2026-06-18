@@ -108,7 +108,9 @@ def _calcular_cierre_desde_operaciones(comunidad_id, mes):
         return 0, f'Sin operaciones registradas para {mes}'
 
     acums = [dict(consumo=0.0, autoconsumo=0.0, bat=0.0, vertido=0.0,
-                  compra_red_cost=0.0, compensacion=0.0, coste_base=0.0)
+                  compra_red_cost=0.0, compensacion=0.0,
+                  coste_sin_paneles=0.0,
+                  compra_base_cost=0.0, compensacion_base=0.0)
              for _ in viviendas]
 
     for op in ops:
@@ -137,27 +139,35 @@ def _calcular_cierre_desde_operaciones(comunidad_id, mes):
             acums[j]['autoconsumo']     += auto
             acums[j]['bat']             += b
             acums[j]['vertido']         += surplus
-            acums[j]['compra_red_cost'] += compra * pc
-            acums[j]['compensacion']    += surplus * pe
-            acums[j]['coste_base']      += c * pc
+            acums[j]['compra_red_cost']   += compra * pc
+            acums[j]['compensacion']      += surplus * pe
+            acums[j]['coste_sin_paneles'] += c * pc
+            # factura_base: escenario "paneles propios, sin batería ni comunidad"
+            compra_base  = max(0.0, c - g)
+            surplus_base = max(0.0, g - c)
+            acums[j]['compra_base_cost']  += compra_base * pc
+            acums[j]['compensacion_base'] += surplus_base * pe
 
     n_creados = 0
     for viv, acum in zip(viviendas, acums):
         coef = viv.coeficiente_reparto
-        factura_base = round(acum['coste_base'], 2)
+        factura_sin_paneles = round(acum['coste_sin_paneles'], 2)
+        # ahorro = valor añadido de la comunidad (batería + reparto) sobre solar individual
+        factura_base = round(max(0.0, acum['compra_base_cost'] - acum['compensacion_base']), 2)
         factura_real = round(max(0.0, acum['compra_red_cost'] - acum['compensacion']), 2)
         ahorro       = round(max(0.0, factura_base - factura_real), 2)
 
         existente = CierreMensual.query.filter_by(vivienda_oid=viv.id, mes=mes).first()
         if existente:
-            existente.consumo_total_kwh          = round(acum['consumo'], 3)
-            existente.autoconsumo_directo_kwh    = round(acum['autoconsumo'], 3)
-            existente.energia_de_bateria_kwh     = round(acum['bat'], 3)
-            existente.vertido_a_red_kwh          = round(acum['vertido'], 3)
-            existente.ahorro_eur                 = ahorro
-            existente.factura_escenario_base_eur = factura_base
-            existente.factura_escenario_real_eur = factura_real
-            existente.porcentaje_ahorro_global   = round(coef * 100, 1)
+            existente.consumo_total_kwh            = round(acum['consumo'], 3)
+            existente.autoconsumo_directo_kwh      = round(acum['autoconsumo'], 3)
+            existente.energia_de_bateria_kwh       = round(acum['bat'], 3)
+            existente.vertido_a_red_kwh            = round(acum['vertido'], 3)
+            existente.ahorro_eur                   = ahorro
+            existente.factura_sin_paneles_eur      = factura_sin_paneles
+            existente.factura_escenario_base_eur   = factura_base
+            existente.factura_escenario_real_eur   = factura_real
+            existente.porcentaje_ahorro_global     = round(coef * 100, 1)
             existente.coeficiente_reparto_aplicado = coef
         else:
             c_obj = CierreMensual(
@@ -167,6 +177,7 @@ def _calcular_cierre_desde_operaciones(comunidad_id, mes):
                 energia_de_bateria_kwh=round(acum['bat'], 3),
                 vertido_a_red_kwh=round(acum['vertido'], 3),
                 ahorro_eur=ahorro,
+                factura_sin_paneles_eur=factura_sin_paneles,
                 factura_escenario_base_eur=factura_base,
                 factura_escenario_real_eur=factura_real,
                 porcentaje_ahorro_global=round(coef * 100, 1),

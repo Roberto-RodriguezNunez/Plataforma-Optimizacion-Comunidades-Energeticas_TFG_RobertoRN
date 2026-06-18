@@ -1,5 +1,18 @@
 # Historial de versiones DQN/PPO — SGEC
 
+## Redimensionado instalación + corrección económica (2026-06-18)
+
+Cambios transversales en código, datos y documentación:
+
+- **Solar 50 → 42 kWp**: 15 × 3.500 kWh/año ÷ 1.250 h_eq/año (Galicia) = 42 kWp exactos. Generación ≈ consumo anual → máximo autoconsumo bajo compensación simplificada (RD 244/2019). Los 50 kWp originales generaban 18% de excedente irrecuperable.
+- **Batería 100 → 80 kWh**: 80 × 0,80 = 64 kWh útiles cubre 93% del déficit nocturno (68,6 kWh). Reducción de coste de capital del 20% frente a 100 kWh con beneficio equivalente.
+- **ETL bottom-up** (`generar_dataset_final.py`): kWp por casa son ahora los valores reales del seed (fijos) en lugar de `rng.uniform(2.0, 5.0)` + renormalización. Suma = 42 kWp exactos.
+- **seed.py**: baterías Vilarín/Brañas corregidas de 20/30 kWh → 80 kWh (coherente con `system.yaml`). kWp Vilarín actualizados (escala 42/54.4).
+- **factura_base corregida** (`cierres/routes.py`): baseline cambia de "sin paneles" (`c × pc`) a "paneles propios sin comunidad" (`max(0, (c−g)×pc − (g−c)×pe)`). Ahora `ahorro` mide el valor añadido de la comunidad (batería + reparto) sobre autoconsumo individual.
+- **Requiere**: regenerar dataset (`generar_dataset_final.py`) + reentrenar SAC v6 + re-exportar ONNX + rebuild Docker.
+
+---
+
 Referencia rápida de configuración y resultados de cada agente entrenado.
 Métrica principal: `eval/mean_reward` = beneficio marginal vs IDLE (€/semana, 50 episodios).
 MPC con ruido AR(1) = 48.46 €/sem (cota de referencia justa).

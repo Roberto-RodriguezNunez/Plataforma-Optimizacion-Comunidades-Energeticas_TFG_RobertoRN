@@ -87,21 +87,23 @@ USUARIOS_DATA = [
 # Todas con paneles (comunidad autoconsumo colectivo RD 244/2019). Panel estándar 400 Wp.
 VIVIENDAS_VILARIN = [
     # (identificador, direccion, cups_suffix, potencia, coef, paneles, kwp, npaneles, orient)
-    ('Casa 1 — Rúa da Igrexa',   'Rúa da Igrexa 1', 'I001', 3.45, 0.0526, True, 3.2,  8, 'sur'),
-    ('Casa 2 — Rúa da Igrexa',   'Rúa da Igrexa 3', 'I002', 4.60, 0.0702, True, 3.2,  8, 'sur'),
-    ('Casa 3 — Rúa da Igrexa',   'Rúa da Igrexa 5', 'I003', 3.45, 0.0526, True, 2.8,  7, 'sur'),
-    ('Casa 4 — Rúa da Igrexa',   'Rúa da Igrexa 7', 'I004', 3.45, 0.0526, True, 2.4,  6, 'sur'),
-    ('Casa 5 — Rúa da Igrexa',   'Rúa da Igrexa 9', 'I005', 4.60, 0.0702, True, 4.0, 10, 'sur'),
-    ('Casa 6 — Rúa da Igrexa',   'Rúa da Igrexa 11','I006', 3.45, 0.0526, True, 2.8,  7, 'sur'),
-    ('Casa 1 — Camiño do Río',   'Camiño do Río 2', 'R001', 5.75, 0.0877, True, 5.6, 14, 'sur'),
-    ('Casa 2 — Camiño do Río',   'Camiño do Río 4', 'R002', 4.60, 0.0702, True, 3.6,  9, 'sur'),
-    ('Casa 3 — Camiño do Río',   'Camiño do Río 6', 'R003', 3.45, 0.0526, True, 2.4,  6, 'sur'),
-    ('Casa 4 — Camiño do Río',   'Camiño do Río 8', 'R004', 4.60, 0.0702, True, 3.2,  8, 'sur'),
-    ('Casa 5 — Camiño do Río',   'Camiño do Río 10','R005', 5.75, 0.0877, True, 6.4, 16, 'sur'),
-    ('Casa 6 — Camiño do Río',   'Camiño do Río 12','R006', 4.60, 0.0702, True, 3.6,  9, 'sur'),
-    ('Casa 1 — Lugar de Outeiro','Lugar de Outeiro 1','O001', 3.45, 0.0526, True, 3.2,  8, 'sur'),
-    ('Casa 2 — Lugar de Outeiro','Lugar de Outeiro 3','O002', 4.60, 0.0702, True, 3.2,  8, 'sur'),
-    ('Casa 3 — Lugar de Outeiro','Lugar de Outeiro 5','O003', 5.75, 0.0878, True, 4.8, 12, 'sur'),
+    # kWp escala 42/54.4 = 0.772 sobre valores anteriores. Total: 42.0 kWp, 105 paneles 400 Wp.
+    # Criterio: 15×3500 kWh/año ÷ 1250 h_eq/año (Galicia) = 42 kWp → gen ≈ consumo anual (RD 244/2019).
+    ('Casa 1 — Rúa da Igrexa',   'Rúa da Igrexa 1', 'I001', 3.45, 0.0526, True, 2.4,  6, 'sur'),
+    ('Casa 2 — Rúa da Igrexa',   'Rúa da Igrexa 3', 'I002', 4.60, 0.0702, True, 2.4,  6, 'sur'),
+    ('Casa 3 — Rúa da Igrexa',   'Rúa da Igrexa 5', 'I003', 3.45, 0.0526, True, 2.0,  5, 'sur'),
+    ('Casa 4 — Rúa da Igrexa',   'Rúa da Igrexa 7', 'I004', 3.45, 0.0526, True, 2.0,  5, 'sur'),
+    ('Casa 5 — Rúa da Igrexa',   'Rúa da Igrexa 9', 'I005', 4.60, 0.0702, True, 3.2,  8, 'sur'),
+    ('Casa 6 — Rúa da Igrexa',   'Rúa da Igrexa 11','I006', 3.45, 0.0526, True, 2.0,  5, 'sur'),
+    ('Casa 1 — Camiño do Río',   'Camiño do Río 2', 'R001', 5.75, 0.0877, True, 4.4, 11, 'sur'),
+    ('Casa 2 — Camiño do Río',   'Camiño do Río 4', 'R002', 4.60, 0.0702, True, 2.8,  7, 'sur'),
+    ('Casa 3 — Camiño do Río',   'Camiño do Río 6', 'R003', 3.45, 0.0526, True, 2.0,  5, 'sur'),
+    ('Casa 4 — Camiño do Río',   'Camiño do Río 8', 'R004', 4.60, 0.0702, True, 2.4,  6, 'sur'),
+    ('Casa 5 — Camiño do Río',   'Camiño do Río 10','R005', 5.75, 0.0877, True, 5.2, 13, 'sur'),
+    ('Casa 6 — Camiño do Río',   'Camiño do Río 12','R006', 4.60, 0.0702, True, 2.8,  7, 'sur'),
+    ('Casa 1 — Lugar de Outeiro','Lugar de Outeiro 1','O001', 3.45, 0.0526, True, 2.4,  6, 'sur'),
+    ('Casa 2 — Lugar de Outeiro','Lugar de Outeiro 3','O002', 4.60, 0.0702, True, 2.4,  6, 'sur'),
+    ('Casa 3 — Lugar de Outeiro','Lugar de Outeiro 5','O003', 5.75, 0.0878, True, 3.6,  9, 'sur'),
 ]
 
 # Comunidade Enerxética de Brañas de Ulla — Palas de Rei, Lugo (12 viviendas)
@@ -205,7 +207,11 @@ def cierre_para_vivienda(viv_oid, mes, coef, idx):
     vertido = round(autoconsumo * 0.15, 1)
 
     kwh_de_red = max(0.0, consumo - autoconsumo - bateria)
-    factura_base = round(consumo * 0.22, 2)
+    factura_sin_paneles = round(consumo * 0.22, 2)
+    # Base: solo paneles propios (sin batería ni reparto comunitario)
+    kwh_red_solo_paneles = max(0.0, consumo - autoconsumo)
+    surplus_solo_paneles = max(0.0, autoconsumo - consumo)
+    factura_base = round(max(0.0, kwh_red_solo_paneles * 0.22 - surplus_solo_paneles * 0.065), 2)
     factura_real = round(kwh_de_red * 0.18 + (autoconsumo + bateria) * 0.05, 2)
     ahorro = round(max(0.0, factura_base - factura_real), 2)
     if ahorro == 0.0:
@@ -219,6 +225,7 @@ def cierre_para_vivienda(viv_oid, mes, coef, idx):
         energia_de_bateria_kwh=bateria,
         vertido_a_red_kwh=vertido,
         ahorro_eur=ahorro,
+        factura_sin_paneles_eur=factura_sin_paneles,
         factura_escenario_base_eur=factura_base,
         factura_escenario_real_eur=factura_real,
         porcentaje_ahorro_global=round(coef * 100, 1),
@@ -337,22 +344,22 @@ def seed():
         # ------------------------------------------------------------------
         save(Bateria(
             comunidad_oid=vilarin_oid,
-            capacidad_nominal_kwh=20.0,
-            capacidad_util_actual_kwh=18.4,
+            capacidad_nominal_kwh=80.0,
+            capacidad_util_actual_kwh=80.0,  # batería nueva (renovada al cambiar a 80 kWh)
             ciclos_acumulados=487,
             fecha_instalacion='2022-06-01',
             fabricante='BYD',
-            modelo='Battery-Box Premium HVS 20.0',
+            modelo='Battery-Box 80 kWh',
             estado='operativa'
         ))
         save(Bateria(
             comunidad_oid=branas_oid,
-            capacidad_nominal_kwh=30.0,
-            capacidad_util_actual_kwh=29.1,
+            capacidad_nominal_kwh=80.0,
+            capacidad_util_actual_kwh=77.6,  # 203 ciclos → 3% degradación (ratio original)
             ciclos_acumulados=203,
             fecha_instalacion='2023-07-15',
-            fabricante='Pylontech',
-            modelo='H2 30kWh Stack',
+            fabricante='BYD',
+            modelo='Battery-Box 80 kWh',
             estado='operativa'
         ))
         print(f"\n🔋 2 baterías creadas")
@@ -409,7 +416,9 @@ def seed():
                     base = [310.0, 290.0, 275.0][MESES.index(mes)]
                     variacion = (((idx + 20) * 17) % 60) - 30
                     consumo = round(base + variacion, 1)
-                    factura_base = round(consumo * 0.22, 2)
+                    # Sin paneles: base = real sin comunidad = consumo completo
+                    factura_sin_paneles = round(consumo * 0.22, 2)
+                    factura_base = factura_sin_paneles  # sin paneles → base = sin paneles
                     bateria = round(consumo * 0.13, 1)
                     kwh_red = max(0.0, consumo - bateria)
                     factura_real = round(kwh_red * 0.20 + bateria * 0.05, 2)
@@ -419,6 +428,7 @@ def seed():
                         consumo_total_kwh=consumo, autoconsumo_directo_kwh=0.0,
                         energia_de_bateria_kwh=bateria, vertido_a_red_kwh=0.0,
                         ahorro_eur=ahorro,
+                        factura_sin_paneles_eur=factura_sin_paneles,
                         factura_escenario_base_eur=factura_base,
                         factura_escenario_real_eur=factura_real if ahorro > 0 else factura_base,
                         porcentaje_ahorro_global=round(coef * 100, 1),
@@ -445,7 +455,7 @@ def seed():
         notif(1, 'cierre_disponible', 'Cierres de diciembre publicados',
               'Los cierres de 2024-12 ya están disponibles para todas las viviendas de tu comunidad.')
         notif(1, 'bateria_mantenimiento', 'Revisión anual de batería programada',
-              'La batería BYD HVS 20.0 tiene programado su mantenimiento anual para enero de 2025.')
+              'La batería BYD Battery-Box 80 kWh tiene programado su mantenimiento anual para enero de 2025.')
 
         # Para Marcos (admin Brañas de Ulla)
         notif(2, 'general', '¡Bienvenido, administrador!',
