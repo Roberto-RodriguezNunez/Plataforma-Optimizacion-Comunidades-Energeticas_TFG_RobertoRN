@@ -129,10 +129,13 @@ def generar(semilla: int = 42):
     solar_unitario = df_sol['P'].values / 1000.0  # W → kW (perfil para 1 kWp)
     n_horas_solar = len(solar_unitario)
 
-    # Distribuir la potencia total entre las 15 viviendas de forma aleatoria.
-    # Cada casa tiene su propia instalación con capacidad y rendimiento distintos.
-    caps = rng.uniform(2.0, 5.0, NUM_VECINOS)          # kWp por vivienda
-    caps = caps / caps.sum() * POTENCIA_SOLAR_TOTAL     # normalizar a 50 kWp total
+    # kWp reales por vivienda (Vilarín, 15 casas) — coinciden con seed.py.
+    # Suma = 42.0 kWp (= POTENCIA_SOLAR_TOTAL). Escala: 42/54.4 sobre valores anteriores.
+    # Criterio: 15 × 3.500 kWh/año ÷ 1.250 h_eq/año (Galicia) = 42 kWp exactos,
+    # equilibrio generación = consumo anual bajo RD 244/2019 compensación simplificada.
+    caps = np.array([2.4, 2.4, 2.0, 2.0, 3.2, 2.0,
+                     4.4, 2.8, 2.0, 2.4, 5.2, 2.8,
+                     2.4, 2.4, 3.6])
 
     generacion_total = np.zeros(n_horas_solar)
     perfs = np.zeros(NUM_VECINOS)

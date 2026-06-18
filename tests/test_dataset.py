@@ -81,11 +81,11 @@ class TestDemanda:
 class TestGeneracion:
 
     def test_generacion_anualizada_en_rango(self, df):
-        """Producción anual entre 60 y 90 MWh/año para 50 kWp en España."""
+        """Producción anual entre 50 y 76 MWh/año para 42 kWp en Galicia."""
         horas_totales = len(df)
         gen_anual_kwh = df['generacion_total'].sum() / horas_totales * 8760
         gen_anual_mwh = gen_anual_kwh / 1000
-        assert 60 <= gen_anual_mwh <= 90, (
+        assert 50 <= gen_anual_mwh <= 76, (
             f"Generación anualizada fuera de rango: {gen_anual_mwh:.1f} MWh/año")
 
 

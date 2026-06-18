@@ -1,7 +1,7 @@
 # =============================================================================
 # system.yaml — Configuración centralizada del sistema de gestión energética
 # =============================================================================
-# Comunidad de autoconsumo fotovoltaico colectivo (15 viviendas, 50 kWp, 100 kWh)
+# Comunidad de autoconsumo fotovoltaico colectivo (15 viviendas, 42 kWp, 80 kWh)
 # Regulación: RD 244/2019, compensación simplificada de excedentes.
 #
 # Convención de unidades:
@@ -14,7 +14,7 @@
 
 # --- Batería comunitaria (LFP, inversor bidireccional) ---
 bateria:
-  capacidad_kwh: 100.0          # Capacidad nominal de la batería
+  capacidad_kwh: 80.0           # Capacidad nominal de la batería
   potencia_inversor_kw: 50.0    # Potencia máxima del inversor bidireccional
   eficiencia_carga: 0.95        # η_c: pérdidas AC→DC al cargar (5%)
   eficiencia_descarga: 0.95     # η_d: pérdidas DC→AC al descargar (5%)
@@ -31,7 +31,7 @@ bateria:
 # --- Comunidad ---
 comunidad:
   num_viviendas: 15
-  potencia_solar_total_kwp: 50.0
+  potencia_solar_total_kwp: 42.0
   consumo_anual_vivienda_kwh: 3500.0  # Consumo medio doméstico español
 
 # --- Rutas de datos ---
