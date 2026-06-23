@@ -1,8 +1,12 @@
 pandas
 numpy
 matplotlib
+scipy
+pyyaml
+python-dotenv
 gymnasium
 stable-baselines3
+torch
 tensorboard
 onnx>=1.16
 onnxruntime>=1.17

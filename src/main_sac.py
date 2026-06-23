@@ -282,6 +282,8 @@ def main(seed=42, total_timesteps=None, tag=None):
         seed=seed,
     )
 
+    import gc; gc.collect()  # libera objetos Python del warmup antes de entrenar
+
     # 5. Callbacks
     eval_callback = SeededEvalCallback(
         eval_env,
