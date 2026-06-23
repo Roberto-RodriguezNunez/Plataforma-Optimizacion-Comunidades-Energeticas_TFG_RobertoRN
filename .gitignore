@@ -1,6 +1,6 @@
-# Datos pesados
-data/raw/
-data/processed/
+# Datos pesados (descomentado para rama de entreno)
+# data/raw/
+# data/processed/
 
 # Python cache
 __pycache__/

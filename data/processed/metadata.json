@@ -1,0 +1,43 @@
+{
+  "version_script": "2.0.0",
+  "timestamp_generacion": "2026-06-18T20:07:22.026429",
+  "semilla": 42,
+  "n_horas": 22646,
+  "rango_fechas": {
+    "inicio": "2021-06-01 00:00:00",
+    "fin": "2023-12-31 12:00:00"
+  },
+  "parametros": {
+    "num_viviendas": 15,
+    "potencia_solar_kwp": 42.0,
+    "consumo_anual_vivienda_kwh": 3500.0,
+    "ruido_demanda": {
+      "tipo": "AR(1)",
+      "rho": 0.5,
+      "sigma": 0.05,
+      "clip": [
+        0.7,
+        1.3
+      ]
+    },
+    "ruido_solar": {
+      "tipo": "iid_por_vivienda",
+      "sigma": 0.03
+    },
+    "precio_excedente_min": 0.0,
+    "n_precios_negativos_saneados": 214
+  },
+  "hashes_sha256_fuentes": {
+    "consumo_raw": "ce521f9ea8dd841a37638615da8082467a8d69a215a2a33e4aa8230db37c07f9",
+    "precios_raw": "bc541262fc567095e59e4f801b47f64fa8177432db6b5f83dd8a2d161e2bc081",
+    "compensacion_raw": "a5a38b36b7743b941e242ca5c7d7be45ccb0fae9754330798a0aaa9abf2ed0fb",
+    "solar_raw": "694a92f5f1e79f8b91eb685eabd41e521b2e8f411cc93669a007837639069c95"
+  },
+  "hash_sha256_salida": "f98329145d7641e8e4e2f39061a44808e152737929043f8efab92857f4505f3f",
+  "split": {
+    "tipo": "muestreo_aleatorio_semanal",
+    "semilla_split": 42,
+    "n_semanas_eval": 50,
+    "horas_por_semana": 168
+  }
+}
