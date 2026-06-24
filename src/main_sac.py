@@ -61,7 +61,14 @@ class SeededEvalCallback(EvalCallback):
     def _on_step(self) -> bool:
         if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
             np.random.seed(self._eval_seed)
-        return super()._on_step()
+        prev_best = self.best_mean_reward
+        result = super()._on_step()
+        # Guardar VecNormalize junto al best_model para sobrevivir crashes
+        if self.best_mean_reward > prev_best and self.best_model_save_path is not None:
+            vec_norm = self.model.get_vec_normalize_env()
+            if vec_norm is not None:
+                vec_norm.save(os.path.join(self.best_model_save_path, "best_vecnormalize.pkl"))
+        return result
 
 
 # ──────────────────────────────────────────────────────────────────

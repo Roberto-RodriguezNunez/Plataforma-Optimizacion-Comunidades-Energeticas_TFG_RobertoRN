@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python *)",
+      "Bash(python3 -c \"import stable_baselines3, numpy, yaml; print\\('deps OK'\\)\")",
+      "Read(//home/rober/miniconda3/**)",
+      "Read(//home/rober/anaconda3/**)",
+      "Bash(pip3 install *)",
+      "Bash(python3 -m pip --version)",
+      "Bash(python3 -m pip install -r /mnt/c/Users/rober/TFG/requirements.txt)",
+      "Bash(/mnt/c/Users/rober/AppData/Local/Microsoft/WindowsApps/python3.exe *)",
+      "Bash(sudo apt-get install -y python3-pip python3-venv)",
+      "Bash(curl -sS https://bootstrap.pypa.io/get-pip.py)",
+      "Bash(python3)",
+      "Bash(python3 *)",
+      "Bash(.venv/bin/pip install *)",
+      "Bash(.venv/bin/python *)",
+      "Bash(tee /tmp/claude-1000/-mnt-c-Users-rober-TFG/74daa2c9-df66-427d-95bf-9e80674e4e4e/scratchpad/train_log.txt)",
+      "Bash(dmesg)",
+      "Bash(journalctl -n 50 --no-pager)",
+      "Bash(journalctl --since \"2026-06-23 23:00\" --until \"2026-06-24 05:00\" --no-pager)",
+      "Bash(xargs dirname)",
+      "Bash(xargs -I{} cat {}/status)"
+    ]
+  }
+}
