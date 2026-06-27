@@ -36,13 +36,17 @@ class ResidualEnv(gym.Wrapper):
     Args:
         env: Instancia de EnergyEnvContinuo.
         mpc: Instancia de LinearMPC (se resuelve online en cada step).
-        delta_max: Fraccion multiplicativa. 0.30 = ±30% de cada flujo MPC.
+        delta_max: Fraccion. En 'mult' = fraccion multiplicativa (0.30 = ±30% del
+                   flujo MPC); en 'add' = fraccion aditiva de P_MAX (0.05 = ±5% de P).
+        residual_mode: 'mult' -> max(0, mpc * (1 + delta*delta_max))
+                       'add'  -> max(0, mpc + delta*delta_max*P_MAX)
     """
 
-    def __init__(self, env, mpc, delta_max: float = 0.30):
+    def __init__(self, env, mpc, delta_max: float = 0.30, residual_mode: str = 'mult'):
         super().__init__(env)
         self.mpc = mpc
         self.delta_max = delta_max
+        self.residual_mode = residual_mode
         self._P_MAX = env.simulador.POTENCIA_INVERSOR
 
         # Obs aumentada: 108 original + 4 MPC features = 112
@@ -91,13 +95,12 @@ class ResidualEnv(gym.Wrapper):
         dc_mpc = mpc_action['P_descarga_casa']
         dr_mpc = mpc_action['P_descarga_red']
 
-        # 3. Residual multiplicativo: flow * (1 + delta * delta_max)
+        # 3. Residual (mult o aditivo segun residual_mode)
         delta = np.clip(delta_action, -1.0, 1.0)
-        dm = self.delta_max
-        cs_f = max(0.0, cs_mpc * (1.0 + delta[0] * dm))
-        cm_f = max(0.0, cm_mpc * (1.0 + delta[1] * dm))
-        dc_f = max(0.0, dc_mpc * (1.0 + delta[2] * dm))
-        dr_f = max(0.0, dr_mpc * (1.0 + delta[3] * dm))
+        cs_f = self._residual(cs_mpc, delta[0])
+        cm_f = self._residual(cm_mpc, delta[1])
+        dc_f = self._residual(dc_mpc, delta[2])
+        dr_f = self._residual(dr_mpc, delta[3])
 
         # 4. Ejecutar en entorno continuo (skip AR(1) porque ya lo avanzamos)
         self.env._skip_next_ar1 = True
@@ -121,6 +124,13 @@ class ResidualEnv(gym.Wrapper):
         ]
 
         return obs_aug, reward, terminated, truncated, info
+
+    def _residual(self, mpc_flow: float, delta_i: float) -> float:
+        """Combina un flujo MPC con su correccion delta segun residual_mode."""
+        dm = self.delta_max
+        if self.residual_mode == 'add':
+            return max(0.0, mpc_flow + delta_i * dm * self._P_MAX)
+        return max(0.0, mpc_flow * (1.0 + delta_i * dm))
 
     def _compute_mpc_action(self) -> dict:
         sim = self.env.simulador

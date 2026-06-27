@@ -1,17 +1,13 @@
 """
-main_ppo.py -- Entrenamiento del agente PPO (configuracion PPO_4)
-=================================================================
-Portado desde feature/ppo-discreto para tener todos los
-algoritmos entrenables desde la rama principal.
+main_ppo.py -- Entrenamiento del agente PPO discreto (familia B de la suite)
+============================================================================
+Registry-driven: los hiperparámetros de cada versión (PPO-D1..5) se leen de
+config/experimentos.yaml. learning_rate y ent_coef admiten escalar (constante)
+o {init, final} (decay lineal); el EntCoefScheduler solo se añade si la versión
+pide decay de entropía.
 
-Hiperparametros (PPO_4 — mejor resultado historico: +45.69 EUR/sem pico):
-  - LR decay: 3e-4 -> 3e-5 (lineal)
-  - ENT_COEF decay: 0.005 -> 0.0005 (lineal)
-  - N_STEPS: 8192 (~48 episodios/rollout)
-  - 4M steps totales
-
-Ejecucion desde la raiz del proyecto (carpeta TFG/):
-    python src/main_ppo.py
+Ejecución desde la raíz del proyecto (carpeta TFG/):
+    python src/main_ppo.py --version PPO-D4 --seeds 42 1337 2024
 """
 
 import os
@@ -21,9 +17,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-import numpy as np
 from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import EvalCallback, BaseCallback
+from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
@@ -31,70 +26,26 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from src.envs.energy_env import EnergyEnv
 from src.training.multiseed import entrenar_multiseed
 from src.training.callbacks import DiscreteMetricasCallback
+from src.training.registro import cargar_version, seeds_comunes, es_decay, schedule_lineal
 
-
-# ------------------------------------------------------------------
-#  HIPERPARAMETROS — PPO_4
-# ------------------------------------------------------------------
-
-TOTAL_TIMESTEPS   = 4_000_000
-LR_INIT           = 3e-4
-LR_FINAL          = 3e-5
-N_STEPS           = 8192
-BATCH_SIZE        = 128
-N_EPOCHS          = 5
-GAMMA             = 0.99
-GAE_LAMBDA        = 0.95
-CLIP_RANGE        = 0.2
-ENT_COEF_INIT     = 0.005
-ENT_COEF_FINAL    = 0.0005
-VF_COEF           = 0.5
-
-NET_ARCH_PI       = [64, 64]
-NET_ARCH_VF       = [64, 64]
-
-EVAL_FREQ         = 20_000
-EVAL_EPISODES     = 50
-EVAL_SEED         = 42
-
-MODEL_DIR  = os.path.join(ROOT, "models")
 LOG_DIR    = os.path.join(ROOT, "logs")
-MODEL_NAME = "ppo_sgec"
+MODEL_DIR  = os.path.join(ROOT, "models")
 
+_CFG = None
+_TOTAL = None
 
-# ------------------------------------------------------------------
-#  ENT COEF SCHEDULER
-# ------------------------------------------------------------------
 
 class EntCoefScheduler(BaseCallback):
-    """Decae model.ent_coef linealmente de ENT_COEF_INIT a ENT_COEF_FINAL."""
+    """Decae model.ent_coef linealmente de init a final a lo largo del entreno."""
+    def __init__(self, init, final, total):
+        super().__init__()
+        self._init, self._final, self._total = float(init), float(final), int(total)
+
     def _on_step(self) -> bool:
-        frac = min(1.0, self.num_timesteps / TOTAL_TIMESTEPS)
-        self.model.ent_coef = float(
-            ENT_COEF_INIT + frac * (ENT_COEF_FINAL - ENT_COEF_INIT)
-        )
+        frac = min(1.0, self.num_timesteps / self._total)
+        self.model.ent_coef = self._init + frac * (self._final - self._init)
         return True
 
-
-# ------------------------------------------------------------------
-#  SEEDED EVAL CALLBACK
-# ------------------------------------------------------------------
-
-# SeededEvalCallback ahora vive en src/training/multiseed.py (compartido por
-# todos los algoritmos, usado por el runner entrenar_multiseed).
-
-
-# ------------------------------------------------------------------
-#  CALLBACK — metricas adicionales en TensorBoard
-# ------------------------------------------------------------------
-
-# MetricasCallback (discreto) ahora vive en src/training/callbacks.py
-# (DiscreteMetricasCallback, compartido con DQN).
-
-
-# ------------------------------------------------------------------
-#  MAIN
-# ------------------------------------------------------------------
 
 def make_envs(seed):
     """Factoría de entornos PPO (discreto) envueltos en VecNormalize."""
@@ -106,20 +57,23 @@ def make_envs(seed):
 
 
 def make_model(train_env, seed):
-    """Factoría del modelo PPO (con semilla y decay de LR aplicados)."""
+    """Factoría del modelo PPO según la versión (lr/ent const o decay)."""
+    c = _CFG
+    ent = c["ent_coef"]
+    ent_init = float(ent["init"]) if es_decay(ent) else float(ent)
     return PPO(
         policy        = "MlpPolicy",
         env           = train_env,
-        learning_rate = lambda p: LR_FINAL + p * (LR_INIT - LR_FINAL),
-        n_steps       = N_STEPS,
-        batch_size    = BATCH_SIZE,
-        n_epochs      = N_EPOCHS,
-        gamma         = GAMMA,
-        gae_lambda    = GAE_LAMBDA,
-        clip_range    = CLIP_RANGE,
-        ent_coef      = ENT_COEF_INIT,
-        vf_coef       = VF_COEF,
-        policy_kwargs = {"net_arch": {"pi": NET_ARCH_PI, "vf": NET_ARCH_VF}},
+        learning_rate = schedule_lineal(c["learning_rate"]),
+        n_steps       = int(c["n_steps"]),
+        batch_size    = int(c["batch_size"]),
+        n_epochs      = int(c["n_epochs"]),
+        gamma         = float(c["gamma"]),
+        gae_lambda    = float(c["gae_lambda"]),
+        clip_range    = float(c["clip_range"]),
+        ent_coef      = ent_init,
+        vf_coef       = float(c["vf_coef"]),
+        policy_kwargs = {"net_arch": {"pi": c["net_arch_pi"], "vf": c["net_arch_vf"]}},
         verbose       = 0,
         seed          = seed,
         device        = "cpu",
@@ -127,23 +81,40 @@ def make_model(train_env, seed):
     )
 
 
-def main(version="v1", seeds=(42, 1337, 2024)):
+def _extra_callbacks(model):
+    cbs = [DiscreteMetricasCallback()]
+    ent = _CFG["ent_coef"]
+    if es_decay(ent):
+        cbs.append(EntCoefScheduler(ent["init"], ent["final"], _TOTAL))
+    return cbs
+
+
+def main(version="PPO-D4", seeds=None, total_timesteps=None):
+    global _CFG, _TOTAL
+    _CFG = cargar_version("ppo", version)
+    train_seeds, _eval_seeds, eval_episodes = seeds_comunes()
+    if seeds is None:
+        seeds = train_seeds
+    _TOTAL = int(total_timesteps) if total_timesteps else int(_CFG["total_timesteps"])
+
     os.makedirs(MODEL_DIR, exist_ok=True)
     os.makedirs(LOG_DIR, exist_ok=True)
     check_env(EnergyEnv(), warn=True)
+
     entrenar_multiseed(
         algo="ppo", version=version, seeds=list(seeds),
         make_envs=make_envs, make_model=make_model,
-        total_timesteps=TOTAL_TIMESTEPS,
-        eval_freq=EVAL_FREQ, n_eval_episodes=EVAL_EPISODES,
-        extra_callbacks=lambda m: [DiscreteMetricasCallback(), EntCoefScheduler()],
+        total_timesteps=_TOTAL,
+        eval_freq=int(_CFG["eval_freq"]), n_eval_episodes=eval_episodes,
+        extra_callbacks=_extra_callbacks,
     )
 
 
 if __name__ == "__main__":
     import argparse
-    p = argparse.ArgumentParser()
-    p.add_argument("--version", default="v1")
-    p.add_argument("--seeds", type=int, nargs="+", default=[42, 1337, 2024])
+    p = argparse.ArgumentParser(description="Entrena PPO discreto (familia B) multi-semilla.")
+    p.add_argument("--version", default="PPO-D4")
+    p.add_argument("--seeds", type=int, nargs="+", default=None)
+    p.add_argument("--timesteps", type=int, default=None, help="Override total timesteps (smoke).")
     a = p.parse_args()
-    main(version=a.version, seeds=a.seeds)
+    main(version=a.version, seeds=a.seeds, total_timesteps=a.timesteps)

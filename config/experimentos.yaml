@@ -1,0 +1,228 @@
+# =============================================================================
+# experimentos.yaml — Registry de la suite experimental del TFG
+# =============================================================================
+# FUENTE ÚNICA de los hiperparámetros de cada versión entrenable. La leen:
+#   - los mains de entreno (src/main_*.py) vía src/training/registro.py
+#   - el dispatcher de evaluación (src/eval_suite.py)
+#
+# Estructura por familia:
+#   algo:        nombre interno del algoritmo (define el nombre de artefacto)
+#   env:         tipo de entorno (discreto | continuo | residual)
+#   base:        hiperparámetros comunes a todas las versiones de la familia
+#   versiones:   cada versión = overrides sobre base + 'nota' (para el anexo LaTeX)
+#   tesis:       hipótesis que aborda la familia (para el anexo)
+#
+# NOTA sobre los 'base': son los CONFIGS YA AJUSTADOS (DQN_13, PPO_4, residual_sac
+# de config/system.yaml) que reproducen los mejores resultados históricos. Las
+# versiones del plan se aplican como overrides encima. Si se quisiera el
+# "protocolo común" simplificado (1M pasos, [256,256]) basta cambiar el base.
+#
+# Semillas (comunes a TODO):  entreno = [42,1337,2024]   eval = 10 de ruido.
+# =============================================================================
+
+comun:
+  train_seeds: [42, 1337, 2024]
+  eval_seeds: 10                 # nº de semillas de ruido AR(1) para la barra de error
+  eval_episodes: 50              # semanas held-out (pool sim.semanas_eval)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# A — DQN (discreto, 9 acciones)
+# ─────────────────────────────────────────────────────────────────────────────
+dqn:
+  algo: dqn
+  env: discreto
+  tesis: "value-based puro no supera al MPC realista; el error de cuantización es estructural; n-step~8 óptimo"
+  base:
+    total_timesteps: 3_000_000
+    learning_rate: 1.0e-4
+    buffer_size: 500_000
+    learning_starts: 10_000
+    batch_size: 64
+    gamma: 0.995
+    exploration_fraction: 0.5
+    exploration_final_eps: 0.05
+    target_update_interval: 1_500
+    train_freq: 4
+    net_arch: [256, 128]
+    n_step: 1                    # 1 = buffer estándar; >1 activa NStepReplayBuffer
+    eval_freq: 20_000
+  versiones:
+    DQN-1: {n_step: 1,  gamma: 0.995, learning_rate: 1.0e-4, nota: "Línea base, sin propagación"}
+    DQN-2: {n_step: 8,  gamma: 0.995, learning_rate: 1.0e-4, nota: "Propagación media (mejor familia esperada)"}
+    DQN-3: {n_step: 8,  gamma: 0.99,  learning_rate: 1.0e-4, nota: "Descuento más corto"}
+    DQN-4: {n_step: 24, gamma: 0.995, learning_rate: 1.0e-4, nota: "Propagación larga"}
+    DQN-5: {n_step: 8,  gamma: 0.995, learning_rate: 5.0e-4, target_update_interval: 2_000, nota: "lr alto, target=2000"}
+    DQN-6: {n_step: 4,  gamma: 0.995, learning_rate: 1.0e-4, nota: "Propagación corta"}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# B — PPO discreto
+# ─────────────────────────────────────────────────────────────────────────────
+ppo:
+  algo: ppo
+  env: discreto
+  tesis: "on-policy con entropía constante colapsa; el decaimiento de entropía+lr lo evita"
+  base:
+    total_timesteps: 4_000_000
+    n_steps: 8192
+    batch_size: 128
+    n_epochs: 5
+    gamma: 0.99
+    gae_lambda: 0.95
+    clip_range: 0.2
+    vf_coef: 0.5
+    net_arch_pi: [64, 64]
+    net_arch_vf: [64, 64]
+    # learning_rate y ent_coef admiten escalar (const) o {init, final} (decay lineal)
+    learning_rate: {init: 3.0e-4, final: 3.0e-5}
+    ent_coef: {init: 0.005, final: 0.0005}
+    eval_freq: 20_000
+  versiones:
+    PPO-D1: {n_steps: 2048, ent_coef: 0.01,  learning_rate: 3.0e-4, nota: "rollout corto, ent const"}
+    PPO-D2: {n_steps: 4096, ent_coef: 0.003, learning_rate: 3.0e-4, nota: "ent baja const"}
+    PPO-D3: {n_steps: 8192, ent_coef: {init: 0.005, final: 0.0005}, learning_rate: 3.0e-4, nota: "ent decay, lr const"}
+    PPO-D4: {n_steps: 8192, ent_coef: {init: 0.005, final: 0.0005}, learning_rate: {init: 3.0e-4, final: 3.0e-5}, nota: "ent+lr decay (mejor familia esperada)"}
+    PPO-D5: {n_steps: 8192, ent_coef: 0.01,  learning_rate: 3.0e-4, gae_lambda: 0.98, nota: "ent const, gae alto"}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# C — PPO continuo (4 flujos, sin MPC)
+# ─────────────────────────────────────────────────────────────────────────────
+ppo_continuo:
+  algo: ppo_continuo
+  env: continuo
+  tesis: "un on-policy continuo tampoco supera al MPC ni puede usar demos (DAWN) → el mérito es del residual off-policy, no del espacio continuo"
+  base:
+    total_timesteps: 4_000_000
+    n_steps: 8192
+    batch_size: 128
+    n_epochs: 5
+    gamma: 0.99
+    gae_lambda: 0.95
+    clip_range: 0.2
+    vf_coef: 0.5
+    net_arch_pi: [256, 256]
+    net_arch_vf: [256, 256]
+    learning_rate: {init: 3.0e-4, final: 3.0e-5}
+    ent_coef: {init: 0.005, final: 0.0005}
+    log_std_init: -0.7           # action_std_init ≈ 0.5 (exp(-0.7))
+    eval_freq: 20_000
+  versiones:
+    PPO-C1: {action_std_init: 0.5, nota: "ent+lr decay, std_init 0.5"}
+    PPO-C2: {action_std_init: 0.3, nota: "ent+lr decay, std_init 0.3"}
+    PPO-C3: {n_steps: 4096, ent_coef: 0.003, learning_rate: 3.0e-4, action_std_init: 0.5, nota: "ent baja const"}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# D — TD3 residual (continuo off-policy sobre MPC)
+# ─────────────────────────────────────────────────────────────────────────────
+td3_residual:
+  algo: td3_residual
+  env: residual
+  tesis: "justifica empíricamente SAC frente a TD3 (robustez por entropía y doble crítico regularizado)"
+  base:
+    total_timesteps: 1_000_000
+    residual_mode: mult
+    delta_max: 0.15
+    dawn_warmup_steps: 100_000
+    learning_rate: 1.0e-4
+    buffer_size: 100_000
+    batch_size: 256
+    gamma: 0.99
+    tau: 0.005
+    net_arch: [256, 256]
+    policy_delay: 2
+    target_policy_noise: 0.2
+    target_noise_clip: 0.5
+    action_noise: {tipo: normal, sigma: 0.1}
+    eval_freq: 20_000
+  versiones:
+    TD3-1: {policy_delay: 2, target_policy_noise: 0.2, learning_rate: 1.0e-4, nota: "config de referencia"}
+    TD3-2: {policy_delay: 2, target_policy_noise: 0.1, learning_rate: 1.0e-4, nota: "target_noise bajo"}
+    TD3-3: {policy_delay: 3, target_policy_noise: 0.2, learning_rate: 3.0e-4, nota: "policy_delay 3, lr alto"}
+    TD3-4: {policy_delay: 2, target_policy_noise: 0.2, learning_rate: 1.0e-4, delta_max: 0.10, nota: "delta_max 0.10"}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# E — DDPG residual (baja prioridad)
+# ─────────────────────────────────────────────────────────────────────────────
+ddpg_residual:
+  algo: ddpg_residual
+  env: residual
+  tesis: "límite inferior del control continuo off-policy sin la regularización de SAC/TD3; soporta por descarte la elección de SAC"
+  base:
+    total_timesteps: 1_000_000
+    residual_mode: mult
+    delta_max: 0.15
+    dawn_warmup_steps: 100_000
+    learning_rate: 1.0e-4
+    buffer_size: 100_000
+    batch_size: 256
+    gamma: 0.99
+    tau: 0.005
+    net_arch: [256, 256]
+    action_noise: {tipo: normal, sigma: 0.1}
+    eval_freq: 20_000
+  versiones:
+    DDPG-1: {action_noise: {tipo: none},               learning_rate: 1.0e-4, nota: "sin ruido de exploración explícito"}
+    DDPG-2: {action_noise: {tipo: ou, sigma: 0.15},    learning_rate: 1.0e-4, nota: "ruido Ornstein-Uhlenbeck"}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# F — Residual SAC (ganador) + estudios
+# ─────────────────────────────────────────────────────────────────────────────
+residual_sac:
+  algo: residual_sac
+  env: residual
+  tesis: "el residual off-policy con entropía supera al MPC realista; estudios de validación del ganador"
+  base:
+    total_timesteps: 1_000_000
+    residual_mode: mult
+    delta_max: 0.15
+    dawn_warmup_steps: 100_000
+    learning_rate: 1.0e-4
+    buffer_size: 100_000
+    batch_size: 256
+    gamma: 0.99
+    tau: 0.005
+    ent_coef: 0.01
+    target_entropy: auto
+    net_arch: [256, 256]
+    eval_freq: 20_000
+  versiones:
+    # --- comparativa de arquitectura/δ ---
+    SAC-A:    {residual_mode: add,  delta_max: 0.05, ent_coef: 0.005, dawn_warmup_steps: 50_000,  nota: "aditiva, δ0.05, DAWN 50k"}
+    SAC-B:    {residual_mode: mult, delta_max: 0.30, ent_coef: 0.002, dawn_warmup_steps: 100_000, nota: "mult, δ0.30, DAWN 100k"}
+    SAC-C:    {residual_mode: mult, delta_max: 0.15, ent_coef: 0.01,  dawn_warmup_steps: 100_000, nota: "mult, δ0.15, DAWN 100k (GANADOR — = run 80kwh en curso)"}
+    # --- F2: ablación δ (mult, sobre SAC-C; d15 == SAC-C, no se reentrena) ---
+    F2-d05:   {residual_mode: mult, delta_max: 0.05, ent_coef: 0.01,  nota: "ablación δ=0.05"}
+    F2-d10:   {residual_mode: mult, delta_max: 0.10, ent_coef: 0.01,  nota: "ablación δ=0.10"}
+    F2-d20:   {residual_mode: mult, delta_max: 0.20, ent_coef: 0.01,  nota: "ablación δ=0.20"}
+    F2-d30:   {residual_mode: mult, delta_max: 0.30, ent_coef: 0.01,  nota: "ablación δ=0.30"}
+    # --- F4: DAWN off ---
+    F4-nodawn: {residual_mode: mult, delta_max: 0.15, ent_coef: 0.01, dawn_warmup_steps: 0, nota: "sin warmup MPC"}
+    # --- F6: ruido de pronóstico (s15 == SAC-C) ---
+    F6-s05:   {residual_mode: mult, delta_max: 0.15, ent_coef: 0.01, sigma_consumo: 0.05, nota: "σ_consumo 5%"}
+    F6-s25:   {residual_mode: mult, delta_max: 0.15, ent_coef: 0.01, sigma_consumo: 0.25, nota: "σ_consumo 25%"}
+  # Estudios SOLO de evaluación (reutilizan modelos ya entrenados, sin reentrenar):
+  estudios_eval:
+    F1: "Significancia de SAC-C: IC95% (bootstrap) + Wilcoxon vs MPC realista sobre 10 semillas×50 semanas"
+    F3: "Aditivo vs multiplicativo: comparar SAC-A (add, δ0.05) vs SAC-C (mult, δ0.15)"
+    F5: "SAC puro sin MPC: ver familia sac_puro (aísla el mérito del residual)"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# F5 — SAC puro (continuo, SIN MPC ni residual) — aísla el mérito del residual
+# ─────────────────────────────────────────────────────────────────────────────
+sac_puro:
+  algo: sac_puro
+  env: continuo
+  tesis: "SAC continuo directo (sin MPC base ni DAWN) rinde por debajo del residual → el mérito es de la arquitectura residual, no de SAC en sí"
+  base:
+    total_timesteps: 1_000_000
+    learning_rate: 1.0e-4
+    buffer_size: 100_000
+    batch_size: 256
+    gamma: 0.99
+    tau: 0.005
+    ent_coef: 0.01
+    target_entropy: auto
+    learning_starts: 10_000
+    net_arch: [256, 256]
+    eval_freq: 20_000
+  versiones:
+    F5: {nota: "SAC puro sobre EnergyEnvContinuo (sin MPC, sin warmup)"}

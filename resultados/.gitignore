@@ -1,0 +1,4 @@
+# Salidas de eval_suite.py (regenerables) — no se versionan
+*.csv
+*.json
+*.npy

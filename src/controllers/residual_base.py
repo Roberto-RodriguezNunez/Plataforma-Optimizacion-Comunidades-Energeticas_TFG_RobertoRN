@@ -46,14 +46,17 @@ class ResidualControllerBase(BaseController):
     Args:
         mpc:       Instancia de LinearMPC.
         sim:       ComunidadSimulador (parámetros físicos).
-        delta_max: Fracción multiplicativa. Es un hiperparámetro del modelo
-                   entrenado (debe coincidir con el del entreno) → sin default.
+        delta_max: Fracción (multiplicativa en 'mult', de P_MAX en 'add'). Es un
+                   hiperparámetro del modelo entrenado (debe coincidir) → sin default.
+        residual_mode: 'mult' -> max(0, mpc*(1+δ*δmax)); 'add' -> max(0, mpc+δ*δmax*P_MAX).
+                       Debe coincidir con el del entreno (ResidualEnv.residual_mode).
     """
 
-    def __init__(self, mpc, sim, delta_max: float):
+    def __init__(self, mpc, sim, delta_max: float, residual_mode: str = 'mult'):
         self._mpc = mpc
         self._sim = sim
         self._delta_max = delta_max
+        self._residual_mode = residual_mode
         self._P_MAX = sim.POTENCIA_INVERSOR
         # Stats VecNormalize — las fija la subclase. None → sin normalizar.
         self._mean = None
@@ -83,14 +86,20 @@ class ResidualControllerBase(BaseController):
         # 5. Inferencia (backend de la subclase)
         delta = self._infer(obs_norm)
 
-        # 6. Residual multiplicativo
-        dm = self._delta_max
+        # 6. Residual (mult o aditivo)
         return {
-            'P_carga_solar':   max(0.0, cs_mpc * (1.0 + float(delta[0]) * dm)),
-            'P_carga_red':     max(0.0, cm_mpc * (1.0 + float(delta[1]) * dm)),
-            'P_descarga_casa': max(0.0, dc_mpc * (1.0 + float(delta[2]) * dm)),
-            'P_descarga_red':  max(0.0, dr_mpc * (1.0 + float(delta[3]) * dm)),
+            'P_carga_solar':   self._combinar(cs_mpc, delta[0]),
+            'P_carga_red':     self._combinar(cm_mpc, delta[1]),
+            'P_descarga_casa': self._combinar(dc_mpc, delta[2]),
+            'P_descarga_red':  self._combinar(dr_mpc, delta[3]),
         }
+
+    def _combinar(self, mpc_flow: float, delta_i) -> float:
+        """Combina un flujo MPC con su corrección δ según residual_mode."""
+        dm = self._delta_max
+        if self._residual_mode == 'add':
+            return max(0.0, mpc_flow + float(delta_i) * dm * self._P_MAX)
+        return max(0.0, mpc_flow * (1.0 + float(delta_i) * dm))
 
     def _normalizar(self, obs_112: np.ndarray) -> np.ndarray:
         """clip((x - mean) / sqrt(var + 1e-8), ±clip). No-op si no hay stats."""

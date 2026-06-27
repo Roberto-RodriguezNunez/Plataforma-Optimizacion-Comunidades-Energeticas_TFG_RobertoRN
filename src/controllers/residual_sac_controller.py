@@ -23,16 +23,23 @@ from src.controllers.residual_base import ResidualControllerBase
 from src.benchmarks.mpc_benchmark import LinearMPC
 
 
+_ALGOS_TORCH = ('SAC', 'TD3', 'DDPG')
+
+
 class ResidualSACController(ResidualControllerBase):
     """
-    Residual SAC con inferencia torch (SB3).
+    Controlador residual con inferencia torch (SB3). Sirve para cualquier
+    algoritmo off-policy continuo entrenado sobre ResidualEnv (SAC, TD3, DDPG):
+    todos exponen `model.predict(obs, deterministic=True) -> (delta, _)`.
 
     Args:
-        model_path: Ruta al modelo SAC (.zip).
+        model_path: Ruta al modelo (.zip).
         mpc: Instancia de LinearMPC.
         sim: ComunidadSimulador (parámetros físicos).
-        delta_max: Fracción multiplicativa (hiperparámetro del modelo entrenado).
+        delta_max: Fracción (hiperparámetro del modelo entrenado).
         vec_normalize_path: Ruta a las stats de VecNormalize (.pkl). None → sin normalizar.
+        algo: 'SAC' | 'TD3' | 'DDPG' (define la clase SB3 que carga el .zip).
+        residual_mode: 'mult' | 'add' (debe coincidir con el del entreno).
     """
 
     def __init__(
@@ -42,11 +49,18 @@ class ResidualSACController(ResidualControllerBase):
         sim,
         delta_max: float,
         vec_normalize_path: Optional[str] = None,
+        algo: str = 'SAC',
+        residual_mode: str = 'mult',
     ):
-        from stable_baselines3 import SAC
+        import stable_baselines3 as sb3
 
-        super().__init__(mpc, sim, delta_max)
-        self._model = SAC.load(model_path, device='cpu')
+        algo = algo.upper()
+        if algo not in _ALGOS_TORCH:
+            raise ValueError(f"algo '{algo}' no soportado; usa uno de {_ALGOS_TORCH}")
+
+        super().__init__(mpc, sim, delta_max, residual_mode=residual_mode)
+        self._algo = algo
+        self._model = getattr(sb3, algo).load(model_path, device='cpu')
 
         if vec_normalize_path and os.path.exists(vec_normalize_path):
             import pickle
@@ -61,4 +75,4 @@ class ResidualSACController(ResidualControllerBase):
         return delta
 
     def nombre(self) -> str:
-        return f"ResidualSAC(dmax={self._delta_max})"
+        return f"Residual{self._algo}({self._residual_mode},dmax={self._delta_max})"

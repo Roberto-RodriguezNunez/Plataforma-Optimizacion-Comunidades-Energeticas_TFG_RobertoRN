@@ -33,14 +33,18 @@ from src.envs.energy_env_continuo import EnergyEnvContinuo
 from src.envs.residual_env import ResidualEnv
 from src.training.multiseed import entrenar_multiseed
 from src.training.callbacks import ResidualMetricasCallback
+from src.training.registro import cargar_version, seeds_comunes
 
 # --- Cargar configuracion ---
 _CONFIG_PATH = os.path.join(ROOT, 'config', 'system.yaml')
 with open(_CONFIG_PATH, 'r', encoding='utf-8') as f:
     _CFG = yaml.safe_load(f)
 
-_SAC_CFG = _CFG['residual_sac']
+_SAC_CFG = _CFG['residual_sac']      # infra (norm_obs, norm_reward, clip_obs)
 _MPC_CFG = _CFG['mpc']
+
+# Config de la versión en curso (la fija main() desde la registry de experimentos).
+_VCFG = None
 
 EPISODE_LENGTH = _MPC_CFG['duracion_episodio']
 MODEL_DIR = os.path.join(ROOT, 'models')
@@ -133,9 +137,10 @@ def dawn_warmup(model, mpc, train_env, warmup_steps, seed=42):
 # ──────────────────────────────────────────────────────────────────
 
 def _make_residual_env(mpc, mode='train'):
-    """Crea un ResidualEnv envuelto en Monitor."""
+    """Crea un ResidualEnv (modo residual de la versión) envuelto en Monitor."""
     inner = EnergyEnvContinuo(forecast_noise=True, mode=mode)
-    renv = ResidualEnv(inner, mpc, delta_max=_SAC_CFG['delta_max'])
+    renv = ResidualEnv(inner, mpc, delta_max=_VCFG['delta_max'],
+                       residual_mode=_VCFG.get('residual_mode', 'mult'))
     return Monitor(renv)
 
 
@@ -171,19 +176,22 @@ def make_envs(seed):
 
 
 def make_model(train_env, seed):
-    """Factoría del modelo SAC (con semilla aplicada)."""
+    """Factoría del modelo SAC según la versión de la registry."""
+    c = _VCFG
+    # Sin DAWN (F4-nodawn) hace falta exploración inicial → learning_starts>0.
+    learning_starts = 0 if int(c['dawn_warmup_steps']) > 0 else 10_000
     return SAC(
         policy='MlpPolicy',
         env=train_env,
-        learning_rate=_SAC_CFG['learning_rate'],
-        buffer_size=_SAC_CFG['buffer_size'],
-        batch_size=_SAC_CFG['batch_size'],
-        gamma=_SAC_CFG['gamma'],
-        tau=_SAC_CFG['tau'],
-        ent_coef=_SAC_CFG['ent_coef'],
-        target_entropy=_SAC_CFG['target_entropy'],
-        learning_starts=0,  # se aprende inmediatamente tras el warmup
-        policy_kwargs={'net_arch': _SAC_CFG['net_arch']},
+        learning_rate=float(c['learning_rate']),
+        buffer_size=int(c['buffer_size']),
+        batch_size=int(c['batch_size']),
+        gamma=float(c['gamma']),
+        tau=float(c['tau']),
+        ent_coef=c['ent_coef'],
+        target_entropy=c['target_entropy'],
+        learning_starts=learning_starts,
+        policy_kwargs={'net_arch': c['net_arch']},
         verbose=0,
         seed=seed,
         device='cpu',
@@ -195,42 +203,48 @@ def warmup(model, train_env, seed):
     """DAWN warmup: llena el buffer con MPC puro y calibra VecNormalize."""
     dawn_warmup(
         model, _get_mpc(), train_env,
-        warmup_steps=_SAC_CFG['dawn_warmup_steps'], seed=seed,
+        warmup_steps=int(_VCFG['dawn_warmup_steps']), seed=seed,
     )
     import gc; gc.collect()
 
 
-def main(version="v1", seeds=(42, 1337, 2024), total_timesteps=None):
+def main(version="SAC-C", seeds=None, total_timesteps=None):
+    global _VCFG
+    _VCFG = cargar_version("residual_sac", version)
+    train_seeds, _eval_seeds, eval_episodes = seeds_comunes()
+    if seeds is None:
+        seeds = train_seeds
     if total_timesteps is None:
-        total_timesteps = _SAC_CFG['total_timesteps']
+        total_timesteps = int(_VCFG['total_timesteps'])
+
+    # F6: σ del pronóstico es propiedad del entorno → se fija por-run (global).
+    if 'sigma_consumo' in _VCFG:
+        import src.core.forecast as _fc
+        _fc.SIGMA_CONS_BASE = float(_VCFG['sigma_consumo'])
+        print(f"  [F6] SIGMA_CONS_BASE = {_fc.SIGMA_CONS_BASE}")
+
+    # DAWN off (F4-nodawn) → no se pasa warmup al runner.
+    usar_warmup = warmup if int(_VCFG['dawn_warmup_steps']) > 0 else None
+
     os.makedirs(MODEL_DIR, exist_ok=True)
     os.makedirs(LOG_DIR, exist_ok=True)
     entrenar_multiseed(
         algo="residual_sac", version=version, seeds=list(seeds),
         make_envs=make_envs, make_model=make_model,
         total_timesteps=total_timesteps,
-        eval_freq=_SAC_CFG['eval_freq'], n_eval_episodes=_SAC_CFG['eval_episodes'],
-        warmup=warmup,
+        eval_freq=int(_VCFG['eval_freq']), n_eval_episodes=eval_episodes,
+        warmup=usar_warmup,
         extra_callbacks=lambda m: [ResidualMetricasCallback()],
     )
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description='Entrena Residual SAC sobre MPC (multi-semilla).')
-    parser.add_argument('--version', default='v1')
-    parser.add_argument('--seeds', type=int, nargs='+', default=[42, 1337, 2024])
+        description='Entrena Residual SAC sobre MPC (familia F) multi-semilla.')
+    parser.add_argument('--version', default='SAC-C',
+                        help='Versión de la registry (SAC-A/B/C, F2-*, F4-*, F6-*).')
+    parser.add_argument('--seeds', type=int, nargs='+', default=None)
     parser.add_argument('--timesteps', type=int, default=None,
-                        help='Total timesteps (default: config)')
-    parser.add_argument('--delta-max', type=float, default=None)
-    parser.add_argument('--ent-coef', type=float, default=None)
-    parser.add_argument('--warmup', type=int, default=None,
-                        help='DAWN warmup steps override (default: config)')
+                        help='Override total timesteps (smoke).')
     args = parser.parse_args()
-    if args.delta_max is not None:
-        _SAC_CFG['delta_max'] = args.delta_max
-    if args.ent_coef is not None:
-        _SAC_CFG['ent_coef'] = args.ent_coef
-    if args.warmup is not None:
-        _SAC_CFG['dawn_warmup_steps'] = args.warmup
     main(version=args.version, seeds=args.seeds, total_timesteps=args.timesteps)
