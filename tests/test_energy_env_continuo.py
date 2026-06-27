@@ -185,10 +185,11 @@ class TestNoCicloSimultaneo:
         no introduce error respecto a simular_hora_mpc)."""
         import yaml
         from src.benchmarks.mpc_benchmark import (
-            LinearMPC, ComunidadSimulador, simular_semana_idle, aplicar_ruido_ar1,
+            LinearMPC, ComunidadSimulador, simular_semana_idle,
             DATASET_PATH, SOC_INICIAL, SEED, EPISODE_LENGTH, HORIZON,
             _RHO_SOLAR, _RHO_CONS,
         )
+        from src.core.forecast import ventana_observada
         with open(os.path.join(ROOT, 'config', 'system.yaml'), 'r', encoding='utf-8') as f:
             cfg = yaml.safe_load(f)
         mpc_cfg = cfg['mpc']
@@ -223,8 +224,9 @@ class TestNoCicloSimultaneo:
                                + np.sqrt(1 - _RHO_SOLAR**2) * rng.standard_normal())
                 error_cons = (_RHO_CONS * error_cons
                               + np.sqrt(1 - _RHO_CONS**2) * rng.standard_normal())
-                window = sim.get_data_window(sim.current_step, horizon=HORIZON)
-                window = aplicar_ruido_ar1(window, error_solar, error_cons)
+                window = ventana_observada(sim, sim.current_step, error_solar,
+                                           error_cons, np.ones(HORIZON),
+                                           con_ruido=True, horizon=HORIZON)
                 state = {'soc': sim.soc, 'step': sim.current_step}
                 action = mpc.solve(state, window)
                 act_4d = np.array([action['P_carga_solar'], action['P_carga_red'],

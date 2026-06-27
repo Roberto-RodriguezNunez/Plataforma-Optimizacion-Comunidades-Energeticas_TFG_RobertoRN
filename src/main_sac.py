@@ -32,6 +32,7 @@ from src.benchmarks.mpc_benchmark import LinearMPC, ComunidadSimulador, DATASET_
 from src.envs.energy_env_continuo import EnergyEnvContinuo
 from src.envs.residual_env import ResidualEnv
 from src.training.multiseed import entrenar_multiseed
+from src.training.callbacks import ResidualMetricasCallback
 
 # --- Cargar configuracion ---
 _CONFIG_PATH = os.path.join(ROOT, 'config', 'system.yaml')
@@ -58,56 +59,7 @@ LOG_DIR = os.path.join(ROOT, 'logs')
 #  METRICAS CALLBACK — SoC, delta, a_mpc en TensorBoard
 # ──────────────────────────────────────────────────────────────────
 
-class ResidualMetricasCallback(BaseCallback):
-    """Registra metricas especificas del Residual SAC en TensorBoard."""
-
-    def __init__(self, verbose=0):
-        super().__init__(verbose)
-        self._soc_buf = []
-        self._delta_buf = []
-        self._a_mpc_buf = []
-        self._gc_freq = 10_000  # gc.collect() cada 10k steps
-
-    def _on_step(self) -> bool:
-        # Forzar garbage collection periódico (evita memory leak de scipy/HiGHS)
-        if self.num_timesteps % self._gc_freq == 0:
-            import gc
-            gc.collect()
-
-        for info in self.locals.get('infos', []):
-            if 'soc' in info:
-                self._soc_buf.append(info['soc'])
-            if 'delta_applied' in info:
-                self._delta_buf.append(info['delta_applied'])  # list of 4
-            if 'a_mpc' in info:
-                self._a_mpc_buf.append(info['a_mpc'])  # list of 4
-
-        if self.num_timesteps % 1000 == 0 and self._soc_buf:
-            self.logger.record('custom/soc_medio', np.mean(self._soc_buf))
-            self.logger.record('custom/soc_min', np.min(self._soc_buf))
-            self.logger.record('custom/soc_max', np.max(self._soc_buf))
-
-            if self._delta_buf:
-                deltas = np.array(self._delta_buf)  # (N, 4) kW
-                self.logger.record('custom/delta_l1_medio',
-                                   np.mean(np.abs(deltas)))
-                self.logger.record('custom/delta_std', np.std(deltas))
-
-            if self.num_timesteps % 20_000 == 0:
-                delta_l1 = np.mean(np.abs(np.array(self._delta_buf))) if self._delta_buf else 0
-                print(
-                    f"[{self.num_timesteps:>9,}]  "
-                    f"SoC={np.mean(self._soc_buf):.2f}"
-                    f"[{np.min(self._soc_buf):.2f}-{np.max(self._soc_buf):.2f}]"
-                    f"  |delta|_L1={delta_l1:.4f} kW",
-                    flush=True,
-                )
-
-            self._soc_buf.clear()
-            self._delta_buf.clear()
-            self._a_mpc_buf.clear()
-
-        return True
+# ResidualMetricasCallback ahora vive en src/training/callbacks.py (compartido).
 
 
 # ──────────────────────────────────────────────────────────────────

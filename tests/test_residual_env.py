@@ -16,7 +16,7 @@ sys.path.insert(0, ROOT)
 from src.envs.energy_env_continuo import EnergyEnvContinuo
 from src.envs.residual_env import ResidualEnv
 from src.benchmarks.mpc_benchmark import (
-    LinearMPC, ComunidadSimulador, simular_hora_mpc, aplicar_ruido_ar1,
+    LinearMPC, ComunidadSimulador, simular_hora_mpc,
     DATASET_PATH, HORIZON, SOC_INICIAL, EPISODE_LENGTH,
 )
 

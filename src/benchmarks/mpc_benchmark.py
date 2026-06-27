@@ -376,70 +376,10 @@ class LinearMPC(BaseController):
 # Funciones auxiliares de ejecución
 # =====================================================================
 
-def aplicar_ruido_ar1(window, error_solar, error_cons):
-    """
-    Aplica el mismo ruido AR(1) que energy_env._get_obs() a la ventana de 24h.
-    Precios (columnas 2 y 3) no se tocan — publicados por REE el día anterior.
-    """
-    w = window.copy()
-    for h in range(len(w)):
-        sigma_sol = _SIGMA_SOL_H1 + h * ((_SIGMA_SOL_H24 - _SIGMA_SOL_H1) / 23)
-        w[h, 1] = max(0.0, w[h, 1] * (1.0 + error_solar * sigma_sol))
-        w[h, 0] = max(0.0, w[h, 0] * (1.0 + error_cons * _SIGMA_CONS_BASE))
-    return w
-
-
-def aplicar_ruido_precio_3capas(window, hora_actual, noise_fn,
-                                start_offset=0):
-    """
-    Aplica ruido AR(1) a precios con modelo de 3 capas según publicación PVPC.
-    El estado AR(1) eps avanza HORA A HORA dentro del forecast, con un draw
-    nuevo por cada hora y ρ distinto por capa. Esto hace que el ranking de
-    precios entre horas cambie, no solo el nivel general.
-
-    El PVPC del día siguiente se publica a las 20:30h del día anterior por REE.
-    Antes de esa publicación, el agente/MPC no conoce los precios exactos.
-
-    Capas:
-      1. Horas ya publicadas (precio exacto conocido): sin ruido.
-      2. Hasta 6h post-publicación (OMIE intradiario): σ=0.05, ρ=0.5.
-      3. Resto del horizonte (estimación estadística): σ=0.15, ρ=0.7.
-
-    Args:
-        window: (H, 4+) array. Columnas 2 y 3 se modifican in-place.
-        hora_actual: Hora del día (0-23) del paso de decisión actual.
-        noise_fn: Callable que devuelve N(0,1). Puede ser rng.standard_normal
-                  (seeded, para MPC/eval) o np.random.normal (global, para env).
-        start_offset: 0 si window[0]=hora actual (MPC/eval),
-                      1 si window[0]=hora+1 (energy_env._get_obs).
-    """
-    if hora_actual >= _HORA_PUBLICACION:
-        horas_publicadas = 24 + (24 - hora_actual)
-    else:
-        horas_publicadas = 24 - hora_actual
-
-    eps = 0.0
-
-    for h in range(len(window)):
-        hora_forecast = h + start_offset  # horas adelante desde hora_actual
-
-        if hora_forecast < horas_publicadas:
-            # Capa 1: precio publicado exacto — sin ruido
-            continue
-        elif hora_forecast < horas_publicadas + _MARGEN_INTRA_H:
-            # Capa 2: OMIE intradiario — ruido bajo, ρ=0.5
-            rho = _RHO_PRECIO_INTRA
-            sigma = _SIGMA_PRECIO_INTRA
-        else:
-            # Capa 3: estimación estadística — ruido alto, ρ=0.7
-            rho = _RHO_PRECIO_STAT
-            sigma = _SIGMA_PRECIO_STAT
-
-        # Avanzar AR(1) por hora: eps_h = ρ·eps_{h-1} + √(1-ρ²)·N(0,1)
-        eps = rho * eps + np.sqrt(1 - rho**2) * noise_fn()
-        factor = 1.0 + sigma * eps
-        window[h, 2] = max(0.0, window[h, 2] * factor)  # precio_kwh
-        window[h, 3] = max(0.0, window[h, 3] * factor)  # precio_excedente
+# El ruido de pronóstico (AR(1) solar/consumo + precio 3 capas) vive ahora en la
+# FUENTE ÚNICA src/core/forecast.py (avanzar_ar1, generar_factores_precio,
+# aplicar_ruido_ventana, ventana_observada). Las antiguas aplicar_ruido_ar1 y
+# aplicar_ruido_precio_3capas se eliminaron al unificar (eran equivalentes).
 
 
 def simular_hora_mpc(sim, cs, cm, dc, dr):

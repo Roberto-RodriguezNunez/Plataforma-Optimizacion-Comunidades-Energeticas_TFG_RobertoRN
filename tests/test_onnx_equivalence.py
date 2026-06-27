@@ -18,13 +18,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
+from src.core.forecast import ventana_observada, generar_factores_precio
 from src.benchmarks.mpc_benchmark import (
     ComunidadSimulador,
     DATASET_PATH,
     LinearMPC,
     simular_hora_mpc,
-    aplicar_ruido_ar1,
-    aplicar_ruido_precio_3capas,
     _get_hora_actual,
     SOC_INICIAL,
     SEED,
@@ -104,10 +103,10 @@ def test_onnx_equivalencia_flujos(controllers):
             error_solar = (0.7 * error_solar + np.sqrt(1 - 0.49) * rng.standard_normal())
             error_cons  = (0.3 * error_cons  + np.sqrt(1 - 0.09) * rng.standard_normal())
 
-            # Un solo forecast ruidoso — mismo input para ambos controladores
-            window = sim_sb3.get_data_window(step, HORIZON).copy()
-            aplicar_ruido_ar1(window, error_solar, error_cons)
-            aplicar_ruido_precio_3capas(window, _get_hora_actual(step), rng.standard_normal)
+            # Un solo forecast ruidoso (fuente única) — mismo input para ambos
+            factores = generar_factores_precio(_get_hora_actual(step), rng.standard_normal)
+            window = ventana_observada(sim_sb3, step, error_solar, error_cons,
+                                       factores, con_ruido=True, horizon=HORIZON)
 
             state_sb3  = {'soc': sim_sb3.soc,  'step': step}
             state_onnx = {'soc': sim_onnx.soc, 'step': step}
@@ -156,9 +155,9 @@ def test_onnx_beneficio_semanal(controllers):
         error_solar = 0.7 * error_solar + np.sqrt(1 - 0.49) * rng.standard_normal()
         error_cons  = 0.3 * error_cons  + np.sqrt(1 - 0.09) * rng.standard_normal()
 
-        window = sim_sb3.get_data_window(step, HORIZON).copy()
-        aplicar_ruido_ar1(window, error_solar, error_cons)
-        aplicar_ruido_precio_3capas(window, _get_hora_actual(step), rng.standard_normal)
+        factores = generar_factores_precio(_get_hora_actual(step), rng.standard_normal)
+        window = ventana_observada(sim_sb3, step, error_solar, error_cons,
+                                   factores, con_ruido=True, horizon=HORIZON)
 
         a_sb3  = sb3_ctrl.solve({'soc': sim_sb3.soc,  'step': step}, window)
         a_onnx = onnx_ctrl.solve({'soc': sim_onnx.soc, 'step': step}, window)
