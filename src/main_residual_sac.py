@@ -1,6 +1,6 @@
 """
-main_sac.py — Entrenamiento del agente Residual SAC sobre MPC
-=============================================================
+main_residual_sac.py — Entrenamiento del agente Residual SAC sobre MPC
+=====================================================================
 Fase 2 del TFG: el SAC aprende correcciones Delta_a sobre la accion
 del MPC realista resuelto online en cada step.
 
@@ -10,7 +10,7 @@ Protocolo DAWN (Data-Anchored Warmup):
   3. El critic aprende primero que delta=0 da reward MPC, luego explora.
 
 Ejecucion desde la raiz del proyecto (carpeta TFG/):
-    python src/main_sac.py [--seed 42] [--timesteps 1000000]
+    python src/main_residual_sac.py [--version 80kwh] [--seeds 42 1337 2024]
 """
 
 import argparse

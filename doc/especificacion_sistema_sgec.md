@@ -878,8 +878,7 @@ TFG/
 │   ├── envs/energy_env.py            # Entorno Gymnasium para SB3
 │   ├── main.py                       # Orquestador de entrenamiento DQN
 │   ├── benchmarks/
-│   │   ├── mpc_benchmark.py          # Benchmark MPC (LP con scipy HiGHS)
-│   │   └── diagnostico_recompensa.py # Análisis de recompensas por estrategia
+│   │   └── mpc_benchmark.py          # Benchmark MPC (LP con scipy HiGHS)
 │   └── utils/
 │       └── generar_dataset_final.py  # Preprocesado y fusión del dataset
 ├── models/

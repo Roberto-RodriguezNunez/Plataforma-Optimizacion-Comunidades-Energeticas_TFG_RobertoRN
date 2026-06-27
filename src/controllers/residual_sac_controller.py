@@ -1,8 +1,13 @@
 """
-residual_sac_controller.py — Controlador Residual SAC multiplicativo 4D
-=======================================================================
-Combina un modelo SAC entrenado con el LinearMPC para producir acciones
-a traves de la interfaz estandar solve(state, forecast) -> dict.
+residual_sac_controller.py — Backend torch del Residual SAC (evaluación)
+========================================================================
+Subclase de ResidualControllerBase que carga el modelo SAC entrenado (.zip)
+y las stats de VecNormalize (.pkl). Toda la lógica residual (MPC + obs +
+normalización + combinación) vive en la base; aquí solo se implementa la
+inferencia con torch (`SAC.predict`).
+
+Se usa en evaluación (eval_unificada): justo tras entrenar se tiene el .zip
+de torch, todavía no el .onnx. La versión desplegable es OnnxResidualController.
 
 Residual multiplicativo:
     flow_final = max(0, mpc_flow * (1 + delta * delta_max))
@@ -10,36 +15,24 @@ Con delta=(0,0,0,0), los flujos MPC pasan intactos.
 """
 
 import os
-import sys
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if ROOT not in sys.path:
-    sys.path.insert(0, ROOT)
-
-from src.controllers.base import BaseController
+from src.controllers.residual_base import ResidualControllerBase
 from src.benchmarks.mpc_benchmark import LinearMPC
-from src.production.obs_builder import build_obs
 
 
-class ResidualSACController(BaseController):
+class ResidualSACController(ResidualControllerBase):
     """
-    Controlador que combina MPC + SAC residual multiplicativo 4D.
-
-    En solve():
-      1. Resuelve el MPC con (state, forecast)
-      2. Construye obs 112-dim (108 del entorno + 4 MPC features)
-      3. Predice delta 4D con el SAC (determinista)
-      4. Combina: flow_final = max(0, mpc_flow * (1 + delta * delta_max))
+    Residual SAC con inferencia torch (SB3).
 
     Args:
         model_path: Ruta al modelo SAC (.zip).
         mpc: Instancia de LinearMPC.
-        sim: ComunidadSimulador (para parametros fisicos).
-        delta_max: Fraccion multiplicativa. 0.30 = ±30% de cada flujo MPC.
-        vec_normalize_path: Ruta a las stats de VecNormalize (.pkl).
+        sim: ComunidadSimulador (parámetros físicos).
+        delta_max: Fracción multiplicativa (hiperparámetro del modelo entrenado).
+        vec_normalize_path: Ruta a las stats de VecNormalize (.pkl). None → sin normalizar.
     """
 
     def __init__(
@@ -47,65 +40,25 @@ class ResidualSACController(BaseController):
         model_path: str,
         mpc: LinearMPC,
         sim,
-        delta_max: float = 0.30,
+        delta_max: float,
         vec_normalize_path: Optional[str] = None,
     ):
         from stable_baselines3 import SAC
 
-        self._mpc = mpc
-        self._sim = sim
-        self._delta_max = delta_max
-        self._P_MAX = sim.POTENCIA_INVERSOR
-
+        super().__init__(mpc, sim, delta_max)
         self._model = SAC.load(model_path, device='cpu')
 
-        self._obs_rms = None
-        self._clip_obs = 10.0
         if vec_normalize_path and os.path.exists(vec_normalize_path):
             import pickle
             with open(vec_normalize_path, 'rb') as f:
                 vec_norm = pickle.load(f)
-            self._obs_rms = vec_norm.obs_rms
+            self._mean = vec_norm.obs_rms.mean
+            self._var = vec_norm.obs_rms.var
             self._clip_obs = vec_norm.clip_obs
 
-    def solve(self, state: Dict, forecast: np.ndarray) -> Dict[str, float]:
-        # 1. Resolver MPC
-        mpc_action = self._mpc.solve(state, forecast)
-        cs_mpc = mpc_action['P_carga_solar']
-        cm_mpc = mpc_action['P_carga_red']
-        dc_mpc = mpc_action['P_descarga_casa']
-        dr_mpc = mpc_action['P_descarga_red']
-
-        # 2. Construir obs 112-dim (108 base + 4 MPC features)
-        obs_108 = self._build_obs(state, forecast)
-        P = self._P_MAX
-        mpc_feat = np.array(
-            [cs_mpc / P, cm_mpc / P, dc_mpc / P, dr_mpc / P],
-            dtype=np.float32,
-        )
-        obs_112 = np.append(obs_108, mpc_feat)
-
-        # 3. Normalizar si hay stats
-        if self._obs_rms is not None:
-            obs_112 = np.clip(
-                (obs_112 - self._obs_rms.mean) / np.sqrt(self._obs_rms.var + 1e-8),
-                -self._clip_obs, self._clip_obs
-            ).astype(np.float32)
-
-        # 4. Predecir delta 4D (determinista)
-        delta, _ = self._model.predict(obs_112, deterministic=True)
-        dm = self._delta_max
-
-        # 5. Residual multiplicativo
-        return {
-            'P_carga_solar':   max(0.0, cs_mpc * (1.0 + delta[0] * dm)),
-            'P_carga_red':     max(0.0, cm_mpc * (1.0 + delta[1] * dm)),
-            'P_descarga_casa': max(0.0, dc_mpc * (1.0 + delta[2] * dm)),
-            'P_descarga_red':  max(0.0, dr_mpc * (1.0 + delta[3] * dm)),
-        }
+    def _infer(self, obs_norm: np.ndarray) -> np.ndarray:
+        delta, _ = self._model.predict(obs_norm, deterministic=True)
+        return delta
 
     def nombre(self) -> str:
         return f"ResidualSAC(dmax={self._delta_max})"
-
-    def _build_obs(self, state: Dict, forecast: np.ndarray) -> np.ndarray:
-        return build_obs(state, forecast, self._sim)
