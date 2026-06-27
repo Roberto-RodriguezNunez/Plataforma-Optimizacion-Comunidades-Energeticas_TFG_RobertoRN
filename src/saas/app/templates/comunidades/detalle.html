@@ -79,18 +79,41 @@
                   letter-spacing:.06em;color:var(--text-muted);margin-bottom:.7rem;">
         Ahorro mensual agregado (€)
       </div>
+      {% if ahorros_totales %}
+      <div style="font-size:.7rem;color:var(--text-muted);margin-bottom:.5rem;">
+        Ahorro total acumulado{% if periodo %} ({{ periodo }}){% endif %}:
+      </div>
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.9rem;">
+        <div style="flex:1;min-width:90px;background:rgba(229,62,62,.06);border:1px solid rgba(229,62,62,.2);
+                    border-radius:8px;padding:.5rem .7rem;">
+          <div style="font-size:.62rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--red);">vs Sin paneles</div>
+          <div style="font-size:1.05rem;font-weight:800;color:var(--red);font-variant-numeric:tabular-nums;">{{ "%.0f"|format(ahorros_totales.vs_sin_paneles) }} €</div>
+        </div>
+        <div style="flex:1;min-width:90px;background:rgba(217,119,6,.06);border:1px solid rgba(217,119,6,.2);
+                    border-radius:8px;padding:.5rem .7rem;">
+          <div style="font-size:.62rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--amber);">vs Solo paneles</div>
+          <div style="font-size:1.05rem;font-weight:800;color:var(--amber);font-variant-numeric:tabular-nums;">{{ "%.0f"|format(ahorros_totales.vs_solo_paneles) }} €</div>
+        </div>
+        <div style="flex:1;min-width:90px;background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);
+                    border-radius:8px;padding:.5rem .7rem;">
+          <div style="font-size:.62rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#3B82F6;">vs Pan.+comun.</div>
+          <div style="font-size:1.05rem;font-weight:800;color:#3B82F6;font-variant-numeric:tabular-nums;">{{ "%.0f"|format(ahorros_totales.vs_paneles_com) }} €</div>
+        </div>
+      </div>
+      {% endif %}
       <canvas data-chart-type="line-ahorro"
               data-chart='{{ chart_comunidad }}'
               style="max-height:180px;"></canvas>
     </div>
-    <div>
+    <div style="display:flex;flex-direction:column;">
       <div style="font-size:.73rem;font-weight:600;text-transform:uppercase;
                   letter-spacing:.06em;color:var(--text-muted);margin-bottom:.7rem;">
         Sin comunidad vs con comunidad (€)
       </div>
-      <canvas data-chart-type="bar-compare"
-              data-chart='{{ chart_comunidad }}'
-              style="max-height:180px;"></canvas>
+      <div style="flex:1;min-height:180px;">
+        <canvas data-chart-type="bar-compare"
+                data-chart='{{ chart_comunidad }}'></canvas>
+      </div>
     </div>
   </div>
 </div>

@@ -18,6 +18,7 @@ from gymnasium import spaces
 import numpy as np
 
 from src.envs.energy_env import EnergyEnv
+from src.core.forecast import avanzar_ar1
 
 
 class EnergyEnvContinuo(EnergyEnv):
@@ -63,13 +64,8 @@ class EnergyEnvContinuo(EnergyEnv):
         """
         # 0. Avanzar estado AR(1) (a menos que el wrapper lo haya hecho)
         if not self._skip_next_ar1 and self.forecast_noise:
-            self._error_solar = (
-                self._RHO_SOLAR * self._error_solar
-                + np.sqrt(1 - self._RHO_SOLAR ** 2) * self._noise()
-            )
-            self._error_cons = (
-                self._RHO_CONS * self._error_cons
-                + np.sqrt(1 - self._RHO_CONS ** 2) * self._noise()
+            self._error_solar, self._error_cons = avanzar_ar1(
+                self._error_solar, self._error_cons, self._noise
             )
         self._skip_next_ar1 = False  # Resetear flag
 

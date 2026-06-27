@@ -27,7 +27,11 @@ class CierreMensual(db.Model):
     vertido_a_red_kwh = db.Column(db.Float, default=0.0)
     ahorro_eur = db.Column(db.Float, default=0.0)
     factura_sin_paneles_eur = db.Column(db.Float, default=0.0)
+    # Escenario 1: autoconsumo individual, sin comunidad ni batería
     factura_escenario_base_eur = db.Column(db.Float, default=0.0)
+    # Escenario 2: autoconsumo colectivo entre viviendas, sin batería
+    factura_paneles_comunidad_eur = db.Column(db.Float, default=0.0)
+    # Escenario 3: autoconsumo colectivo + batería gestionada por SAC
     factura_escenario_real_eur = db.Column(db.Float, default=0.0)
     porcentaje_ahorro_global = db.Column(db.Float, default=0.0)
     coeficiente_reparto_aplicado = db.Column(db.Float, default=0.0)
@@ -37,7 +41,9 @@ class CierreMensual(db.Model):
                  autoconsumo_directo_kwh=0.0, energia_de_bateria_kwh=0.0,
                  vertido_a_red_kwh=0.0, ahorro_eur=0.0,
                  factura_sin_paneles_eur=0.0,
-                 factura_escenario_base_eur=0.0, factura_escenario_real_eur=0.0,
+                 factura_escenario_base_eur=0.0,
+                 factura_paneles_comunidad_eur=0.0,
+                 factura_escenario_real_eur=0.0,
                  porcentaje_ahorro_global=0.0, coeficiente_reparto_aplicado=0.0):
         self.vivienda_oid = int(vivienda_oid)
         self.mes = mes  # formato 'YYYY-MM'
@@ -48,6 +54,7 @@ class CierreMensual(db.Model):
         self.ahorro_eur = float(ahorro_eur)
         self.factura_sin_paneles_eur = float(factura_sin_paneles_eur)
         self.factura_escenario_base_eur = float(factura_escenario_base_eur)
+        self.factura_paneles_comunidad_eur = float(factura_paneles_comunidad_eur)
         self.factura_escenario_real_eur = float(factura_escenario_real_eur)
         self.porcentaje_ahorro_global = float(porcentaje_ahorro_global)
         self.coeficiente_reparto_aplicado = float(coeficiente_reparto_aplicado)

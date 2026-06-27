@@ -18,21 +18,31 @@ from app.helpers import (oid_from_safe, oid_to_safe, flash_exito, flash_error,
 from app.decorators import superadmin_required
 
 # Desviación del ruido log-normal para la distribución individual
-_SIGMA_CONSUMO = 0.15   # ±15 %: variación conductual entre vecinos
-_SIGMA_GEN     = 0.10   # ±10 %: variación por sombras puntuales / temperatura
+# σ_con=0.35: CV≈36 %, acorde con la heterogeneidad real de consumo doméstico
+#   (diferencias de ocupación, horarios, electrodomésticos, VE…)
+# σ_gen=0.10: CV≈10 %, varianza intra-instalación con orientación uniforme
+#   (ensuciamiento diferencial, microsombras locales, eficiencia de inversor/cableado)
+_SIGMA_CONSUMO = 0.35
+_SIGMA_GEN     = 0.10
 
 
-def _distribuir(total, pesos_norm, step, vivienda_ids, sigma):
+def _distribuir(total, pesos_norm, step, vivienda_ids, sigma, salt=0):
     """Distribuye `total` entre N viviendas con ruido log-normal reproducible.
 
     Cada casa recibe un peso base (coef o kwp×orient) perturbado con ruido
     log-normal de desviación `sigma`, sembrado deterministicamente por
     (vivienda_id, step) para que recalcular el cierre dé siempre el mismo
     resultado. La normalización garantiza sum(devuelto) == total exactamente.
+
+    `salt` separa el flujo de ruido de consumo del de generación: con la misma
+    semilla, el shock z de consumo y el de generación serían idénticos (una casa
+    que por azar consume más generaría más en lockstep), lo que anula la
+    diversidad de perfiles de la que vive el autoconsumo colectivo. Con salt
+    distinto los dos shocks son independientes, como en la realidad.
     """
     p = list(pesos_norm)
     for i, vid in enumerate(vivienda_ids):
-        r = _rng.Random(int(vid) * 99991 + int(step))
+        r = _rng.Random(int(vid) * 99991 + int(step) + salt)
         # Box-Muller: N(0,1) sin dependencias externas
         u1, u2 = max(r.random(), 1e-12), r.random()
         z = math.sqrt(-2.0 * math.log(u1)) * math.cos(2.0 * math.pi * u2)
@@ -51,7 +61,15 @@ def _comprobar_acceso_o_superadmin(viv_oid):
 def _calcular_cierre_desde_operaciones(comunidad_id, mes):
     """Genera o actualiza CierreMensual para cada vivienda a partir de OperacionHoraria.
 
-    Distribución individual (RD 244/2019 + perfil sintético reproducible):
+    MODELO: cooperativa con un único punto de suministro (CUPS único), modalidad de
+    autoconsumo individual del RD 244/2019. El balance agregado de la comunidad ES la
+    ÚNICA factura eléctrica oficial. Lo que se calcula por vivienda NO es una factura
+    regulada, sino la CUOTA INTERNA de reparto del gasto común que la cooperativa
+    asigna a cada socio (Ley 24/2013, sin reventa de energía). El coeficiente de
+    reparto es la clave interna que representa la parte —y el ahorro— de cada vivienda
+    sobre la factura común; no es el coeficiente reglamentario del colectivo.
+
+    Reparto interno (perfil sintético reproducible):
 
       consumo_i  — distribuido desde consumo_total con ruido log-normal (σ=0.15)
                    ponderado por coef_reparto; sum(consumo_i) == consumo_total exacto.
@@ -62,7 +80,7 @@ def _calcular_cierre_desde_operaciones(comunidad_id, mes):
       bat_i      = p_descarga_casa × coef_reparto_i
       compra_i   = max(0, (consumo_i - gen_i) - bat_i)
       surplus_i  = max(0, gen_i - consumo_i)
-      ahorro_i   = consumo_i×pc − (compra_i×pc − surplus_i×pe)
+      cuota_i    = compra_i×pc − surplus_i×pe   (parte del coste común; ahorro_i sobre el escenario individual)
 
     El ruido está sembrado por (vivienda_id, step): recalcular siempre da el mismo resultado.
     """
@@ -110,7 +128,8 @@ def _calcular_cierre_desde_operaciones(comunidad_id, mes):
     acums = [dict(consumo=0.0, autoconsumo=0.0, bat=0.0, vertido=0.0,
                   compra_red_cost=0.0, compensacion=0.0,
                   coste_sin_paneles=0.0,
-                  compra_base_cost=0.0, compensacion_base=0.0)
+                  compra_base_cost=0.0, compensacion_base=0.0,
+                  compra_com_cost=0.0, compensacion_com=0.0)
              for _ in viviendas]
 
     for op in ops:
@@ -121,9 +140,10 @@ def _calcular_cierre_desde_operaciones(comunidad_id, mes):
         pe     = op.precio_exc        or 0.0
         pd_bat = op.p_descarga_casa   or 0.0
 
-        # Distribución individual reproducible hora a hora
-        consumos = _distribuir(ct, con_pesos, step, viv_ids, _SIGMA_CONSUMO)
-        gens     = _distribuir(gt, gen_pesos, step, viv_ids, _SIGMA_GEN)
+        # Distribución individual reproducible hora a hora.
+        # salt distinto en generación → ruido de gen y consumo independientes.
+        consumos = _distribuir(ct, con_pesos, step, viv_ids, _SIGMA_CONSUMO, salt=0)
+        gens     = _distribuir(gt, gen_pesos, step, viv_ids, _SIGMA_GEN, salt=2_000_000)
 
         for j, viv in enumerate(viviendas):
             c = consumos[j]
@@ -142,33 +162,42 @@ def _calcular_cierre_desde_operaciones(comunidad_id, mes):
             acums[j]['compra_red_cost']   += compra * pc
             acums[j]['compensacion']      += surplus * pe
             acums[j]['coste_sin_paneles'] += c * pc
-            # factura_base: escenario "paneles propios, sin batería ni comunidad"
+            # Escenario 1: solo paneles individuales, sin comunidad ni batería
             compra_base  = max(0.0, c - g)
             surplus_base = max(0.0, g - c)
             acums[j]['compra_base_cost']  += compra_base * pc
             acums[j]['compensacion_base'] += surplus_base * pe
+            # Escenario 2: autoconsumo colectivo sin batería (RD 244/2019)
+            # Déficit comunitario → cada casa paga su fracción por coef_reparto
+            # Excedente comunitario → cada casa recibe su fracción por kWp instalado
+            com_def = max(0.0, ct - gt)
+            com_sur = max(0.0, gt - ct)
+            acums[j]['compra_com_cost']  += con_pesos[j] * com_def * pc
+            acums[j]['compensacion_com'] += gen_pesos[j] * com_sur * pe
 
     n_creados = 0
     for viv, acum in zip(viviendas, acums):
         coef = viv.coeficiente_reparto
-        factura_sin_paneles = round(acum['coste_sin_paneles'], 2)
-        # ahorro = valor añadido de la comunidad (batería + reparto) sobre solar individual
-        factura_base = round(max(0.0, acum['compra_base_cost'] - acum['compensacion_base']), 2)
-        factura_real = round(max(0.0, acum['compra_red_cost'] - acum['compensacion']), 2)
-        ahorro       = round(max(0.0, factura_base - factura_real), 2)
+        factura_sin_paneles     = round(acum['coste_sin_paneles'], 2)
+        factura_base            = round(max(0.0, acum['compra_base_cost'] - acum['compensacion_base']), 2)
+        factura_paneles_com     = round(max(0.0, acum['compra_com_cost'] - acum['compensacion_com']), 2)
+        factura_real            = round(max(0.0, acum['compra_red_cost'] - acum['compensacion']), 2)
+        # ahorro = comunidad completa vs solo paneles individuales
+        ahorro                  = round(max(0.0, factura_base - factura_real), 2)
 
         existente = CierreMensual.query.filter_by(vivienda_oid=viv.id, mes=mes).first()
         if existente:
-            existente.consumo_total_kwh            = round(acum['consumo'], 3)
-            existente.autoconsumo_directo_kwh      = round(acum['autoconsumo'], 3)
-            existente.energia_de_bateria_kwh       = round(acum['bat'], 3)
-            existente.vertido_a_red_kwh            = round(acum['vertido'], 3)
-            existente.ahorro_eur                   = ahorro
-            existente.factura_sin_paneles_eur      = factura_sin_paneles
-            existente.factura_escenario_base_eur   = factura_base
-            existente.factura_escenario_real_eur   = factura_real
-            existente.porcentaje_ahorro_global     = round(coef * 100, 1)
-            existente.coeficiente_reparto_aplicado = coef
+            existente.consumo_total_kwh               = round(acum['consumo'], 3)
+            existente.autoconsumo_directo_kwh         = round(acum['autoconsumo'], 3)
+            existente.energia_de_bateria_kwh          = round(acum['bat'], 3)
+            existente.vertido_a_red_kwh               = round(acum['vertido'], 3)
+            existente.ahorro_eur                      = ahorro
+            existente.factura_sin_paneles_eur         = factura_sin_paneles
+            existente.factura_escenario_base_eur      = factura_base
+            existente.factura_paneles_comunidad_eur   = factura_paneles_com
+            existente.factura_escenario_real_eur      = factura_real
+            existente.porcentaje_ahorro_global        = round(coef * 100, 1)
+            existente.coeficiente_reparto_aplicado    = coef
         else:
             c_obj = CierreMensual(
                 vivienda_oid=viv.id, mes=mes,
@@ -179,6 +208,7 @@ def _calcular_cierre_desde_operaciones(comunidad_id, mes):
                 ahorro_eur=ahorro,
                 factura_sin_paneles_eur=factura_sin_paneles,
                 factura_escenario_base_eur=factura_base,
+                factura_paneles_comunidad_eur=factura_paneles_com,
                 factura_escenario_real_eur=factura_real,
                 porcentaje_ahorro_global=round(coef * 100, 1),
                 coeficiente_reparto_aplicado=coef,

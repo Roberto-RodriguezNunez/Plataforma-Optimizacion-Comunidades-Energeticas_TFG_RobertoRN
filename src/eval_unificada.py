@@ -27,10 +27,12 @@ if ROOT not in sys.path:
 
 from src.benchmarks.mpc_benchmark import (
     LinearMPC, ComunidadSimulador, DATASET_PATH,
-    simular_hora_mpc, simular_semana_idle, aplicar_ruido_ar1,
-    aplicar_ruido_precio_3capas, _get_hora_actual,
+    simular_hora_mpc, simular_semana_idle, _get_hora_actual,
     SOC_INICIAL, SEED, EPISODE_LENGTH, HORIZON,
     _RHO_SOLAR, _RHO_CONS,
+)
+from src.core.forecast import (
+    ventana_observada, generar_factores_precio, avanzar_ar1,
 )
 from src.controllers.base import BaseController
 
@@ -83,25 +85,18 @@ def evaluar_controlador(
         ben_marg = 0.0
 
         for _ in range(EPISODE_LENGTH):
-            # Avanzar AR(1) solar/consumo — mismo timing que correr_episodios
+            # Pronóstico desde la FUENTE ÚNICA (hora actual = primer paso de
+            # pronóstico, con ruido), idéntico para MPC y agente — mismo timing.
             if con_ruido:
-                error_solar = (
-                    _RHO_SOLAR * error_solar
-                    + np.sqrt(1 - _RHO_SOLAR ** 2) * rng.standard_normal()
-                )
-                error_cons = (
-                    _RHO_CONS * error_cons
-                    + np.sqrt(1 - _RHO_CONS ** 2) * rng.standard_normal()
-                )
-
-            # Forecast (perfecto o ruidoso)
-            window = sim.get_data_window(sim.current_step, horizon=HORIZON)
-            if con_ruido:
-                window = aplicar_ruido_ar1(window, error_solar, error_cons)
+                error_solar, error_cons = avanzar_ar1(
+                    error_solar, error_cons, rng.standard_normal)
                 hora_actual = _get_hora_actual(sim.current_step)
-                aplicar_ruido_precio_3capas(window, hora_actual,
-                                            rng.standard_normal,
-                                            start_offset=0)
+                factores = generar_factores_precio(hora_actual, rng.standard_normal)
+            else:
+                factores = None
+            window = ventana_observada(
+                sim, sim.current_step, error_solar, error_cons,
+                factores, con_ruido, horizon=HORIZON)
 
             # Resolver controlador
             state = {'soc': sim.soc, 'step': sim.current_step}
@@ -129,10 +124,38 @@ def evaluar_controlador(
     }
 
 
+def evaluar_multiseed(controller: BaseController, forecast_mode: str,
+                      seeds) -> Dict:
+    """Evalúa el controlador bajo varias semillas de RUIDO y agrega.
+
+    Devuelve el beneficio marginal POOLED (todas las semillas × 50 semanas)
+    más la media por semilla, para reportar media ± std SOBRE SEMILLAS — la
+    barra de error mide la robustez frente a la realización del ruido AR(1)
+    (no la varianza de entrenamiento).
+    """
+    medias, pooled = [], []
+    for sd in seeds:
+        res = evaluar_controlador(controller, forecast_mode=forecast_mode, seed=sd)
+        m = res['bens_marg']
+        medias.append(float(m.mean()))
+        pooled.append(m)
+    return {
+        'bens_marg': np.concatenate(pooled),
+        'medias_por_seed': np.array(medias),
+        'n_seeds': len(seeds),
+    }
+
+
 def imprimir_resultado(label: str, res: Dict):
     m = res['bens_marg']
-    print(f"  {label:<35s}  {m.mean():+7.2f} +/- {m.std():5.2f} EUR/sem"
-          f"  (min={m.min():+.1f}, max={m.max():+.1f})")
+    md = res.get('medias_por_seed')
+    if md is not None and len(md) > 1:
+        print(f"  {label:<35s}  {md.mean():+7.2f} +/- {md.std():5.2f} EUR/sem"
+              f"  (media±std sobre {len(md)} semillas de ruido; pooled "
+              f"min/max {m.min():+.1f}/{m.max():+.1f})")
+    else:
+        print(f"  {label:<35s}  {m.mean():+7.2f} +/- {m.std():5.2f} EUR/sem"
+              f"  (min={m.min():+.1f}, max={m.max():+.1f})")
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -228,17 +251,21 @@ def main():
                         help='Ruta a VecNormalize stats (.npz)')
     parser.add_argument('--skip-baselines', action='store_true',
                         help='No evaluar MPC oraculo/realista/IDLE')
+    parser.add_argument('--eval-seeds', type=int, default=10,
+                        help='Nº de semillas de ruido para la barra de error (default: 10)')
     args = parser.parse_args()
 
     if args.delta_max is None:
         args.delta_max = _CFG['residual_sac']['delta_max']
+
+    eval_seeds = [SEED + i for i in range(args.eval_seeds)]
 
     print("=" * 70)
     print("EVALUACION UNIFICADA — protocolo identico a MPC benchmark")
     print("=" * 70)
     print(f"  Semanas eval:  {len(ComunidadSimulador(DATASET_PATH).semanas_eval)}")
     print(f"  SoC inicial:   {SOC_INICIAL}")
-    print(f"  Seed RNG:      {SEED}")
+    print(f"  Semillas eval: {len(eval_seeds)} (ruido AR(1), base {SEED})")
     print(f"  Forecast:      realista (AR(1))")
     print()
 
@@ -253,7 +280,7 @@ def main():
 
         # 2. MPC realista
         print("  Evaluando MPC realista...")
-        res_real = evaluar_controlador(mpc, forecast_mode='realista')
+        res_real = evaluar_multiseed(mpc, 'realista', eval_seeds)
         resultados['MPC realista'] = res_real
 
         # 3. IDLE
@@ -265,7 +292,7 @@ def main():
     if args.sac_model:
         print(f"  Evaluando Residual SAC ({os.path.basename(args.sac_model)})...")
         sac_ctrl = crear_residual_sac(args.sac_model, args.sac_norm, args.delta_max)
-        res_sac = evaluar_controlador(sac_ctrl, forecast_mode='realista')
+        res_sac = evaluar_multiseed(sac_ctrl, 'realista', eval_seeds)
         resultados[sac_ctrl.nombre()] = res_sac
 
     # 5. ONNX Residual SAC
@@ -273,7 +300,7 @@ def main():
         npz = args.onnx_npz or os.path.join(ROOT, 'models', 'vec_normalize_v5_1M.npz')
         print(f"  Evaluando ONNX ResidualSAC ({os.path.basename(args.onnx_model)})...")
         onnx_ctrl = crear_onnx_residual_sac(args.onnx_model, npz, args.delta_max)
-        res_onnx = evaluar_controlador(onnx_ctrl, forecast_mode='realista')
+        res_onnx = evaluar_multiseed(onnx_ctrl, 'realista', eval_seeds)
         resultados[onnx_ctrl.nombre()] = res_onnx
 
     # 6. DQN (puede haber varios modelos)
@@ -281,7 +308,7 @@ def main():
         label = os.path.splitext(os.path.basename(dqn_path))[0]
         print(f"  Evaluando DQN ({label})...")
         dqn_ctrl = crear_discrete_rl(dqn_path, args.rl_norm, algo='DQN')
-        res_dqn = evaluar_controlador(dqn_ctrl, forecast_mode='realista')
+        res_dqn = evaluar_multiseed(dqn_ctrl, 'realista', eval_seeds)
         resultados[f'DQN({label})'] = res_dqn
 
     # 6. PPO (puede haber varios modelos)
@@ -289,7 +316,7 @@ def main():
         label = os.path.splitext(os.path.basename(ppo_path))[0]
         print(f"  Evaluando PPO ({label})...")
         ppo_ctrl = crear_discrete_rl(ppo_path, args.rl_norm, algo='PPO')
-        res_ppo = evaluar_controlador(ppo_ctrl, forecast_mode='realista')
+        res_ppo = evaluar_multiseed(ppo_ctrl, 'realista', eval_seeds)
         resultados[f'PPO({label})'] = res_ppo
 
     # Tabla

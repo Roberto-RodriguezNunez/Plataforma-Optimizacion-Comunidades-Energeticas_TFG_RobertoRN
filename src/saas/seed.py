@@ -217,6 +217,11 @@ def cierre_para_vivienda(viv_oid, mes, coef, idx):
     if ahorro == 0.0:
         factura_real = factura_base
 
+    # Paneles + comunidad (sin batería): el reparto colectivo apenas mejora al
+    # autoconsumo individual; el grueso del ahorro lo aporta la batería (real).
+    # Se sitúa entre solo-paneles y comunidad-completa, nunca en 0.
+    factura_paneles_com = round(max(factura_real, factura_base * 0.97), 2)
+
     return CierreMensual(
         vivienda_oid=viv_oid,
         mes=mes,
@@ -227,6 +232,7 @@ def cierre_para_vivienda(viv_oid, mes, coef, idx):
         ahorro_eur=ahorro,
         factura_sin_paneles_eur=factura_sin_paneles,
         factura_escenario_base_eur=factura_base,
+        factura_paneles_comunidad_eur=factura_paneles_com,
         factura_escenario_real_eur=factura_real,
         porcentaje_ahorro_global=round(coef * 100, 1),
         coeficiente_reparto_aplicado=coef

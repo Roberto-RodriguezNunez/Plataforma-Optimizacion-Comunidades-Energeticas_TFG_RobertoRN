@@ -25,9 +25,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-# ── Rutas ────────────────────────────────────────────────────────────────────
-MODEL_ZIP  = os.path.join(ROOT, 'models', 'best_model_v5_1M.zip')
-VEC_NORM   = os.path.join(ROOT, 'models', 'vec_normalize_v5_1M.pkl')
+# ── Rutas (defaults sobreescribibles por CLI) ────────────────────────────────
+MODEL_ZIP  = os.path.join(ROOT, 'models', 'best_model.zip')
+VEC_NORM   = os.path.join(ROOT, 'models', 'best_vecnormalize.pkl')
 ONNX_OUT   = os.path.join(ROOT, 'models', 'residual_sac_actor.onnx')
 NPZ_OUT    = os.path.join(ROOT, 'models', 'vec_normalize_v5_1M.npz')
 
@@ -116,8 +116,16 @@ def export_vec_normalize(pkl_path: str = VEC_NORM, npz_out: str = NPZ_OUT) -> No
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
-    export_onnx()
-    export_vec_normalize()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model',    default=MODEL_ZIP, help='Ruta al .zip del modelo SAC')
+    parser.add_argument('--vec-norm', default=VEC_NORM,  help='Ruta al .pkl de VecNormalize')
+    parser.add_argument('--onnx-out', default=ONNX_OUT,  help='Ruta de salida .onnx')
+    parser.add_argument('--npz-out',  default=NPZ_OUT,   help='Ruta de salida .npz')
+    args = parser.parse_args()
+
+    export_onnx(args.model, args.onnx_out)
+    export_vec_normalize(args.vec_norm, args.npz_out)
     print("\nExportación completada.")
-    print(f"  {ONNX_OUT}")
-    print(f"  {NPZ_OUT}")
+    print(f"  {args.onnx_out}")
+    print(f"  {args.npz_out}")

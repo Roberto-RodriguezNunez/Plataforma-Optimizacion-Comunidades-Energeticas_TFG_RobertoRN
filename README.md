@@ -169,3 +169,121 @@ Todos los hiperparámetros están al principio de `src/main.py` como constantes:
 | `EXPLORATION_FINAL` | 0.05 | 0.05 | Epsilon mínimo al final |
 | `NET_ARCH` | [256, 256] | [64, 64] | Capas ocultas de la red neuronal |
 | `EVAL_FREQ` | 20.000 | 10k | Cada cuántos pasos evaluar y guardar el mejor modelo |
+
+---
+
+## Entrenamiento del agente Residual SAC
+
+El Residual SAC aprende correcciones ±15% sobre las decisiones del MPC. Se ejecuta desde **WSL** (no PowerShell) porque usa HiGHS LP en cada paso y es más estable en Linux.
+
+### Requisitos previos
+
+- **WSL** con el entorno virtual activado (`.venv/`)
+- Ejecutar siempre desde la raíz del proyecto (`TFG/`)
+- Para que el entreno sobreviva a cerrar el terminal, deshabilitar la suspensión automática de Windows:
+  Panel de control → Opciones de energía → Elegir el comportamiento al cerrar la tapa → **No hacer nada**
+
+### Entrenamiento completo (~8-9 horas, CPU)
+
+```bash
+source .venv/bin/activate
+nohup python src/main_sac.py --seed 42 > logs/train_sac.log 2>&1 &
+echo $! > logs/train_sac.pid
+```
+
+Seguir el progreso:
+
+```bash
+tail -f logs/train_sac.log
+```
+
+Ver paso actual:
+
+```bash
+python3 -c "import numpy as np; d=np.load('logs/evaluations.npz'); print(d['timesteps'][-1], '/ 1,000,000')"
+```
+
+### Archivos generados
+
+```
+TFG/
+├── models/
+│   ├── best_model.zip                    ← mejor checkpoint (criterio: reward medio eval)
+│   ├── best_vecnormalize.pkl             ← stats VecNormalize del mejor checkpoint
+│   ├── residual_sac_seed42.zip           ← checkpoint final (paso 1M)
+│   └── residual_sac_vec_normalize_seed42.pkl
+└── logs/
+    ├── train_sac.log                     ← stdout del entrenamiento
+    ├── evaluations.npz                   ← curva de eval (timesteps, rewards)
+    └── ResidualSAC_seed42_1/             ← eventos TensorBoard
+```
+
+> `best_model.zip` + `best_vecnormalize.pkl` son siempre el par a usar. Se actualizan
+> automáticamente durante el entreno cada vez que el modelo mejora su reward medio.
+
+### Visualización con TensorBoard
+
+```bash
+tensorboard --logdir logs/
+```
+
+Métricas relevantes: `eval/mean_reward`, `custom/soc_medio`, `custom/delta_l1_medio`.
+
+---
+
+## Evaluación del modelo
+
+Compara el Residual SAC contra MPC oráculo, MPC realista e IDLE sobre las 50 semanas hold-out:
+
+```bash
+python src/eval_unificada.py \
+  --sac-model models/best_model.zip \
+  --sac-norm  models/best_vecnormalize.pkl
+```
+
+Para evaluar con varias semillas de ruido (recomendado para la memoria):
+
+```bash
+python src/eval_escenarios.py   # próximamente
+```
+
+---
+
+## Exportación a ONNX (despliegue en producción)
+
+Una vez terminado el entreno y elegido el modelo a desplegar, exportar el actor a ONNX:
+
+```bash
+# Exportar best_model.zip (por defecto)
+python -m src.production.export_onnx
+
+# O especificar otro modelo explícitamente
+python -m src.production.export_onnx \
+  --model    models/residual_sac_seed42.zip \
+  --vec-norm models/residual_sac_vec_normalize_seed42.pkl \
+  --onnx-out models/residual_sac_actor.onnx \
+  --npz-out  models/vec_normalize_v5_1M.npz
+```
+
+Genera dos artefactos en `models/`:
+
+| Archivo | Tamaño | Descripción |
+|---|---|---|
+| `residual_sac_actor.onnx` | ~376 KB | Actor determinista, entrada `obs[batch,112]` → `delta[batch,4]` |
+| `vec_normalize_v5_1M.npz` | ~2 KB | Estadísticas de normalización (mean, var, clip_obs) |
+
+Verificar que el ONNX da los mismos resultados que el modelo SB3:
+
+```bash
+python src/eval_unificada.py \
+  --sac-model  models/best_model.zip \
+  --sac-norm   models/best_vecnormalize.pkl \
+  --onnx-model models/residual_sac_actor.onnx \
+  --onnx-npz   models/vec_normalize_v5_1M.npz \
+  --skip-baselines
+```
+
+Los dos controladores deben dar el mismo reward (diferencia < 0.01 EUR/sem).
+
+Una vez verificado, el sistema de producción carga automáticamente el ONNX desde las rutas
+configuradas en `config/system.yaml` (sección `produccion:`). No hay ningún paso adicional.

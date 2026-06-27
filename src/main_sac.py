@@ -31,6 +31,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from src.benchmarks.mpc_benchmark import LinearMPC, ComunidadSimulador, DATASET_PATH
 from src.envs.energy_env_continuo import EnergyEnvContinuo
 from src.envs.residual_env import ResidualEnv
+from src.training.multiseed import entrenar_multiseed
 
 # --- Cargar configuracion ---
 _CONFIG_PATH = os.path.join(ROOT, 'config', 'system.yaml')
@@ -208,63 +209,44 @@ def _make_residual_env(mpc, mode='train'):
 #  MAIN
 # ──────────────────────────────────────────────────────────────────
 
-def main(seed=42, total_timesteps=None, tag=None):
-    if total_timesteps is None:
-        total_timesteps = _SAC_CFG['total_timesteps']
+_MPC_SHARED = None
 
-    # Directorios con tag opcional para no sobreescribir otros runs
-    model_dir = MODEL_DIR
-    log_dir = LOG_DIR
-    if tag:
-        model_dir = os.path.join(MODEL_DIR, tag)
-        log_dir = os.path.join(LOG_DIR, tag)
 
-    print("=" * 62)
-    print("RESIDUAL SAC — Entrenamiento")
-    print("=" * 62)
-    print(f"  Seed:            {seed}")
-    print(f"  Total timesteps: {total_timesteps:,}")
-    print(f"  Delta max:       {_SAC_CFG['delta_max']}")
-    print(f"  DAWN warmup:     {_SAC_CFG['dawn_warmup_steps']:,}")
-    print(f"  Buffer size:     {_SAC_CFG['buffer_size']:,}")
-    print(f"  Net arch:        {_SAC_CFG['net_arch']}")
-    if tag:
-        print(f"  Tag:             {tag}")
+def _get_mpc():
+    """MPC compartido (LP determinista, reutilizable entre semillas)."""
+    global _MPC_SHARED
+    if _MPC_SHARED is None:
+        sim_mpc = ComunidadSimulador(DATASET_PATH)
+        tv = _MPC_CFG['valor_terminal']
+        _MPC_SHARED = LinearMPC(
+            sim_mpc,
+            use_terminal_value=tv['activado'],
+            terminal_lambda=tv['lambda'],
+            terminal_price_mode=tv['modo_precio'],
+            k_deg_lin=_MPC_CFG['k_deg_lin'],
+        )
+    return _MPC_SHARED
 
-    os.makedirs(model_dir, exist_ok=True)
-    os.makedirs(log_dir, exist_ok=True)
 
-    # 1. Crear MPC (compartido por todos los entornos)
-    sim_mpc = ComunidadSimulador(DATASET_PATH)
-    tv_cfg = _MPC_CFG['valor_terminal']
-    mpc = LinearMPC(
-        sim_mpc,
-        use_terminal_value=tv_cfg['activado'],
-        terminal_lambda=tv_cfg['lambda'],
-        terminal_price_mode=tv_cfg['modo_precio'],
-        k_deg_lin=_MPC_CFG['k_deg_lin'],
-    )
-    print(f"  MPC:             {mpc.nombre().encode('ascii', 'replace').decode()}")
-
-    # 2. Crear entornos
-    print("\n  Creando entornos...")
+def make_envs(seed):
+    """Factoría de entornos Residual SAC (ResidualEnv sobre MPC) con VecNormalize."""
+    mpc = _get_mpc()
     train_env = VecNormalize(
         DummyVecEnv([lambda: _make_residual_env(mpc, mode='train')]),
-        norm_obs=_SAC_CFG['norm_obs'],
-        norm_reward=_SAC_CFG['norm_reward'],
+        norm_obs=_SAC_CFG['norm_obs'], norm_reward=_SAC_CFG['norm_reward'],
         clip_obs=_SAC_CFG['clip_obs'],
     )
-
     eval_env = VecNormalize(
         DummyVecEnv([lambda: _make_residual_env(mpc, mode='eval')]),
-        norm_obs=_SAC_CFG['norm_obs'],
-        norm_reward=_SAC_CFG['norm_reward'],
+        norm_obs=_SAC_CFG['norm_obs'], norm_reward=_SAC_CFG['norm_reward'],
         clip_obs=_SAC_CFG['clip_obs'],
     )
+    return train_env, eval_env
 
-    # 3. Crear agente SAC
-    print("  Creando agente SAC...")
-    model = SAC(
+
+def make_model(train_env, seed):
+    """Factoría del modelo SAC (con semilla aplicada)."""
+    return SAC(
         policy='MlpPolicy',
         env=train_env,
         learning_rate=_SAC_CFG['learning_rate'],
@@ -274,74 +256,50 @@ def main(seed=42, total_timesteps=None, tag=None):
         tau=_SAC_CFG['tau'],
         ent_coef=_SAC_CFG['ent_coef'],
         target_entropy=_SAC_CFG['target_entropy'],
-        learning_starts=0,  # Empezamos a aprender inmediatamente tras warmup
+        learning_starts=0,  # se aprende inmediatamente tras el warmup
         policy_kwargs={'net_arch': _SAC_CFG['net_arch']},
         verbose=0,
         seed=seed,
         device='cpu',
-        tensorboard_log=log_dir,
+        tensorboard_log=LOG_DIR,
     )
 
-    # 4. DAWN warmup (llena buffer + calibra VecNormalize)
+
+def warmup(model, train_env, seed):
+    """DAWN warmup: llena el buffer con MPC puro y calibra VecNormalize."""
     dawn_warmup(
-        model, mpc, train_env,
-        warmup_steps=_SAC_CFG['dawn_warmup_steps'],
-        seed=seed,
+        model, _get_mpc(), train_env,
+        warmup_steps=_SAC_CFG['dawn_warmup_steps'], seed=seed,
     )
+    import gc; gc.collect()
 
-    import gc; gc.collect()  # libera objetos Python del warmup antes de entrenar
 
-    # 5. Callbacks
-    eval_callback = SeededEvalCallback(
-        eval_env,
-        best_model_save_path=model_dir,
-        log_path=log_dir,
-        eval_freq=_SAC_CFG['eval_freq'],
-        n_eval_episodes=_SAC_CFG['eval_episodes'],
-        deterministic=True,
-        verbose=1,
-        eval_seed=42,
-    )
-    metricas_callback = ResidualMetricasCallback()
-
-    # 6. Entrenar
-    print(f"\n  Iniciando entrenamiento ({total_timesteps:,} pasos)...")
-    print(f"  TensorBoard: tensorboard --logdir {log_dir}")
-    print("-" * 62)
-
-    model.learn(
+def main(version="v1", seeds=(42, 1337, 2024), total_timesteps=None):
+    if total_timesteps is None:
+        total_timesteps = _SAC_CFG['total_timesteps']
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    os.makedirs(LOG_DIR, exist_ok=True)
+    entrenar_multiseed(
+        algo="residual_sac", version=version, seeds=list(seeds),
+        make_envs=make_envs, make_model=make_model,
         total_timesteps=total_timesteps,
-        callback=[eval_callback, metricas_callback],
-        progress_bar=False,
-        tb_log_name=f"ResidualSAC_seed{seed}",
+        eval_freq=_SAC_CFG['eval_freq'], n_eval_episodes=_SAC_CFG['eval_episodes'],
+        warmup=warmup,
+        extra_callbacks=lambda m: [ResidualMetricasCallback()],
     )
-
-    # 7. Guardar
-    model_path = os.path.join(model_dir, f"residual_sac_seed{seed}")
-    model.save(model_path)
-    train_env.save(os.path.join(model_dir, f"residual_sac_vec_normalize_seed{seed}.pkl"))
-
-    print(f"\n  Modelo guardado:     {model_path}.zip")
-    print(f"  Mejor modelo:        {os.path.join(model_dir, 'best_model.zip')}")
-    print(f"  VecNormalize stats:  residual_sac_vec_normalize_seed{seed}.pkl")
-    print("=" * 62)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description='Entrena Residual SAC sobre MPC.')
-    parser.add_argument('--seed', type=int, default=42,
-                        help='Semilla (default: 42)')
+        description='Entrena Residual SAC sobre MPC (multi-semilla).')
+    parser.add_argument('--version', default='v1')
+    parser.add_argument('--seeds', type=int, nargs='+', default=[42, 1337, 2024])
     parser.add_argument('--timesteps', type=int, default=None,
                         help='Total timesteps (default: config)')
-    parser.add_argument('--delta-max', type=float, default=None,
-                        help='Delta max override (default: config)')
-    parser.add_argument('--ent-coef', type=float, default=None,
-                        help='Entropy coef override (default: config)')
+    parser.add_argument('--delta-max', type=float, default=None)
+    parser.add_argument('--ent-coef', type=float, default=None)
     parser.add_argument('--warmup', type=int, default=None,
                         help='DAWN warmup steps override (default: config)')
-    parser.add_argument('--tag', type=str, default=None,
-                        help='Tag para separar modelos/logs (ej: v5b)')
     args = parser.parse_args()
     if args.delta_max is not None:
         _SAC_CFG['delta_max'] = args.delta_max
@@ -349,4 +307,4 @@ if __name__ == '__main__':
         _SAC_CFG['ent_coef'] = args.ent_coef
     if args.warmup is not None:
         _SAC_CFG['dawn_warmup_steps'] = args.warmup
-    main(seed=args.seed, total_timesteps=args.timesteps, tag=args.tag)
+    main(version=args.version, seeds=args.seeds, total_timesteps=args.timesteps)

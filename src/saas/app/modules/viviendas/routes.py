@@ -144,22 +144,33 @@ def detalle(safe_oid):
     ).order_by(CierreMensual.mes).all()
 
     # ----------------------------------------------------------------
-    # Gráfica 1: Ahorro mensual — línea de área (últimos 12 meses)
+    # Gráfica 1: Ahorro de "comunidad completa" vs 3 escenarios — 3 líneas
     # ----------------------------------------------------------------
     grafica = cierres[-12:]
+    serie_sin = [round(max(0.0, c.factura_sin_paneles_eur - c.factura_escenario_real_eur), 2) for c in grafica]
+    serie_solo = [round(max(0.0, c.factura_escenario_base_eur - c.factura_escenario_real_eur), 2) for c in grafica]
+    serie_com = [round(max(0.0, c.factura_paneles_comunidad_eur - c.factura_escenario_real_eur), 2) for c in grafica]
     chart_ahorro = json.dumps({
         'labels': [c.mes for c in grafica],
-        'ahorro': [round(c.ahorro_eur, 2) for c in grafica],
+        'vs_sin_paneles': serie_sin,
+        'vs_solo_paneles': serie_solo,
+        'vs_paneles_com': serie_com,
     })
+    ahorros_totales = {
+        'vs_sin_paneles':  round(sum(serie_sin), 2),
+        'vs_solo_paneles': round(sum(serie_solo), 2),
+        'vs_paneles_com':  round(sum(serie_com), 2),
+    }
 
     # ----------------------------------------------------------------
-    # Gráfica 2: Factura base vs real — barras agrupadas
+    # Gráfica 2: Comparativa de 4 escenarios — barras agrupadas
     # ----------------------------------------------------------------
     chart_compare = json.dumps({
-        'labels':        [c.mes for c in grafica],
-        'sin_paneles':   [round(c.factura_sin_paneles_eur, 2) for c in grafica],
-        'solo_paneles':  [round(c.factura_escenario_base_eur, 2) for c in grafica],
-        'con_comunidad': [round(c.factura_escenario_real_eur, 2) for c in grafica],
+        'labels':             [c.mes for c in grafica],
+        'sin_paneles':        [round(c.factura_sin_paneles_eur, 2) for c in grafica],
+        'solo_paneles':       [round(c.factura_escenario_base_eur, 2) for c in grafica],
+        'paneles_comunidad':  [round(c.factura_paneles_comunidad_eur, 2) for c in grafica],
+        'comunidad_completa': [round(c.factura_escenario_real_eur, 2) for c in grafica],
     })
 
     # ----------------------------------------------------------------
@@ -217,6 +228,7 @@ def detalle(safe_oid):
                            n_cierres=len(cierres),
                            es_admin=current_user.es_superadmin,
                            chart_ahorro=chart_ahorro,
+                           ahorros_totales=ahorros_totales,
                            chart_compare=chart_compare,
                            chart_mix=chart_mix,
                            chart_community=chart_community,

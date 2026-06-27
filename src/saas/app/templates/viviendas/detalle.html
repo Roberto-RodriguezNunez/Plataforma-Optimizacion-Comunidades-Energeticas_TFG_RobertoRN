@@ -42,6 +42,19 @@
   {% endif %}
 </div>
 
+{# Nota: naturaleza de los importes — modelo cooperativa CUPS único #}
+<div style="background:rgba(59,130,246,.05);border:1px solid rgba(59,130,246,.2);
+            border-radius:10px;padding:.9rem 1.1rem;margin-bottom:1.5rem;
+            font-size:.82rem;color:var(--text-muted);line-height:1.5;">
+  {{ zap(14) }} <strong style="color:#0a0a0a;">Modelo cooperativa (suministro único).</strong>
+  La comunidad opera como un único punto de suministro: existe
+  <strong>una sola factura eléctrica oficial</strong>, que es el balance agregado de la
+  comunidad. Los importes que ves por vivienda <strong>no son una factura regulada</strong>,
+  sino tu <strong>cuota interna</strong> de reparto del gasto común. El
+  <strong>coeficiente de reparto</strong> (<code>{{ "%.3f"|format(viv.coeficiente_reparto) }}</code>)
+  es la clave que determina tu parte —y tu ahorro— sobre esa factura común.
+</div>
+
 {# KPIs de ahorro — panel unificado estilo TR #}
 <div style="display:grid;grid-template-columns:repeat(4,1fr);
             background:#fff;border:1px solid #e5e5e5;border-radius:12px;
@@ -68,16 +81,36 @@
 {# Fila superior: Ahorro mensual + Comparativa factura #}
 <div class="grid-2" style="margin-bottom:2rem;">
   <div>
-    <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:.9rem;">Ahorro mensual (€)</div>
+    <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:.9rem;">Ahorro de comunidad completa vs cada escenario (€)</div>
+    {% if ahorros_totales %}
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.9rem;">
+      <div style="flex:1;min-width:90px;background:rgba(229,62,62,.06);border:1px solid rgba(229,62,62,.2);
+                  border-radius:8px;padding:.5rem .7rem;">
+        <div style="font-size:.62rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--red);">vs Sin paneles</div>
+        <div style="font-size:1.05rem;font-weight:800;color:var(--red);font-variant-numeric:tabular-nums;">{{ "%.0f"|format(ahorros_totales.vs_sin_paneles) }} €</div>
+      </div>
+      <div style="flex:1;min-width:90px;background:rgba(217,119,6,.06);border:1px solid rgba(217,119,6,.2);
+                  border-radius:8px;padding:.5rem .7rem;">
+        <div style="font-size:.62rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--amber);">vs Solo paneles</div>
+        <div style="font-size:1.05rem;font-weight:800;color:var(--amber);font-variant-numeric:tabular-nums;">{{ "%.0f"|format(ahorros_totales.vs_solo_paneles) }} €</div>
+      </div>
+      <div style="flex:1;min-width:90px;background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);
+                  border-radius:8px;padding:.5rem .7rem;">
+        <div style="font-size:.62rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#3B82F6;">vs Pan.+comun.</div>
+        <div style="font-size:1.05rem;font-weight:800;color:#3B82F6;font-variant-numeric:tabular-nums;">{{ "%.0f"|format(ahorros_totales.vs_paneles_com) }} €</div>
+      </div>
+    </div>
+    {% endif %}
     <canvas data-chart-type="line-ahorro"
             data-chart='{{ chart_ahorro }}'
             style="max-height:200px;"></canvas>
   </div>
-  <div>
+  <div style="display:flex;flex-direction:column;">
     <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:.9rem;">Comparativa de escenarios (€)</div>
-    <canvas data-chart-type="bar-compare"
-            data-chart='{{ chart_compare }}'
-            style="max-height:200px;"></canvas>
+    <div style="flex:1;min-height:200px;">
+      <canvas data-chart-type="bar-compare"
+              data-chart='{{ chart_compare }}'></canvas>
+    </div>
   </div>
 </div>
 
@@ -117,7 +150,8 @@
       <th>Consumo kWh</th>
       <th>Sin paneles</th>
       <th>Solo paneles</th>
-      <th>Con comunidad</th>
+      <th>Pan.+comunidad</th>
+      <th>Com. completa</th>
       <th>Ahorro</th>
       <th></th>
     </tr>
@@ -129,6 +163,7 @@
       <td><code>{{ c.consumo_total_kwh }}</code></td>
       <td style="color:var(--red);opacity:.7;"><code>{{ "%.2f"|format(c.factura_sin_paneles_eur) }} €</code></td>
       <td style="color:var(--red);"><code>{{ "%.2f"|format(c.factura_escenario_base_eur) }} €</code></td>
+      <td style="color:#3B82F6;"><code>{{ "%.2f"|format(c.factura_paneles_comunidad_eur) }} €</code></td>
       <td><code>{{ "%.2f"|format(c.factura_escenario_real_eur) }} €</code></td>
       <td style="color:var(--teal);font-weight:600;"><code>{{ "%.2f"|format(c.ahorro_eur) }} €</code></td>
       <td><a href="{{ url_for('cierres.detalle', safe_oid=oid_to_safe(c.__oid__)) }}">→</a></td>

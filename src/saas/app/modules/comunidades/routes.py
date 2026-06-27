@@ -93,30 +93,50 @@ def detalle(safe_oid):
             CierreMensual.vivienda_oid.in_(viv_ids)
         ).all()
 
-    por_mes = defaultdict(lambda: {'ahorro': 0.0, 'base': 0.0, 'real': 0.0})
+    por_mes = defaultdict(lambda: {'ahorro': 0.0, 'sin': 0.0, 'base': 0.0,
+                                   'com': 0.0, 'real': 0.0})
     for c in cierres_com:
         por_mes[c.mes]['ahorro'] += c.ahorro_eur
+        por_mes[c.mes]['sin']    += c.factura_sin_paneles_eur
         por_mes[c.mes]['base']   += c.factura_escenario_base_eur
+        por_mes[c.mes]['com']    += c.factura_paneles_comunidad_eur
         por_mes[c.mes]['real']   += c.factura_escenario_real_eur
 
-    meses = sorted(por_mes.keys())[-6:]
+    meses = sorted(por_mes.keys())   # histórico completo
     if meses:
         chart_comunidad = json.dumps({
             'labels': meses,
-            'ahorro': [round(por_mes[m]['ahorro'], 2) for m in meses],
-            'base':   [round(por_mes[m]['base'],   2) for m in meses],
-            'real':   [round(por_mes[m]['real'],   2) for m in meses],
+            # Barras: factura de cada escenario
+            'sin_paneles':        [round(por_mes[m]['sin'],  2) for m in meses],
+            'solo_paneles':       [round(por_mes[m]['base'], 2) for m in meses],
+            'paneles_comunidad':  [round(por_mes[m]['com'],  2) for m in meses],
+            'comunidad_completa': [round(por_mes[m]['real'], 2) for m in meses],
+            # Líneas: ahorro de "comunidad completa" frente a cada escenario
+            'vs_sin_paneles':  [round(max(0.0, por_mes[m]['sin']  - por_mes[m]['real']), 2) for m in meses],
+            'vs_solo_paneles': [round(max(0.0, por_mes[m]['base'] - por_mes[m]['real']), 2) for m in meses],
+            'vs_paneles_com':  [round(max(0.0, por_mes[m]['com']  - por_mes[m]['real']), 2) for m in meses],
         })
+        # Totales del periodo mostrado (suma de cada línea de ahorro)
+        ahorros_totales = {
+            'vs_sin_paneles':  round(sum(max(0.0, por_mes[m]['sin']  - por_mes[m]['real']) for m in meses), 2),
+            'vs_solo_paneles': round(sum(max(0.0, por_mes[m]['base'] - por_mes[m]['real']) for m in meses), 2),
+            'vs_paneles_com':  round(sum(max(0.0, por_mes[m]['com']  - por_mes[m]['real']) for m in meses), 2),
+        }
         ahorro_total_com = round(sum(d['ahorro'] for d in por_mes.values()), 2)
+        periodo = f'{meses[0]} – {meses[-1]}' if len(meses) > 1 else meses[0]
     else:
         chart_comunidad  = None
+        ahorros_totales  = None
         ahorro_total_com = 0.0
+        periodo = None
 
     return render_template('comunidades/detalle.html',
                            com=com, safe_oid=safe_oid,
                            viviendas=viviendas, bateria=bateria,
                            es_admin=current_user.es_superadmin,
                            chart_comunidad=chart_comunidad,
+                           ahorros_totales=ahorros_totales,
+                           periodo=periodo,
                            ahorro_total_com=ahorro_total_com)
 
 

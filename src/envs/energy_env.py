@@ -3,6 +3,10 @@ from gymnasium import spaces
 import numpy as np
 import pandas as pd
 from src.core.simulador import ComunidadSimulador
+from src.core.forecast import (
+    ventana_observada, generar_factores_precio, avanzar_ar1,
+)
+from src.production.obs_builder import build_obs
 
 class EnergyEnv(gym.Env):
     """
@@ -196,117 +200,40 @@ class EnergyEnv(gym.Env):
 
     def _get_obs(self):
         """
-        Construye el vector de estado completo (108 dimensiones).
-
-        Primeras 5: estado actual exacto (SoC, precios, excedente, déficit).
-        Siguientes 96: pronóstico 24h con ruido en generacion, consumo y precios.
-          - El ruido del solar crece linealmente con el horizonte.
-          - Los precios usan modelo 3 capas según publicación PVPC.
-        Siguientes 6: codificación cíclica del tiempo (sin/cos hora, día_semana, mes).
-          - Permiten al agente aprender patrones intradiarios de precio y solar.
-        Última 1: margen_solar — solar previsto que desbordará la batería en 24h
-          (normalizado por capacidad). Alta → D_RED hace hueco útil; 0 → D_RED innecesario.
+        Construye el vector de estado (108 dims) delegando en la ÚNICA fuente de
+        obs `obs_builder.build_obs`, sobre la ventana de la ÚNICA fuente de
+        pronóstico `forecast.ventana_observada`. Así entreno == evaluación ==
+        producción, y MPC y agente reciben la misma ventana con el mismo ruido (sin lookahead).
         """
         t = self.simulador.current_step
 
-        # 1. Datos actuales — sin ruido (estado físico observado ahora mismo)
-        datos_hoy = self.simulador.get_data_window(t, horizon=1)[0]
-        cons, gen, precio_compra, precio_venta = datos_hoy
+        # Hora actual (para los factores de ruido de precio). Fuente única.
+        hora = self.simulador.get_tiempo(t)[0]
 
-        balance = gen - cons
-        exc = max(0, balance)
-        def_ = abs(min(0, balance))
+        # Factores de ruido de precio — una vez por step, cacheados para que
+        # ResidualEnv._compute_mpc_action() y _get_obs() usen los mismos.
+        if self.forecast_noise and self._precio_noise_factors is None:
+            self._precio_noise_factors = generar_factores_precio(hora, self._noise)
+        factores = self._precio_noise_factors if self.forecast_noise else None
 
-        # 2. Pronóstico 24h futuras
-        # Columnas: [consumo, generacion, precio_kwh, precio_excedente]
-        window_future = self.simulador.get_data_window(t + 1, horizon=24).copy()
-
-        # Obtener hora actual del día (necesario para ruido precios y features)
-        if self._timestamps is not None and t < len(self._timestamps):
-            ts = self._timestamps.iloc[t]
-            hora    = ts.hour
-            dia_sem = ts.dayofweek   # 0=lunes … 6=domingo
-            mes     = ts.month - 1   # 0–11
-        else:
-            hora    = t % 24
-            dia_sem = (t // 24) % 7
-            mes     = 0
-
-        if self.forecast_noise:
-            # _error_solar y _error_cons son estados AR(1) N(0,1) actualizados
-            # en step(). Aquí se escalan por el sigma de cada hora del horizonte.
-            for h in range(24):
-                sigma_sol = self._SIGMA_SOL_H1 + h * (
-                    (self._SIGMA_SOL_H24 - self._SIGMA_SOL_H1) / 23
-                )
-                window_future[h, 1] = max(  # generacion solar
-                    0.0, window_future[h, 1] * (1.0 + self._error_solar * sigma_sol)
-                )
-                window_future[h, 0] = max(  # consumo
-                    0.0, window_future[h, 0] * (1.0 + self._error_cons * self._SIGMA_CONS_BASE)
-                )
-
-            # Ruido de precio — modelo 3 capas según publicación PVPC
-            # Los factores se generan una vez por step y se cachean en
-            # _precio_noise_factors para que ResidualEnv._compute_mpc_action()
-            # y _get_obs() usen exactamente los mismos valores.
-            if self._precio_noise_factors is None:
-                self._precio_noise_factors = self._generar_precio_noise(hora)
-            # window_future[h] = hora h+1 adelante → factors[min(h+1, 23)]
-            for h in range(24):
-                f = self._precio_noise_factors[min(h + 1, 23)]
-                if f != 1.0:
-                    window_future[h, 2] = max(0.0, window_future[h, 2] * f)
-                    window_future[h, 3] = max(0.0, window_future[h, 3] * f)
-
-        forecast_flat = window_future.flatten()  # 24 * 4 = 96 valores
-
-        # 3. Features temporales — codificación cíclica sin/cos (6 dims)
-
-        temp_feats = np.array([
-            np.sin(2 * np.pi * hora    / 24),
-            np.cos(2 * np.pi * hora    / 24),
-            np.sin(2 * np.pi * dia_sem /  7),
-            np.cos(2 * np.pi * dia_sem /  7),
-            np.sin(2 * np.pi * mes     / 12),
-            np.cos(2 * np.pi * mes     / 12),
-        ], dtype=np.float32)
-
-        # 4. Margen solar — excedente que desbordará la batería en 24h (1 dim)
-        # Columnas window_future: [consumo, generacion, precio_kwh, precio_excedente]
-        # Usamos la ventana SIN ruido para que la señal sea limpia (precios ya lo son;
-        # para solar usamos window_future antes del ruido — recalculamos con datos crudos)
-        window_clean = self.simulador.get_data_window(t + 1, horizon=24)
-        solar_exc_24h = float(np.sum(np.maximum(0.0, window_clean[:, 1] - window_clean[:, 0])))
-        espacio_bat   = max(0.0, (self.simulador.SOC_MAX - self.simulador.soc)
-                           * self.simulador.BATERIA_CAPACIDAD)
-        margen_solar  = np.float32(
-            max(0.0, solar_exc_24h - espacio_bat) / self.simulador.BATERIA_CAPACIDAD
+        # Ventana ÚNICA (hora actual = primer paso de pronóstico, con ruido)
+        window = ventana_observada(
+            self.simulador, t, self._error_solar, self._error_cons,
+            factores, self.forecast_noise,
         )
 
-        # 5. Concatenar (5 + 96 + 6 + 1 = 108)
-        obs = np.concatenate((
-            [self.simulador.soc, precio_compra, precio_venta, exc, def_],
-            forecast_flat,
-            temp_feats,
-            [margen_solar],
-        ))
-        return obs.astype(np.float32)
+        state = {'soc': self.simulador.soc, 'step': t}
+        return build_obs(state, window, self.simulador)
 
     def step(self, action):
         # Invalidar cache de factores de precio (se regeneran en _get_obs)
         self._precio_noise_factors = None
 
         # 0. Avanzar estado AR(1) del error de pronóstico antes de construir la obs
-        #    ε_t = ρ·ε_{t-1} + √(1-ρ²)·N(0,1)  →  varianza estacionaria = 1
+        #    (fuente única: forecast.avanzar_ar1)
         if self.forecast_noise:
-            self._error_solar = (
-                self._RHO_SOLAR * self._error_solar
-                + np.sqrt(1 - self._RHO_SOLAR ** 2) * self._noise()
-            )
-            self._error_cons = (
-                self._RHO_CONS * self._error_cons
-                + np.sqrt(1 - self._RHO_CONS ** 2) * self._noise()
+            self._error_solar, self._error_cons = avanzar_ar1(
+                self._error_solar, self._error_cons, self._noise
             )
 
         # 1. Ejecutar en el simulador

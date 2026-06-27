@@ -26,6 +26,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from src.controllers.base import BaseController
+from src.production.obs_builder import build_obs
 
 # Mapa de 9 acciones discretas (idéntico a simulador.py)
 ACTION_MAP = {
@@ -173,49 +174,15 @@ class DiscreteRLController(BaseController):
 
     def _build_obs(self, state: Dict, forecast: np.ndarray) -> np.ndarray:
         """
-        Construye observación con la dimensión correcta para el modelo.
-        101-dim: 5 + 96 (DQN_13 y anteriores)
-        107-dim: 5 + 96 + 6 temporal
-        108-dim: 5 + 96 + 6 temporal + 1 margen_solar (DQN_15+)
+        Construye la observación delegando en la ÚNICA fuente `build_obs`
+        (la misma que usan el entreno y el controller SAC), garantizando que
+        DQN/PPO ven exactamente el mismo forecast/obs que el resto del sistema.
+
+        La obs base es de 108 dims con el orden [5 estado | 96 forecast |
+        6 temporal | 1 margen]. Las dimensiones legacy (101 = 5+96, 107 = 5+96+6)
+        son un prefijo exacto, por lo que basta con recortar para modelos antiguos.
         """
-        soc = state['soc']
-        step = state['step']
-
-        datos_hoy = self._sim.get_data_window(step, horizon=1)[0]
-        cons, gen, precio_compra, precio_venta = datos_hoy
-        balance = gen - cons
-        exc = max(0.0, balance)
-        def_ = abs(min(0.0, balance))
-
-        H = min(24, len(forecast))
-        forecast_padded = np.zeros((24, 4), dtype=np.float32)
-        forecast_padded[:H] = forecast[:H]
-        forecast_flat = forecast_padded.flatten()  # 96
-
-        parts = [[soc, precio_compra, precio_venta, exc, def_], forecast_flat]
-
-        if self._obs_dim >= 107:
-            hora = step % 24
-            dia_sem = (step // 24) % 7
-            mes = 0
-            temp_feats = np.array([
-                np.sin(2 * np.pi * hora / 24),
-                np.cos(2 * np.pi * hora / 24),
-                np.sin(2 * np.pi * dia_sem / 7),
-                np.cos(2 * np.pi * dia_sem / 7),
-                np.sin(2 * np.pi * mes / 12),
-                np.cos(2 * np.pi * mes / 12),
-            ], dtype=np.float32)
-            parts.append(temp_feats)
-
-        if self._obs_dim >= 108:
-            window_clean = self._sim.get_data_window(step + 1, horizon=24)
-            solar_exc_24h = float(np.sum(np.maximum(0.0, window_clean[:, 1] - window_clean[:, 0])))
-            espacio_bat = max(0.0, (self._sim.SOC_MAX - soc) * self._sim.BATERIA_CAPACIDAD)
-            margen_solar = np.float32(
-                max(0.0, solar_exc_24h - espacio_bat) / self._sim.BATERIA_CAPACIDAD
-            )
-            parts.append([margen_solar])
-
-        obs = np.concatenate(parts)
+        obs = build_obs(state, forecast, self._sim)  # 108-dim, fuente única
+        if self._obs_dim < 108:
+            obs = obs[:self._obs_dim]                # legacy 101/107 = prefijo
         return obs.astype(np.float32)

@@ -50,6 +50,9 @@ if ROOT not in sys.path:
 
 from src.controllers.base import BaseController
 from src.core.simulador import ComunidadSimulador
+from src.core.forecast import (
+    ventana_observada, generar_factores_precio, avanzar_ar1,
+)
 
 # --- Cargar configuración ---
 _CONFIG_PATH = os.path.join(ROOT, 'config', 'system.yaml')
@@ -570,21 +573,18 @@ def correr_episodios(
         ben_marg = 0.0
 
         for _ in range(EPISODE_LENGTH):
-            # Avanzar estado AR(1) solar/consumo (igual que energy_env.step())
+            # Pronóstico desde la FUENTE ÚNICA: hora actual = primer paso de
+            # pronóstico (con ruido). Idéntico a lo que ve el agente (energy_env).
             if con_ruido:
-                error_solar = (_RHO_SOLAR * error_solar
-                               + np.sqrt(1 - _RHO_SOLAR**2) * rng.standard_normal())
-                error_cons  = (_RHO_CONS  * error_cons
-                               + np.sqrt(1 - _RHO_CONS**2)  * rng.standard_normal())
-
-            # Ventana de previsión (perfecta o ruidosa)
-            window = sim.get_data_window(sim.current_step, horizon=HORIZON)
-            if con_ruido:
-                window = aplicar_ruido_ar1(window, error_solar, error_cons)
+                error_solar, error_cons = avanzar_ar1(
+                    error_solar, error_cons, rng.standard_normal)
                 hora_actual = _get_hora_actual(sim.current_step)
-                aplicar_ruido_precio_3capas(window, hora_actual,
-                                            rng.standard_normal,
-                                            start_offset=0)
+                factores = generar_factores_precio(hora_actual, rng.standard_normal)
+            else:
+                factores = None
+            window = ventana_observada(
+                sim, sim.current_step, error_solar, error_cons,
+                factores, con_ruido, horizon=HORIZON)
 
             # Resolver LP con SoC real medido y ejecutar
             state = {'soc': sim.soc, 'step': sim.current_step}
@@ -657,7 +657,10 @@ def calibrate_deg(
             sim.soc = SOC_INICIAL
             sem_marg = 0.0
             for _ in range(EPISODE_LENGTH):
-                window = sim.get_data_window(sim.current_step, horizon=HORIZON)
+                # Calibración determinista (sin ruido) vía la fuente única
+                window = ventana_observada(
+                    sim, sim.current_step, 0.0, 0.0, None,
+                    con_ruido=False, horizon=HORIZON)
                 state = {'soc': sim.soc, 'step': sim.current_step}
                 action = mpc.solve(state, window)
                 _, bm = simular_hora_mpc(

@@ -20,7 +20,9 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 
-from src.benchmarks.mpc_benchmark import aplicar_ruido_ar1
+from src.core.forecast import (
+    ventana_observada, generar_factores_precio, avanzar_ar1,
+)
 
 
 class ResidualEnv(gym.Wrapper):
@@ -76,15 +78,10 @@ class ResidualEnv(gym.Wrapper):
         self.env._precio_noise_factors = None
 
         # 1. Avanzar AR(1) manualmente (replicar timing de correr_episodios:
-        #    AR(1) avanza ANTES de resolver MPC en cada paso)
+        #    AR(1) avanza ANTES de resolver MPC en cada paso). Fuente única.
         if self.env.forecast_noise:
-            self.env._error_solar = (
-                self.env._RHO_SOLAR * self.env._error_solar
-                + np.sqrt(1 - self.env._RHO_SOLAR ** 2) * self.env._noise()
-            )
-            self.env._error_cons = (
-                self.env._RHO_CONS * self.env._error_cons
-                + np.sqrt(1 - self.env._RHO_CONS ** 2) * self.env._noise()
+            self.env._error_solar, self.env._error_cons = avanzar_ar1(
+                self.env._error_solar, self.env._error_cons, self.env._noise
             )
 
         # 2. Resolver MPC online con SoC real y forecast ruidoso
@@ -127,23 +124,19 @@ class ResidualEnv(gym.Wrapper):
 
     def _compute_mpc_action(self) -> dict:
         sim = self.env.simulador
-        window = sim.get_data_window(sim.current_step, horizon=24).copy()
+        # Generar los factores de precio una vez y cachearlos en el env, para
+        # que _get_obs() (llamado después en el mismo step) construya con la
+        # FUENTE ÚNICA exactamente la misma ventana. El MPC ve el presente
+        # exacto igual que el agente → comparación justa por construcción.
         if self.env.forecast_noise:
-            window = aplicar_ruido_ar1(
-                window, self.env._error_solar, self.env._error_cons
-            )
-            # Ruido de precio: generar factores y cachearlos en el env
-            # para que _get_obs() use los mismos (coherencia MPC↔agente).
-            # _compute_mpc_action se llama ANTES de _get_obs en cada step.
             hora_actual = self.env._get_hora_actual_from_step(sim.current_step)
-            self.env._precio_noise_factors = self.env._generar_precio_noise(
-                hora_actual
+            self.env._precio_noise_factors = generar_factores_precio(
+                hora_actual, self.env._noise
             )
-            # MPC window[h] = hora h adelante → factors[h] (offset=0)
-            for h in range(24):
-                f = self.env._precio_noise_factors[h]
-                if f != 1.0:
-                    window[h, 2] = max(0.0, window[h, 2] * f)
-                    window[h, 3] = max(0.0, window[h, 3] * f)
+        factores = self.env._precio_noise_factors if self.env.forecast_noise else None
+        window = ventana_observada(
+            sim, sim.current_step, self.env._error_solar, self.env._error_cons,
+            factores, self.env.forecast_noise,
+        )
         state = {'soc': sim.soc, 'step': sim.current_step}
         return self.mpc.solve(state, window)

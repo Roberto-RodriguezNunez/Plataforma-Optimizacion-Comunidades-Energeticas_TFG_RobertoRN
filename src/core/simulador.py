@@ -96,6 +96,24 @@ class ComunidadSimulador:
             return np.pad(real_data, ((0, padding), (0, 0)), mode='constant')
         return self.df.iloc[step : end][cols].values
 
+    def get_tiempo(self, step):
+        """(hora, dia_sem, mes0) para un step, desde la columna 'fecha'.
+
+        Fuente ÚNICA del tiempo, compartida por el entorno de entreno
+        (energy_env) y el constructor de obs de eval/producción (obs_builder),
+        para que las features temporales sean idénticas en ambos.
+        Si no hay 'fecha', cae a aritmética de step (hora=step%24, mes=0).
+        """
+        if not hasattr(self, '_fechas'):
+            try:
+                self._fechas = pd.to_datetime(self.df['fecha'])
+            except Exception:
+                self._fechas = None
+        if self._fechas is not None and step < len(self._fechas):
+            ts = self._fechas.iloc[step]
+            return ts.hour, ts.dayofweek, ts.month - 1
+        return step % 24, (step // 24) % 7, 0
+
     def calcular_degradacion_no_lineal(self, energia_kwh, soc_actual):
         if energia_kwh == 0: return 0.0
         potencia = energia_kwh 

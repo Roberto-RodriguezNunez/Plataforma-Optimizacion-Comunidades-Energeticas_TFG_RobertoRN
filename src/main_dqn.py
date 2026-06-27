@@ -30,6 +30,7 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from src.envs.energy_env import EnergyEnv
+from src.training.multiseed import entrenar_multiseed
 
 
 # ------------------------------------------------------------------
@@ -134,31 +135,20 @@ class MetricasCallback(BaseCallback):
 #  MAIN
 # ------------------------------------------------------------------
 
-def make_env():
-    return DummyVecEnv([lambda: Monitor(EnergyEnv())])
+def make_envs(seed):
+    """Factoría de entornos DQN (discreto) envueltos en VecNormalize."""
+    def _mk():
+        return Monitor(EnergyEnv())
+    train_env = VecNormalize(DummyVecEnv([_mk]), norm_obs=True, norm_reward=False, clip_obs=10.0)
+    eval_env = VecNormalize(DummyVecEnv([_mk]), norm_obs=True, norm_reward=False, clip_obs=10.0)
+    return train_env, eval_env
 
 
-def main():
-    os.makedirs(MODEL_DIR, exist_ok=True)
-    os.makedirs(LOG_DIR,   exist_ok=True)
-
-    print("-" * 60)
-    print("1. Verificando entorno con env_checker...")
-    check_env(EnergyEnv(), warn=True)
-    print("   Entorno OK.\n")
-
-    print("2. Instanciando entornos con VecNormalize (solo observaciones)...")
-    env = VecNormalize(make_env(), norm_obs=True, norm_reward=False, clip_obs=10.0)
-    eval_env = VecNormalize(make_env(), norm_obs=True, norm_reward=False, clip_obs=10.0)
-    print("   Entornos listos.\n")
-
-    print("3. Configurando agente DQN...")
-    print(f"   Red: {env.observation_space.shape[0]} -> {NET_ARCH[0]} -> {NET_ARCH[1]} -> 9")
-    print(f"   Total timesteps: {TOTAL_TIMESTEPS:,}")
-
-    model = DQN(
+def make_model(train_env, seed):
+    """Factoría del modelo DQN (con semilla aplicada)."""
+    return DQN(
         policy                 = "MlpPolicy",
-        env                    = env,
+        env                    = train_env,
         learning_rate          = LEARNING_RATE,
         buffer_size            = BUFFER_SIZE,
         learning_starts        = LEARNING_STARTS,
@@ -169,45 +159,29 @@ def main():
         target_update_interval = TARGET_UPDATE,
         train_freq             = TRAIN_FREQ,
         policy_kwargs          = {"net_arch": NET_ARCH},
-        verbose                = 1,
+        verbose                = 0,
+        seed                   = seed,
         tensorboard_log        = LOG_DIR,
     )
 
-    # best_model se guarda en subcarpeta para no pisar SAC/PPO
-    best_model_dir = os.path.join(MODEL_DIR, "dqn_best")
-    os.makedirs(best_model_dir, exist_ok=True)
 
-    eval_callback = EvalCallback(
-        eval_env,
-        best_model_save_path = best_model_dir,
-        log_path             = LOG_DIR,
-        eval_freq            = EVAL_FREQ,
-        n_eval_episodes      = EVAL_EPISODES,
-        deterministic        = True,
-        verbose              = 1,
+def main(version="v1", seeds=(42, 1337, 2024)):
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    os.makedirs(LOG_DIR, exist_ok=True)
+    check_env(EnergyEnv(), warn=True)
+    entrenar_multiseed(
+        algo="dqn", version=version, seeds=list(seeds),
+        make_envs=make_envs, make_model=make_model,
+        total_timesteps=TOTAL_TIMESTEPS,
+        eval_freq=EVAL_FREQ, n_eval_episodes=EVAL_EPISODES,
+        extra_callbacks=lambda m: [MetricasCallback()],
     )
-    metricas_callback = MetricasCallback()
-
-    print("-" * 60)
-    print(f"4. Iniciando entrenamiento ({TOTAL_TIMESTEPS:,} pasos)...")
-    print(f"   TensorBoard: tensorboard --logdir {LOG_DIR}")
-    print("-" * 60)
-
-    model.learn(
-        total_timesteps = TOTAL_TIMESTEPS,
-        callback        = [eval_callback, metricas_callback],
-        progress_bar    = False,
-        tb_log_name     = "DQN",
-    )
-
-    model_path = os.path.join(MODEL_DIR, MODEL_NAME)
-    model.save(model_path)
-    env.save(os.path.join(MODEL_DIR, "dqn_vec_normalize.pkl"))
-
-    print(f"\nModelo final guardado en: {model_path}.zip")
-    print(f"Mejor modelo guardado en: {os.path.join(best_model_dir, 'best_model.zip')}")
-    print(f"Estadisticas VecNormalize: {os.path.join(MODEL_DIR, 'dqn_vec_normalize.pkl')}")
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    p = argparse.ArgumentParser()
+    p.add_argument("--version", default="v1")
+    p.add_argument("--seeds", type=int, nargs="+", default=[42, 1337, 2024])
+    a = p.parse_args()
+    main(version=a.version, seeds=a.seeds)

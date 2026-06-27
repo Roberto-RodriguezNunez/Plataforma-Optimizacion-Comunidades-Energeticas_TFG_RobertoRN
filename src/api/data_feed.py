@@ -29,11 +29,12 @@ if ROOT not in sys.path:
 from src.benchmarks.mpc_benchmark import (
     ComunidadSimulador,
     DATASET_PATH,
-    aplicar_ruido_ar1,
-    aplicar_ruido_precio_3capas,
     _get_hora_actual,
     _RHO_SOLAR,
     _RHO_CONS,
+)
+from src.core.forecast import (
+    aplicar_ruido_ventana, generar_factores_precio, avanzar_ar1,
 )
 
 
@@ -167,20 +168,13 @@ class SimulatedLiveFeed(DataFeed):
         window[:, 2] = precios[:, 0]
         window[:, 3] = precios[:, 1]
 
-        # Avanzar AR(1) y aplicar ruido a consumo + solar (mismo timing que
-        # correr_episodios / eval_unificada: se avanza ANTES de obtener la ventana)
-        self._error_solar = (
-            _RHO_SOLAR * self._error_solar
-            + np.sqrt(1 - _RHO_SOLAR ** 2) * self._rng.standard_normal()
-        )
-        self._error_cons = (
-            _RHO_CONS * self._error_cons
-            + np.sqrt(1 - _RHO_CONS ** 2) * self._rng.standard_normal()
-        )
-        aplicar_ruido_ar1(window, self._error_solar, self._error_cons)
-
+        # Avanzar AR(1) y aplicar ruido con la FUENTE ÚNICA (hora actual = primer
+        # paso de pronóstico, con ruido), idéntico a correr_episodios/eval/env.
+        self._error_solar, self._error_cons = avanzar_ar1(
+            self._error_solar, self._error_cons, self._rng.standard_normal)
         hora_actual = _get_hora_actual(step)
-        aplicar_ruido_precio_3capas(window, hora_actual, self._rng.standard_normal)
+        factores = generar_factores_precio(hora_actual, self._rng.standard_normal)
+        aplicar_ruido_ventana(window, self._error_solar, self._error_cons, factores)
         return window
 
     def get_current(self, step: int) -> dict:

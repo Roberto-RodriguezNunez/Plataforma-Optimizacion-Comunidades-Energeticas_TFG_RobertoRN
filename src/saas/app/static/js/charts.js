@@ -78,32 +78,58 @@ document.addEventListener('DOMContentLoaded', () => {
   // ---------------------------------------------------------------
   const renderers = {
 
-    /** Línea — ahorro mensual (€) */
+    /** Línea — ahorro de "comunidad completa" vs 3 escenarios base */
     'line-ahorro': (canvas, datos) => {
       new Chart(canvas, {
         type: 'line',
         data: {
           labels: datos.labels,
-          datasets: [{
-            label: 'Ahorro (€)',
-            data: datos.ahorro,
-            borderColor: C.green,
-            backgroundColor: C.greenBg,
-            borderWidth: 2,
-            tension: 0.35,
-            fill: true,
-            pointBackgroundColor: C.green,
-            pointRadius: 3,
-            pointHoverRadius: 5,
-          }],
+          datasets: [
+            {
+              label: 'vs Sin paneles',
+              data: datos.vs_sin_paneles,
+              borderColor: C.red,
+              backgroundColor: 'rgba(229,62,62,.07)',
+              borderWidth: 2,
+              tension: 0.35,
+              fill: false,
+              pointBackgroundColor: C.red,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+            },
+            {
+              label: 'vs Solo paneles',
+              data: datos.vs_solo_paneles,
+              borderColor: C.amber,
+              backgroundColor: C.amberBg,
+              borderWidth: 2,
+              tension: 0.35,
+              fill: false,
+              pointBackgroundColor: C.amber,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+            },
+            {
+              label: 'vs Paneles+comunidad',
+              data: datos.vs_paneles_com,
+              borderColor: C.blue,
+              backgroundColor: C.blueBg,
+              borderWidth: 2,
+              tension: 0.35,
+              fill: false,
+              pointBackgroundColor: C.blue,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+            },
+          ],
         },
         options: {
           responsive: true,
           plugins: {
-            legend: { display: false },
+            legend: legendOpts('top'),
             tooltip: {
               ...tooltipOpts(),
-              callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(2)} €` },
+              callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} €` },
             },
           },
           scales: scalesXY(),
@@ -111,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     },
 
-    /** Barras agrupadas — 3 escenarios: sin paneles / solo paneles / con comunidad */
+    /** Barras agrupadas — 4 escenarios */
     'bar-compare': (canvas, datos) => {
       new Chart(canvas, {
         type: 'bar',
@@ -119,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
           labels: datos.labels,
           datasets: [
             {
-              label: 'Sin paneles (€)',
+              label: 'Sin paneles',
               data: datos.sin_paneles,
               backgroundColor: 'rgba(229,62,62,.18)',
               borderColor: C.red,
@@ -127,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
               borderRadius: 4,
             },
             {
-              label: 'Solo paneles (€)',
+              label: 'Solo paneles',
               data: datos.solo_paneles,
               backgroundColor: C.amberBg,
               borderColor: C.amber,
@@ -135,8 +161,16 @@ document.addEventListener('DOMContentLoaded', () => {
               borderRadius: 4,
             },
             {
-              label: 'Con comunidad (€)',
-              data: datos.con_comunidad,
+              label: 'Paneles+comunidad',
+              data: datos.paneles_comunidad,
+              backgroundColor: C.blueBg,
+              borderColor: C.blue,
+              borderWidth: 1,
+              borderRadius: 4,
+            },
+            {
+              label: 'Comunidad completa',
+              data: datos.comunidad_completa,
               backgroundColor: C.greenBg,
               borderColor: C.green,
               borderWidth: 1,
@@ -146,6 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           plugins: {
             legend: legendOpts('top'),
             tooltip: {

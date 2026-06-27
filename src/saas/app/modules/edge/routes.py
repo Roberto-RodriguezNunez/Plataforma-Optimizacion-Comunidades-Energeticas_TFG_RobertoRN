@@ -47,10 +47,11 @@ def recibir_decision():
     ts_raw = data.get('ts')
     ts = datetime.fromisoformat(ts_raw) if ts_raw else datetime.now(timezone.utc)
 
-    op = OperacionHoraria(
-        comunidad_oid=int(data['comunidad_id']),
+    comunidad_oid = int(data['comunidad_id'])
+    step = int(data['step'])
+
+    campos = dict(
         ts=ts,
-        step=int(data['step']),
         consumo_total_kwh=float(data['consumo_total_kwh']),
         gen_total_kwh=float(data['gen_total_kwh']),
         precio_compra=float(data['precio_compra']),
@@ -62,7 +63,18 @@ def recibir_decision():
         p_descarga_red=float(data['P_descarga_red']),
         beneficio_marginal=float(data['beneficio_marginal']),
     )
-    db.session.add(op)
+
+    # Upsert idempotente: si ya existe la operación de este (comunidad, step)
+    # —p.ej. el edge re-alimenta el año tras un reinicio— se actualiza en vez
+    # de insertar un duplicado, que inflaría los cierres.
+    op = OperacionHoraria.query.filter_by(
+        comunidad_oid=comunidad_oid, step=step).first()
+    if op:
+        for k, v in campos.items():
+            setattr(op, k, v)
+    else:
+        op = OperacionHoraria(comunidad_oid=comunidad_oid, step=step, **campos)
+        db.session.add(op)
 
     # Actualizar soc_actual en la batería de la comunidad
     bat = Bateria.query.filter_by(comunidad_oid=op.comunidad_oid).first()
