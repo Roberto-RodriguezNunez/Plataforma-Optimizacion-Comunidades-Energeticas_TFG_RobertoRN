@@ -28,7 +28,7 @@ from stable_baselines3.common.callbacks import EvalCallback, BaseCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
-from src.benchmarks.mpc_benchmark import LinearMPC, ComunidadSimulador, DATASET_PATH
+from src.benchmarks.mpc_benchmark import LinearMPC, ComunidadSimulador, DATASET_PATH, crear_mpc
 from src.envs.energy_env_continuo import EnergyEnvContinuo
 from src.envs.residual_env import ResidualEnv
 from src.training.multiseed import entrenar_multiseed
@@ -50,26 +50,8 @@ LOG_DIR = os.path.join(ROOT, 'logs')
 #  SEEDED EVAL CALLBACK — mismas 50 semanas en cada evaluacion
 # ──────────────────────────────────────────────────────────────────
 
-class SeededEvalCallback(EvalCallback):
-    """
-    Re-seedea np.random antes de cada ronda de evaluacion para garantizar
-    que las 50 semanas eval y el ruido AR(1) son identicos entre evals.
-    """
-    def __init__(self, *args, eval_seed=42, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._eval_seed = eval_seed
-
-    def _on_step(self) -> bool:
-        if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
-            np.random.seed(self._eval_seed)
-        prev_best = self.best_mean_reward
-        result = super()._on_step()
-        # Guardar VecNormalize junto al best_model para sobrevivir crashes
-        if self.best_mean_reward > prev_best and self.best_model_save_path is not None:
-            vec_norm = self.model.get_vec_normalize_env()
-            if vec_norm is not None:
-                vec_norm.save(os.path.join(self.best_model_save_path, "best_vecnormalize.pkl"))
-        return result
+# SeededEvalCallback ahora vive en src/training/multiseed.py (compartido por
+# todos los algoritmos, usado por el runner entrenar_multiseed).
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -213,18 +195,10 @@ _MPC_SHARED = None
 
 
 def _get_mpc():
-    """MPC compartido (LP determinista, reutilizable entre semillas)."""
+    """MPC compartido (fuente única crear_mpc; reutilizable entre semillas)."""
     global _MPC_SHARED
     if _MPC_SHARED is None:
-        sim_mpc = ComunidadSimulador(DATASET_PATH)
-        tv = _MPC_CFG['valor_terminal']
-        _MPC_SHARED = LinearMPC(
-            sim_mpc,
-            use_terminal_value=tv['activado'],
-            terminal_lambda=tv['lambda'],
-            terminal_price_mode=tv['modo_precio'],
-            k_deg_lin=_MPC_CFG['k_deg_lin'],
-        )
+        _MPC_SHARED = crear_mpc()
     return _MPC_SHARED
 
 

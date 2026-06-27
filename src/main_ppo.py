@@ -79,12 +79,8 @@ class EntCoefScheduler(BaseCallback):
 #  SEEDED EVAL CALLBACK
 # ------------------------------------------------------------------
 
-class SeededEvalCallback(EvalCallback):
-    """Re-seedea np.random antes de cada eval para reproducibilidad."""
-    def _on_step(self) -> bool:
-        if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
-            np.random.seed(EVAL_SEED)
-        return super()._on_step()
+# SeededEvalCallback ahora vive en src/training/multiseed.py (compartido por
+# todos los algoritmos, usado por el runner entrenar_multiseed).
 
 
 # ------------------------------------------------------------------

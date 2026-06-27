@@ -533,6 +533,25 @@ def simular_semana_idle(sim_idle, start):
     return total
 
 
+def crear_mpc(sim=None):
+    """ÚNICA factoría del MPC desde config — garantiza que entreno, evaluación y
+    producción usan EXACTAMENTE el mismo controlador MPC (mismas condiciones).
+
+    Si no se pasa `sim`, crea uno fresco desde DATASET_PATH (entreno/eval).
+    En producción se pasa el sim del feed (`crear_mpc(feed.sim)`).
+    """
+    if sim is None:
+        sim = ComunidadSimulador(DATASET_PATH)
+    tv = _MPC['valor_terminal']
+    return LinearMPC(
+        sim,
+        use_terminal_value=tv['activado'],
+        terminal_lambda=tv['lambda'],
+        terminal_price_mode=tv['modo_precio'],
+        k_deg_lin=_MPC['k_deg_lin'],
+    )
+
+
 def correr_episodios(
     sim, sim_idle, rng, mpc: LinearMPC, forecast_mode: str = 'oraculo',
     pool: str = 'eval'

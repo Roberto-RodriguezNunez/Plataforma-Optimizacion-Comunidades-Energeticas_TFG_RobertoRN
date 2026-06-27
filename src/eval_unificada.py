@@ -27,7 +27,7 @@ if ROOT not in sys.path:
 
 from src.benchmarks.mpc_benchmark import (
     LinearMPC, ComunidadSimulador, DATASET_PATH,
-    simular_hora_mpc, simular_semana_idle, _get_hora_actual,
+    simular_hora_mpc, simular_semana_idle, _get_hora_actual, crear_mpc,
     SOC_INICIAL, SEED, EPISODE_LENGTH, HORIZON,
     _RHO_SOLAR, _RHO_CONS,
 )
@@ -169,19 +169,6 @@ class IdleController(BaseController):
                 'P_descarga_casa': 0, 'P_descarga_red': 0}
     def nombre(self):
         return "IDLE"
-
-
-def crear_mpc() -> LinearMPC:
-    """Crea el MPC con la config de system.yaml."""
-    sim = ComunidadSimulador(DATASET_PATH)
-    tv_cfg = _MPC_CFG['valor_terminal']
-    return LinearMPC(
-        sim,
-        use_terminal_value=tv_cfg['activado'],
-        terminal_lambda=tv_cfg['lambda'],
-        terminal_price_mode=tv_cfg['modo_precio'],
-        k_deg_lin=_MPC_CFG['k_deg_lin'],
-    )
 
 
 def crear_residual_sac(model_path: str, vec_norm_path: str,

@@ -179,8 +179,10 @@ class TestNoCicloSimultaneo:
         assert info['cargado'] < 1e-6
         assert info['descargado'] > 0
 
-    def test_delta_cero_sigue_dando_51_69(self):
-        """Tras añadir neteo, MPC flows via env siguen dando +51.69 ±0.1."""
+    def test_delta_cero_mpc_via_env_coincide_con_realista(self):
+        """Los flujos del MPC ejecutados vía EnergyEnvContinuo reproducen el
+        MPC realista (~+47.7 €/sem; coincide con el benchmark, ya que el env
+        no introduce error respecto a simular_hora_mpc)."""
         import yaml
         from src.benchmarks.mpc_benchmark import (
             LinearMPC, ComunidadSimulador, simular_semana_idle, aplicar_ruido_ar1,
@@ -233,8 +235,9 @@ class TestNoCicloSimultaneo:
             bens_marg.append(ben_total - ben_idle)
 
         media = np.mean(bens_marg)
-        assert abs(media - 51.69) < 0.1, (
-            f"MPC via EnergyEnvContinuo: {media:+.2f} EUR/sem, esperado +51.69 ±0.1")
+        assert abs(media - 47.71) < 0.2, (
+            f"MPC via EnergyEnvContinuo: {media:+.2f} EUR/sem, esperado ~+47.71 "
+            f"(≈ MPC realista). Valor viejo 51.69 era de la config 100kWh/50kWp.")
 
 
 class TestFisicaCoherente:

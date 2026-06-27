@@ -51,6 +51,7 @@ from src.benchmarks.mpc_benchmark import (
     ComunidadSimulador,
     DATASET_PATH,
     LinearMPC,
+    crear_mpc,
     simular_hora_mpc,
     SOC_INICIAL,
     EPISODE_LENGTH,
@@ -97,14 +98,8 @@ def run(
     feed = get_feed(feed_mode)
     sim  = feed.sim
 
-    # MPC + controlador ONNX
-    mpc = LinearMPC(
-        sim,
-        use_terminal_value=_TV_CFG['activado'],
-        terminal_lambda=_TV_CFG['lambda'],
-        terminal_price_mode=_TV_CFG['modo_precio'],
-        k_deg_lin=_MPC_CFG['k_deg_lin'],
-    )
+    # MPC + controlador ONNX (fuente única crear_mpc, con el sim del feed)
+    mpc = crear_mpc(sim)
     ctrl = OnnxResidualController(
         mpc=mpc,
         sim=sim,
