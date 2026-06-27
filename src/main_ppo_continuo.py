@@ -27,7 +27,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from src.envs.energy_env_continuo import EnergyEnvContinuo
 from src.training.multiseed import entrenar_multiseed
 from src.training.registro import cargar_version, seeds_comunes, es_decay, schedule_lineal
-from src.main_ppo import EntCoefScheduler            # reutilizado (decay de entropía)
+from src.training.callbacks import EntCoefScheduler   # compartido (decay de entropía)
 
 LOG_DIR   = os.path.join(ROOT, "logs")
 MODEL_DIR = os.path.join(ROOT, "models")

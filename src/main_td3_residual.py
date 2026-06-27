@@ -29,7 +29,7 @@ from src.envs.residual_env import ResidualEnv
 from src.training.multiseed import entrenar_multiseed
 from src.training.callbacks import ResidualMetricasCallback
 from src.training.registro import cargar_version, seeds_comunes
-from src.main_residual_sac import dawn_warmup            # reutilizado (warmup MPC)
+from src.training.dawn_warmup import dawn_warmup         # warmup MPC compartido
 from src.training.action_noise import construir_action_noise
 
 LOG_DIR   = os.path.join(ROOT, "logs")
@@ -82,7 +82,8 @@ def make_model(train_env, seed):
 
 def warmup(model, train_env, seed):
     dawn_warmup(model, _get_mpc(), train_env,
-                warmup_steps=int(_VCFG['dawn_warmup_steps']), seed=seed)
+                warmup_steps=int(_VCFG['dawn_warmup_steps']), seed=seed,
+                delta_max=_VCFG['delta_max'], residual_mode=_VCFG.get('residual_mode', 'mult'))
     import gc; gc.collect()
 
 

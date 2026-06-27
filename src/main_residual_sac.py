@@ -34,6 +34,7 @@ from src.envs.residual_env import ResidualEnv
 from src.training.multiseed import entrenar_multiseed
 from src.training.callbacks import ResidualMetricasCallback
 from src.training.registro import cargar_version, seeds_comunes
+from src.training.dawn_warmup import dawn_warmup
 
 # --- Cargar configuracion ---
 _CONFIG_PATH = os.path.join(ROOT, 'config', 'system.yaml')
@@ -66,70 +67,8 @@ LOG_DIR = os.path.join(ROOT, 'logs')
 # ResidualMetricasCallback ahora vive en src/training/callbacks.py (compartido).
 
 
-# ──────────────────────────────────────────────────────────────────
-#  DAWN WARMUP — pre-llenado del buffer con transiciones MPC puro
-# ──────────────────────────────────────────────────────────────────
-
-def dawn_warmup(model, mpc, train_env, warmup_steps, seed=42):
-    """
-    Pre-llena el replay buffer de SAC con transiciones donde delta=0
-    (accion pura del MPC) Y calibra VecNormalize con las observaciones.
-
-    Esto ancla el critic al rendimiento MPC antes de que SAC empiece
-    a explorar deltas. Ademas, las running statistics de VecNormalize
-    (obs_rms) se inicializan con datos reales en lugar de empezar
-    desde cero.
-
-    Args:
-        model: Instancia de SAC (su replay_buffer se modifica in-place).
-        mpc: LinearMPC para el wrapper.
-        train_env: VecNormalize wrapping del entorno de entrenamiento.
-        warmup_steps: Numero de transiciones a generar.
-        seed: Semilla para reproducibilidad.
-    """
-    print(f"\n  DAWN warmup: generando {warmup_steps:,} transiciones MPC puro...")
-    np.random.seed(seed)
-
-    # Crear un ResidualEnv temporal para generar transiciones
-    inner = EnergyEnvContinuo(forecast_noise=True, mode='train')
-    renv = ResidualEnv(inner, mpc, delta_max=_SAC_CFG['delta_max'])
-
-    obs, _ = renv.reset(seed=seed)
-    n_episodes = 0
-    obs_buffer = []
-
-    for i in range(warmup_steps):
-        action = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)  # delta 4D = 0
-        next_obs, reward, terminated, truncated, info = renv.step(action)
-
-        # SB3 replay buffer: add(obs, next_obs, action, reward, done, infos)
-        model.replay_buffer.add(
-            obs.reshape(1, -1),
-            next_obs.reshape(1, -1),
-            action.reshape(1, -1),
-            np.array([reward]),
-            np.array([terminated]),
-            [info],
-        )
-
-        obs_buffer.append(obs)
-
-        if terminated or truncated:
-            obs, _ = renv.reset()
-            n_episodes += 1
-        else:
-            obs = next_obs
-
-    print(f"    {warmup_steps:,} transiciones, {n_episodes} episodios completos.")
-    print(f"    Buffer size: {model.replay_buffer.size()}")
-
-    # Calibrar VecNormalize con las observaciones del warmup
-    print("    Calibrando VecNormalize con obs del warmup...")
-    obs_all = np.array(obs_buffer, dtype=np.float32)
-    train_env.obs_rms.mean = obs_all.mean(axis=0)
-    train_env.obs_rms.var = obs_all.var(axis=0)
-    train_env.obs_rms.count = len(obs_all)
-    print(f"    obs_rms calibrado con {len(obs_all):,} observaciones.")
+# DAWN warmup ahora vive en src/training/dawn_warmup.py (compartido por el
+# Residual SAC, TD3 residual y DDPG residual).
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -204,6 +143,7 @@ def warmup(model, train_env, seed):
     dawn_warmup(
         model, _get_mpc(), train_env,
         warmup_steps=int(_VCFG['dawn_warmup_steps']), seed=seed,
+        delta_max=_VCFG['delta_max'], residual_mode=_VCFG.get('residual_mode', 'mult'),
     )
     import gc; gc.collect()
 

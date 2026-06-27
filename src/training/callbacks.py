@@ -150,3 +150,17 @@ class ResidualMetricasCallback(BaseCallback):
             self._a_mpc_buf.clear()
 
         return True
+
+
+class EntCoefScheduler(BaseCallback):
+    """Decae model.ent_coef linealmente de init a final a lo largo del entreno.
+    Usado por PPO discreto y PPO continuo cuando la versión pide ent_coef en decay."""
+
+    def __init__(self, init, final, total):
+        super().__init__()
+        self._init, self._final, self._total = float(init), float(final), int(total)
+
+    def _on_step(self) -> bool:
+        frac = min(1.0, self.num_timesteps / self._total)
+        self.model.ent_coef = self._init + frac * (self._final - self._init)
+        return True
