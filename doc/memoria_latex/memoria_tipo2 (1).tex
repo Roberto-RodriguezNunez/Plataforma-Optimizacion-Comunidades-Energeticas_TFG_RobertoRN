@@ -1400,6 +1400,41 @@ Pasos totales & 1.000.000 & Convergencia completa \\
 \end{tabularx}
 \end{table}
 
+\subsection{Criterio de Selección del Modelo y Protocolo de Evaluación}
+\label{sub:seleccion}
+
+Cada algoritmo se entrena con \textbf{tres semillas} y la evaluación distingue
+dos preguntas distintas; este trabajo reporta y despliega el modelo que responde
+a la primera.
+
+\textbf{(1) ¿Qué modelo se despliega?} De las tres semillas se selecciona el
+\textbf{mejor modelo}, no el de rendimiento medio. El objetivo no es caracterizar
+el rendimiento típico del algoritmo, sino obtener el \emph{mejor controlador
+desplegable}: una vez fijados sus pesos, ese modelo rinde a su nivel con
+independencia de la varianza del proceso de entrenamiento —desplegar un sistema
+es desplegar un modelo concreto, no un promedio—. Su rendimiento se reporta de
+forma robusta como la \textbf{media sobre diez semillas de ruido de evaluación}
+(distintas realizaciones del ruido AR(1) sobre las 50 semanas \textit{held-out}),
+de modo que la cifra no depende de una realización de ruido afortunada.
+
+\textbf{(2) ¿Qué algoritmo es mejor en promedio?} Es una pregunta diferente
+—la robustez \emph{inter-entrenamiento}— que requeriría la distribución sobre las
+semillas de entrenamiento (media\,$\pm$\,desviación). Resulta relevante en un
+escenario de \emph{reentrenamiento} (p.\,ej. un ajuste fino por comunidad), donde
+la fiabilidad importa más que el pico afortunado; ahí la garantía de suelo del
+Residual SAC asegura una varianza inter-semilla mínima (sus tres semillas rinden
+casi idéntico), frente a la mayor dispersión esperable en DQN y PPO.
+
+\textbf{Sobre el conjunto de evaluación.} Las 50 semanas de evaluación son
+\textit{held-out}: ningún modelo se entrena sobre ellas, por lo que las cifras
+reportadas no incurren en fuga de datos (\textit{leakage}). Además, la selección
+del mejor de las tres semillas se realiza con la métrica interna de entrenamiento
+(SoC inicial aleatorio y valor terminal), distinta de la que se publica en la
+evaluación unificada (SoC fijo y beneficio marginal puro), de modo que el modelo
+no se selecciona sobre la misma medida que se reporta. El optimismo de selección
+residual es, por tanto, despreciable —y nulo en la práctica para el Residual SAC,
+cuyas tres semillas rinden casi idéntico por la garantía de suelo—.
+
 \subsection{Resultados Experimentales}
 \label{sub:resultados}
 
