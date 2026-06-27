@@ -69,80 +69,11 @@ class EnergyEnvContinuo(EnergyEnv):
             )
         self._skip_next_ar1 = False  # Resetear flag
 
-        # 1. Leer datos de la hora actual
+        # 1-6. Física de la batería — FUENTE ÚNICA compartida con el MPC
+        #      (sim.aplicar_fisica_4flujos == lo que ejecuta simular_hora_mpc)
         sim = self.simulador
-        step = sim.current_step
-        row = sim.df.iloc[step]
-        gen = row['generacion_total']
-        cons = row['consumo_total']
-        precio_compra = row['precio_kwh']
-        precio_venta = row['precio_excedente']
-
-        balance = gen - cons
-        exc_disp = max(0.0, balance)
-        def_cub = max(0.0, -balance)
-
-        # 2. Autodescarga
-        sim.soc *= (1 - sim.AUTODESCARGA_POR_HORA)
-        bateria_kwh = sim.soc * sim.BATERIA_CAPACIDAD
-        espacio_libre = max(0.0, sim.SOC_MAX * sim.BATERIA_CAPACIDAD - bateria_kwh)
-        bat_disponible = max(0.0, bateria_kwh - sim.SOC_MIN * sim.BATERIA_CAPACIDAD)
-
-        # 3. Recibir 4 flujos directamente (kW)
-        cs = max(0.0, float(action[0]))
-        cm = max(0.0, float(action[1]))
-        dc = max(0.0, float(action[2]))
-        dr = max(0.0, float(action[3]))
-
-        # 3b. Netear carga vs descarga — inversor bidireccional ejecuta
-        #     potencia neta, carga y descarga simultanea es imposible.
-        #     Preserva el ratio interno (solar/red o casa/red).
-        carga_bruta = cs + cm
-        descarga_bruta = dc + dr
-        net = carga_bruta - descarga_bruta
-
-        if net >= 0:
-            ratio_solar = cs / carga_bruta if carga_bruta > 0 else 0.0
-            cs = net * ratio_solar
-            cm = net * (1 - ratio_solar)
-            dc, dr = 0.0, 0.0
-        else:
-            ratio_casa = dc / descarga_bruta if descarga_bruta > 0 else 0.0
-            dc = abs(net) * ratio_casa
-            dr = abs(net) * (1 - ratio_casa)
-            cs, cm = 0.0, 0.0
-
-        # 4. Recortar por estado real (identico a simular_hora_mpc lineas 372-379)
-        cs = min(cs, exc_disp, espacio_libre / sim.EFICIENCIA_CARGA)
-        cm = min(cm, max(0.0, espacio_libre / sim.EFICIENCIA_CARGA - cs))
-        carga_total = cs + cm
-
-        dc = min(dc, bat_disponible)
-        dr = min(dr, max(0.0, bat_disponible - dc))
-        descarga_total = dc + dr
-
-        # 5. Actualizar bateria
-        soc_antes = sim.soc
-        bateria_kwh += carga_total * sim.EFICIENCIA_CARGA - descarga_total
-        sim.soc = float(np.clip(bateria_kwh / sim.BATERIA_CAPACIDAD, 0.0, 1.0))
-
-        # 6. Economia (identica a simular_hora_mpc)
-        comprado = max(0.0, def_cub - dc * sim.EFICIENCIA_DESCARGA) + cm
-        vendido = (exc_disp - cs) + dr * sim.EFICIENCIA_DESCARGA
-
-        ingresos = vendido * precio_venta
-        gastos = comprado * precio_compra
-
-        # Degradacion no lineal completa
-        energia_movida = carga_total + descarga_total
-        soc_medio = (soc_antes + sim.soc) / 2
-        coste_deg = sim.calcular_degradacion_no_lineal(energia_movida, soc_medio)
-
-        beneficio = ingresos - gastos - coste_deg
-
-        # Baseline IDLE
-        beneficio_idle = exc_disp * precio_venta - def_cub * precio_compra
-        reward = beneficio - beneficio_idle
+        r = sim.aplicar_fisica_4flujos(action[0], action[1], action[2], action[3])
+        reward = r['beneficio_marginal']
 
         # 7. Correccion de coste inicial (simetria con valor terminal)
         if self.steps_in_episode == 0:
@@ -166,11 +97,11 @@ class EnergyEnvContinuo(EnergyEnv):
 
         # Info
         info = {
-            "soc": sim.soc,
-            "beneficio": beneficio,
-            "comprado": comprado,
-            "cargado": carga_total,
-            "descargado": descarga_total,
+            "soc": r['soc'],
+            "beneficio": r['beneficio'],
+            "comprado": r['comprado'],
+            "cargado": r['cargado'],
+            "descargado": r['descargado'],
         }
 
         return self._get_obs(), reward, terminated, truncated, info

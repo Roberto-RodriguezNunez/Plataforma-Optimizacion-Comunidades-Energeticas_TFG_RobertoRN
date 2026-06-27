@@ -387,76 +387,10 @@ def simular_hora_mpc(sim, cs, cm, dc, dr):
     Aplica los flujos del LP al simulador con física completa.
     Retorna (beneficio_absoluto, beneficio_marginal_vs_idle).
     """
-    step = sim.current_step
-    row  = sim.df.iloc[step]
-    gen  = row['generacion_total']
-    cons = row['consumo_total']
-    precio_compra = row['precio_kwh']
-    precio_venta  = row['precio_excedente']
-
-    balance  = gen - cons
-    exc_disp = max(0,  balance)
-    def_cub  = max(0, -balance)
-
-    EFF_C = sim.EFICIENCIA_CARGA
-    EFF_D = sim.EFICIENCIA_DESCARGA
-    CAP   = sim.BATERIA_CAPACIDAD
-    AUTO  = sim.AUTODESCARGA_POR_HORA
-
-    # Autodescarga
-    sim.soc *= (1 - AUTO)
-    bateria_kwh    = sim.soc * CAP
-    espacio_libre  = max(0, sim.SOC_MAX * CAP - bateria_kwh)
-    bat_disponible = max(0, bateria_kwh - sim.SOC_MIN * CAP)
-
-    # Netear carga vs descarga — inversor bidireccional ejecuta potencia
-    # neta, carga y descarga simultánea es imposible (coherente con
-    # energy_env_continuo.step líneas 100-116).
-    carga_bruta = cs + cm
-    descarga_bruta = dc + dr
-    net = carga_bruta - descarga_bruta
-    if net >= 0:
-        ratio_solar = cs / carga_bruta if carga_bruta > 0 else 0.0
-        cs = net * ratio_solar
-        cm = net * (1 - ratio_solar)
-        dc, dr = 0.0, 0.0
-    else:
-        ratio_casa = dc / descarga_bruta if descarga_bruta > 0 else 0.0
-        dc = abs(net) * ratio_casa
-        dr = abs(net) * (1 - ratio_casa)
-        cs, cm = 0.0, 0.0
-
-    # Recortar por estado real de la batería
-    cs = min(cs, exc_disp, espacio_libre / EFF_C)
-    cm = min(cm, max(0, espacio_libre / EFF_C - cs))
-    carga_total = cs + cm
-
-    dc = min(dc, bat_disponible)
-    dr = min(dr, max(0, bat_disponible - dc))
-    descarga_total = dc + dr
-
-    # Actualizar batería
-    soc_antes = sim.soc
-    bateria_kwh += carga_total * EFF_C - descarga_total
-    sim.soc = float(np.clip(bateria_kwh / CAP, 0.0, 1.0))
-
-    # Flujos económicos
-    comprado = max(0, def_cub - dc * EFF_D) + cm
-    vendido  = (exc_disp - cs) + dr * EFF_D
-
-    ingresos = vendido * precio_venta
-    gastos   = comprado * precio_compra
-
-    # Degradación no lineal completa (igual que simulador)
-    soc_medio      = (soc_antes + sim.soc) / 2
-    energia_movida = carga_total + descarga_total
-    coste_deg      = sim.calcular_degradacion_no_lineal(energia_movida, soc_medio)
-
-    beneficio      = ingresos - gastos - coste_deg
-    beneficio_idle = exc_disp * precio_venta - def_cub * precio_compra
-
+    # Física desde la FUENTE ÚNICA (idéntica a la del entorno continuo del SAC)
+    r = sim.aplicar_fisica_4flujos(cs, cm, dc, dr)
     sim.current_step += 1
-    return beneficio, beneficio - beneficio_idle
+    return r['beneficio'], r['beneficio_marginal']
 
 
 def simular_semana_idle(sim_idle, start):

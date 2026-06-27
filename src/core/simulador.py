@@ -1,5 +1,20 @@
+import os
 import numpy as np
 import pandas as pd
+import yaml
+
+# Parámetros de batería desde config/system.yaml (FUENTE ÚNICA — antes
+# hardcodeados, lo que provocó que el config dijera 80 kWh y el simulador
+# entrenara con 100). Fallback a los valores del config por si no se encuentra.
+_CFG_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    'config', 'system.yaml')
+try:
+    with open(_CFG_PATH, 'r', encoding='utf-8') as _f:
+        _BAT = yaml.safe_load(_f)['bateria']
+except Exception:
+    _BAT = {}
+
 
 class ComunidadSimulador:
     """
@@ -40,22 +55,22 @@ class ComunidadSimulador:
         self.semanas_eval = [i * self._HORAS_POR_SEMANA for i in indices_eval]
         self._mode = mode
         
-        # 2. Configuración Física
-        self.BATERIA_CAPACIDAD = 100.0    # kWh
-        self.POTENCIA_INVERSOR = 50.0     # kW
-        self.SOC_INICIAL = 0.5
-        self.SOC_MIN = 0.10               # Límite operativo inferior (protección batería)
-        self.SOC_MAX = 0.90               # Límite operativo superior (protección batería)
-        self.EFICIENCIA_CARGA = 0.95      # 95% — pérdidas AC→DC al cargar
-        self.EFICIENCIA_DESCARGA = 0.95   # 95% — pérdidas DC→AC al descargar (round-trip ~90%)
-        self.AUTODESCARGA_POR_HORA = 0.00004  # ~3% mensual, típico Li-ion
+        # 2. Configuración Física (desde config/system.yaml — fuente única)
+        self.BATERIA_CAPACIDAD = _BAT.get('capacidad_kwh', 80.0)         # kWh
+        self.POTENCIA_INVERSOR = _BAT.get('potencia_inversor_kw', 50.0)  # kW
+        self.SOC_INICIAL = _BAT.get('soc_inicial', 0.5)
+        self.SOC_MIN = _BAT.get('soc_min', 0.10)               # Límite operativo inferior
+        self.SOC_MAX = _BAT.get('soc_max', 0.90)               # Límite operativo superior
+        self.EFICIENCIA_CARGA = _BAT.get('eficiencia_carga', 0.95)       # pérdidas AC→DC
+        self.EFICIENCIA_DESCARGA = _BAT.get('eficiencia_descarga', 0.95) # pérdidas DC→AC
+        self.AUTODESCARGA_POR_HORA = _BAT.get('autodescarga_por_hora', 0.00004)
 
         # Configuración Económica
         # Modelo asimétrico real (regulación española):
         # - Compra de red: precio PVPC completo (ind. ESIOS 1001) → precio_kwh
         # - Venta excedentes: precio compensación simplificada (ind. ESIOS 1739) → precio_excedente
         # RD 244/2019 Art.14: excedentes se valoran a Pmh - CDSVh (≈ precio mayorista OMIE)
-        self.COSTE_DEGRADACION_BASE = 0.005
+        self.COSTE_DEGRADACION_BASE = _BAT.get('degradacion_base', 0.005)
 
         # Estado interno
         self.soc = self.SOC_INICIAL
@@ -127,6 +142,85 @@ class ComunidadSimulador:
         factor_stress_soc = 1.0 + 15.0 * (desviacion ** 4)
         
         return self.COSTE_DEGRADACION_BASE * factor_stress_potencia * factor_stress_soc * energia_kwh
+
+    def aplicar_fisica_4flujos(self, cs, cm, dc, dr):
+        """Física de la batería para 4 flujos en kW (cs, cm, dc, dr) sobre la hora
+        ACTUAL (self.current_step). FUENTE ÚNICA compartida por el entorno continuo
+        (Residual SAC) y el MPC (simular_hora_mpc) → garantiza que mueven la batería
+        EXACTAMENTE igual. Lee el dato real del paso, actualiza self.soc y devuelve
+        el resultado económico. NO avanza el tiempo (lo hace quien llama).
+
+        cs = carga desde solar, cm = carga desde red, dc = descarga a casa,
+        dr = descarga a red.
+        """
+        row = self.df.iloc[self.current_step]
+        gen, cons = row['generacion_total'], row['consumo_total']
+        precio_compra, precio_venta = row['precio_kwh'], row['precio_excedente']
+
+        balance = gen - cons
+        exc_disp = max(0.0, balance)
+        def_cub = max(0.0, -balance)
+
+        # Autodescarga
+        self.soc *= (1 - self.AUTODESCARGA_POR_HORA)
+        bateria_kwh = self.soc * self.BATERIA_CAPACIDAD
+        espacio_libre = max(0.0, self.SOC_MAX * self.BATERIA_CAPACIDAD - bateria_kwh)
+        bat_disponible = max(0.0, bateria_kwh - self.SOC_MIN * self.BATERIA_CAPACIDAD)
+
+        cs = max(0.0, float(cs)); cm = max(0.0, float(cm))
+        dc = max(0.0, float(dc)); dr = max(0.0, float(dr))
+
+        # Netear carga vs descarga (inversor bidireccional; preserva el ratio interno)
+        carga_bruta = cs + cm
+        descarga_bruta = dc + dr
+        net = carga_bruta - descarga_bruta
+        if net >= 0:
+            ratio_solar = cs / carga_bruta if carga_bruta > 0 else 0.0
+            cs = net * ratio_solar
+            cm = net * (1 - ratio_solar)
+            dc, dr = 0.0, 0.0
+        else:
+            ratio_casa = dc / descarga_bruta if descarga_bruta > 0 else 0.0
+            dc = abs(net) * ratio_casa
+            dr = abs(net) * (1 - ratio_casa)
+            cs, cm = 0.0, 0.0
+
+        # Recortar por estado real
+        cs = min(cs, exc_disp, espacio_libre / self.EFICIENCIA_CARGA)
+        cm = min(cm, max(0.0, espacio_libre / self.EFICIENCIA_CARGA - cs))
+        carga_total = cs + cm
+        dc = min(dc, bat_disponible)
+        dr = min(dr, max(0.0, bat_disponible - dc))
+        descarga_total = dc + dr
+
+        # Actualizar batería
+        soc_antes = self.soc
+        bateria_kwh += carga_total * self.EFICIENCIA_CARGA - descarga_total
+        self.soc = float(np.clip(bateria_kwh / self.BATERIA_CAPACIDAD, 0.0, 1.0))
+
+        # Economía
+        comprado = max(0.0, def_cub - dc * self.EFICIENCIA_DESCARGA) + cm
+        vendido = (exc_disp - cs) + dr * self.EFICIENCIA_DESCARGA
+        ingresos = vendido * precio_venta
+        gastos = comprado * precio_compra
+
+        energia_movida = carga_total + descarga_total
+        soc_medio = (soc_antes + self.soc) / 2
+        coste_deg = self.calcular_degradacion_no_lineal(energia_movida, soc_medio)
+
+        beneficio = ingresos - gastos - coste_deg
+        beneficio_idle = exc_disp * precio_venta - def_cub * precio_compra
+
+        return {
+            'soc': self.soc,
+            'comprado': comprado,
+            'vendido': vendido,
+            'cargado': carga_total,
+            'descargado': descarga_total,
+            'beneficio': beneficio,
+            'beneficio_idle': beneficio_idle,
+            'beneficio_marginal': beneficio - beneficio_idle,
+        }
 
     def ejecutar_accion_fisica(self, action_idx, step):
         """

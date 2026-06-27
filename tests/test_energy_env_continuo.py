@@ -237,9 +237,9 @@ class TestNoCicloSimultaneo:
             bens_marg.append(ben_total - ben_idle)
 
         media = np.mean(bens_marg)
-        assert abs(media - 47.71) < 0.2, (
-            f"MPC via EnergyEnvContinuo: {media:+.2f} EUR/sem, esperado ~+47.71 "
-            f"(≈ MPC realista). Valor viejo 51.69 era de la config 100kWh/50kWp.")
+        assert abs(media - 43.30) < 0.3, (
+            f"MPC via EnergyEnvContinuo: {media:+.2f} EUR/sem, esperado ~+43.30 "
+            f"(≈ MPC realista en 80 kWh; lee bateria del config).")
 
 
 class TestFisicaCoherente:
