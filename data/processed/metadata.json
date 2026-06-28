@@ -1,6 +1,6 @@
 {
   "version_script": "2.0.0",
-  "timestamp_generacion": "2026-06-18T20:07:22.026429",
+  "timestamp_generacion": "2026-06-27T21:52:12.826628",
   "semilla": 42,
   "n_horas": 22646,
   "rango_fechas": {
@@ -33,7 +33,7 @@
     "compensacion_raw": "a5a38b36b7743b941e242ca5c7d7be45ccb0fae9754330798a0aaa9abf2ed0fb",
     "solar_raw": "694a92f5f1e79f8b91eb685eabd41e521b2e8f411cc93669a007837639069c95"
   },
-  "hash_sha256_salida": "f98329145d7641e8e4e2f39061a44808e152737929043f8efab92857f4505f3f",
+  "hash_sha256_salida": "9734e3a9249158a7f29d58b5e43032b47013d84744feebc27e11c1547fd2b062",
   "split": {
     "tipo": "muestreo_aleatorio_semanal",
     "semilla_split": 42,
