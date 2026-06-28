@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net">
   <diagram id="flujo_bifurcado" name="Residual SAC — componentes/dependencias + flujo (6 fases)">
-    <mxGraphModel dx="1717" dy="878" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3480" pageHeight="1520" math="0" shadow="0">
+    <mxGraphModel dx="5150" dy="2635" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3480" pageHeight="1520" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -230,7 +230,7 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="L5" parent="1" style="swimlane;startSize=32;html=1;rounded=1;fillColor=#FDF1E3;strokeColor=#B07A2A;fontStyle=1;fontSize=16;verticalAlign=top;" value="5 · PRODUCCION / EDGE  (cada hora)" vertex="1">
-          <mxGeometry height="560" width="1100" x="1180" y="900" as="geometry" />
+          <mxGeometry height="560" width="1100" x="1170" y="890" as="geometry" />
         </mxCell>
         <mxCell id="g_loop" parent="L5" style="rounded=0;html=1;fillColor=#FFE0B2;strokeColor=#B07A2A;fontStyle=1;" value="production/edge_loop.py" vertex="1">
           <mxGeometry height="50" width="300" x="30" y="50" as="geometry" />
@@ -242,22 +242,22 @@
           <mxGeometry height="50" width="300" x="30" y="350" as="geometry" />
         </mxCell>
         <mxCell id="g_http" parent="L5" style="rounded=0;html=1;fillColor=#E1D5F5;strokeColor=#7A5BA6;" value="=&gt; HTTP POST /api/edge/decision · /generar-cierre" vertex="1">
-          <mxGeometry height="50" width="300" x="30" y="450" as="geometry" />
+          <mxGeometry height="50" width="300" x="40" y="450" as="geometry" />
         </mxCell>
         <mxCell id="g_feed" parent="L5" style="rounded=0;html=1;fillColor=#FFFFFF;strokeColor=#666666;" value="get_feed() → api/data_feed.py" vertex="1">
           <mxGeometry height="50" width="300" x="380" y="50" as="geometry" />
         </mxCell>
         <mxCell id="g_read" parent="L5" style="rounded=0;html=1;fillColor=#C8E6C9;strokeColor=#3F7A41;" value="(lee) .onnx + vec_normalize.npz" vertex="1">
-          <mxGeometry height="50" width="300" x="380" y="150" as="geometry" />
+          <mxGeometry height="50" width="300" x="710" y="110" as="geometry" />
         </mxCell>
         <mxCell id="g_obs" parent="L5" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="usa core/obs_builder + mpc_benchmark" vertex="1">
-          <mxGeometry height="50" width="300" x="380" y="350" as="geometry" />
+          <mxGeometry height="50" width="300" x="490" y="350" as="geometry" />
         </mxCell>
         <mxCell id="g_mpc" parent="L5" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="crear_mpc() → mpc_benchmark.py" vertex="1">
-          <mxGeometry height="50" width="320" x="740" y="150" as="geometry" />
+          <mxGeometry height="50" width="320" x="480" y="180" as="geometry" />
         </mxCell>
         <mxCell id="g_core" parent="L5" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="usa core/ simulador · forecast" vertex="1">
-          <mxGeometry height="50" width="320" x="740" y="250" as="geometry" />
+          <mxGeometry height="50" width="320" x="480" y="280" as="geometry" />
         </mxCell>
         <mxCell id="fg1" edge="1" parent="1" source="g_loop" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;fontSize=11;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="g_onnx" value="infiere">
           <mxGeometry relative="1" as="geometry" />
@@ -271,11 +271,15 @@
         <mxCell id="bg1" edge="1" parent="1" source="g_loop" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=open;dashed=1;strokeColor=#999999;fontColor=#666666;fontSize=11;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="g_feed" value="usa">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="bg2" edge="1" parent="1" source="g_onnx" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=open;dashed=1;strokeColor=#999999;fontColor=#666666;fontSize=11;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="g_read" value="lee modelo">
+        <mxCell id="bg2" edge="1" parent="1" source="g_onnx" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=open;dashed=1;strokeColor=#999999;fontColor=#666666;fontSize=11;exitX=1;exitY=0;entryX=0;entryY=0.5;exitDx=0;exitDy=0;" target="g_read" value="lee modelo">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="bg3" edge="1" parent="1" source="g_onnx" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=open;dashed=1;strokeColor=#999999;fontColor=#666666;fontSize=11;exitX=1;exitY=0.7;entryX=0;entryY=0.5;" target="g_mpc" value="MPC">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="bg3" edge="1" parent="1" source="g_onnx" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=open;dashed=1;strokeColor=#999999;fontColor=#666666;fontSize=11;exitX=1;exitY=1;entryX=0;entryY=0.389;exitDx=0;exitDy=0;entryDx=0;entryDy=0;entryPerimeter=0;" target="g_mpc" value="MPC">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1650" y="1089" />
+            </Array>
+          </mxGeometry>
         </mxCell>
         <mxCell id="bg4" edge="1" parent="1" source="g_mpc" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=open;dashed=1;strokeColor=#999999;fontColor=#666666;fontSize=11;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="g_core" value="estado">
           <mxGeometry relative="1" as="geometry" />
@@ -301,6 +305,9 @@
         <mxCell id="s_cier" parent="L6" style="rounded=0;html=1;fillColor=#EDE3FA;strokeColor=#7A5BA6;fontStyle=1;" value="(B) POST /generar-cierre  (mensual)" vertex="1">
           <mxGeometry height="50" width="300" x="380" y="50" as="geometry" />
         </mxCell>
+        <mxCell id="b4O2eDAoZLWYo8z56DnM-1" edge="1" parent="L6" source="s_gen" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="s_models" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="s_gen" parent="L6" style="rounded=0;html=1;fillColor=#E1D5F5;strokeColor=#7A5BA6;" value="edge/routes.py · generar_cierre_edge()" vertex="1">
           <mxGeometry height="50" width="300" x="380" y="150" as="geometry" />
         </mxCell>
@@ -310,9 +317,6 @@
         <mxCell id="s_cmodel" parent="L6" style="rounded=0;html=1;fillColor=#E1D5F5;strokeColor=#7A5BA6;" value="models/cierre.py (CierreMensual)" vertex="1">
           <mxGeometry height="50" width="300" x="380" y="350" as="geometry" />
         </mxCell>
-        <mxCell id="s_app" parent="L6" style="rounded=0;html=1;fillColor=#EDE3FA;strokeColor=#7A5BA6;" value="app factory: __init__ · config · extensions" vertex="1">
-          <mxGeometry height="50" width="320" x="740" y="50" as="geometry" />
-        </mxCell>
         <mxCell id="s_models" parent="L6" style="rounded=0;html=1;fillColor=#E1D5F5;strokeColor=#7A5BA6;" value="models: vivienda · comunidad · acceso" vertex="1">
           <mxGeometry height="50" width="320" x="740" y="150" as="geometry" />
         </mxCell>
@@ -321,6 +325,25 @@
         </mxCell>
         <mxCell id="s_tmpl" parent="L6" style="rounded=0;html=1;fillColor=#E1D5F5;strokeColor=#7A5BA6;" value="templates/detalle.html + static/js/charts.js" vertex="1">
           <mxGeometry height="50" width="320" x="740" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="s_app" parent="L6" style="rounded=0;html=1;fillColor=#EDE3FA;strokeColor=#7A5BA6;" value="app factory: __init__ · config · extensions" vertex="1">
+          <mxGeometry height="50" width="320" x="760" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="bs1" edge="1" parent="L6" source="s_app" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=open;dashed=1;strokeColor=#999999;fontColor=#666666;fontSize=11;" target="s_recv" value="registra">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="920" y="120" />
+              <mxPoint x="240" y="120" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="bs2" edge="1" parent="L6" source="s_app" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=open;dashed=1;strokeColor=#999999;fontColor=#666666;fontSize=11;" target="s_gen" value="registra">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="920" y="140" />
+              <mxPoint x="640" y="140" />
+            </Array>
+          </mxGeometry>
         </mxCell>
         <mxCell id="fs1" edge="1" parent="1" source="s_dec" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;fontSize=11;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="s_recv" value="recibe">
           <mxGeometry relative="1" as="geometry" />
@@ -340,12 +363,6 @@
         <mxCell id="fs6" edge="1" parent="1" source="s_calc" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;fontSize=11;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="s_cmodel" value="guarda">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="bs1" edge="1" parent="1" source="s_app" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=open;dashed=1;strokeColor=#999999;fontColor=#666666;fontSize=11;" target="s_recv" value="registra">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="bs2" edge="1" parent="1" source="s_app" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=open;dashed=1;strokeColor=#999999;fontColor=#666666;fontSize=11;" target="s_gen" value="registra">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
         <mxCell id="bs3" edge="1" parent="1" source="s_models" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=open;dashed=1;strokeColor=#999999;fontColor=#666666;fontSize=11;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="s_modules" value="CRUD">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
@@ -361,11 +378,22 @@
         <mxCell id="sp24" edge="1" parent="1" source="n_best" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#222222;fontStyle=1;fontSize=13;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="x_src" value="best_model.zip + .pkl">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="sp45" edge="1" parent="1" source="x_onnx" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#222222;fontStyle=1;fontSize=13;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="g_read" value=".onnx + .npz">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="sp45" edge="1" parent="1" source="x_onnx" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#222222;fontStyle=1;fontSize=13;exitX=0;exitY=0.5;entryX=0.75;entryY=1;entryDx=0;entryDy=0;" target="g_read" value=".onnx + .npz">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2105" y="1175" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="sp56" edge="1" parent="1" source="g_http" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#222222;fontStyle=1;fontSize=13;exitX=0;exitY=0.4;entryX=1;entryY=0.5;" target="s_dec" value="HTTP (A) decisión">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="sp56" edge="1" parent="1" source="g_http" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#222222;fontStyle=1;fontSize=13;entryX=1;entryY=0.5;exitX=0;exitY=0.25;exitDx=0;exitDy=0;" target="s_dec" value="HTTP (A) decisión">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1210" y="1350" />
+              <mxPoint x="400" y="1350" />
+              <mxPoint x="400" y="975" />
+            </Array>
+            <mxPoint x="1210" y="1360" as="sourcePoint" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="lgbox" parent="1" style="rounded=0;html=1;fillColor=#FBFBFB;strokeColor=#999999;verticalAlign=top;align=left;fontStyle=1;fontSize=16;spacingLeft=12;spacingTop=8;whiteSpace=wrap;" value="LEYENDA" vertex="1">
           <mxGeometry height="436" width="720" x="40" y="440" as="geometry" />
@@ -445,8 +473,16 @@
         <mxCell id="lb_rd" parent="lgbox" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontStyle=2;" value="Lectura en serpiente: arriba 1-2-3, se baja, abajo 4-5-6 (der a izq)." vertex="1">
           <mxGeometry height="21.999999999999996" width="682" x="18" y="405.99999999999994" as="geometry" />
         </mxCell>
-      <mxCell id="sp56b" edge="1" parent="1" source="g_http" target="s_cier" value="HTTP (B) cierre" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#222222;fontStyle=1;fontSize=13;exitX=0;exitY=0.7;entryX=1;entryY=0.5;"><mxGeometry relative="1" as="geometry" /></mxCell>
-        </root>
+        <mxCell id="sp56b" edge="1" parent="1" source="g_http" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#222222;fontStyle=1;fontSize=13;exitX=0;exitY=0.7;entryX=1;entryY=0.5;" target="s_cier" value="HTTP (B) cierre">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1210" y="1365" />
+              <mxPoint x="760" y="1365" />
+              <mxPoint x="760" y="975" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
     </mxGraphModel>
   </diagram>
 </mxfile>

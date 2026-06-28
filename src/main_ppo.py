@@ -25,7 +25,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from src.envs.energy_env import EnergyEnv
 from src.training.multiseed import entrenar_multiseed
 from src.training.callbacks import DiscreteMetricasCallback, EntCoefScheduler
-from src.training.registro import cargar_version, seeds_comunes, es_decay, schedule_lineal
+from src.training.registro import cargar_version, seeds_comunes, seeds_para_version, es_decay, schedule_lineal
 
 LOG_DIR    = os.path.join(ROOT, "logs")
 MODEL_DIR  = os.path.join(ROOT, "models")
@@ -79,9 +79,9 @@ def _extra_callbacks(model):
 def main(version="PPO-D4", seeds=None, total_timesteps=None):
     global _CFG, _TOTAL
     _CFG = cargar_version("ppo", version)
-    train_seeds, _eval_seeds, eval_episodes = seeds_comunes()
+    _train_seeds, _eval_seeds, eval_episodes = seeds_comunes()
     if seeds is None:
-        seeds = train_seeds
+        seeds = seeds_para_version("ppo", version)
     _TOTAL = int(total_timesteps) if total_timesteps else int(_CFG["total_timesteps"])
 
     os.makedirs(MODEL_DIR, exist_ok=True)

@@ -8,6 +8,7 @@ Fuente única de hiperparámetros de cada versión entrenable. Resuelve
     listar_versiones(familia)        -> [str]
     familias()                       -> [str]
     seeds_comunes()                  -> (train_seeds, eval_seeds, eval_episodes)
+    seeds_para_version(familia, ver)  -> train_seeds recortado a n_seeds de la versión
 
 El merge es a nivel de clave de primer nivel: un override que fija `learning_rate`
 (escalar o {init,final}) reemplaza por completo el valor del base — justo lo que se
@@ -72,6 +73,19 @@ def seeds_comunes():
     """(train_seeds, eval_seeds, eval_episodes) comunes a toda la suite."""
     c = _REG["comun"]
     return list(c["train_seeds"]), int(c["eval_seeds"]), int(c["eval_episodes"])
+
+
+def seeds_para_version(familia: str, version: str):
+    """train_seeds recortado a las `n_seeds` que pida la versión.
+
+    Devuelve los primeros N de `comun.train_seeds` (determinista). Si la versión
+    no declara `n_seeds`, usa todas (comportamiento por defecto: 3 semillas).
+    Pensado para entrenar 1 semilla en barridos/ablaciones y 3 en candidatas.
+    """
+    train_seeds, _, _ = seeds_comunes()
+    n = int(cargar_version(familia, version).get("n_seeds", len(train_seeds)))
+    n = max(1, min(n, len(train_seeds)))
+    return train_seeds[:n]
 
 
 def es_decay(valor) -> bool:

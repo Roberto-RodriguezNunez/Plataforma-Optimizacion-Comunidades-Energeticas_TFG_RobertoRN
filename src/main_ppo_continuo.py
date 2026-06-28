@@ -26,7 +26,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from src.envs.energy_env_continuo import EnergyEnvContinuo
 from src.training.multiseed import entrenar_multiseed
-from src.training.registro import cargar_version, seeds_comunes, es_decay, schedule_lineal
+from src.training.registro import cargar_version, seeds_comunes, seeds_para_version, es_decay, schedule_lineal
 from src.training.callbacks import EntCoefScheduler   # compartido (decay de entropía)
 
 LOG_DIR   = os.path.join(ROOT, "logs")
@@ -78,9 +78,9 @@ def _extra_callbacks(model):
 def main(version="PPO-C1", seeds=None, total_timesteps=None):
     global _VCFG, _TOTAL
     _VCFG = cargar_version("ppo_continuo", version)
-    train_seeds, _es, eval_episodes = seeds_comunes()
+    _train_seeds, _es, eval_episodes = seeds_comunes()
     if seeds is None:
-        seeds = train_seeds
+        seeds = seeds_para_version("ppo_continuo", version)
     _TOTAL = int(total_timesteps) if total_timesteps else int(_VCFG["total_timesteps"])
 
     os.makedirs(MODEL_DIR, exist_ok=True); os.makedirs(LOG_DIR, exist_ok=True)

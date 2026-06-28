@@ -190,15 +190,15 @@ residual_sac:
     SAC-B:    {residual_mode: mult, delta_max: 0.30, ent_coef: 0.002, dawn_warmup_steps: 100_000, nota: "mult, δ0.30, DAWN 100k"}
     SAC-C:    {residual_mode: mult, delta_max: 0.15, ent_coef: 0.01,  dawn_warmup_steps: 100_000, nota: "mult, δ0.15, DAWN 100k (GANADOR — = run 80kwh en curso)"}
     # --- F2: ablación δ (mult, sobre SAC-C; d15 == SAC-C, no se reentrena) ---
-    F2-d05:   {residual_mode: mult, delta_max: 0.05, ent_coef: 0.01,  nota: "ablación δ=0.05"}
-    F2-d10:   {residual_mode: mult, delta_max: 0.10, ent_coef: 0.01,  nota: "ablación δ=0.10"}
-    F2-d20:   {residual_mode: mult, delta_max: 0.20, ent_coef: 0.01,  nota: "ablación δ=0.20"}
-    F2-d30:   {residual_mode: mult, delta_max: 0.30, ent_coef: 0.01,  nota: "ablación δ=0.30"}
+    F2-d05:   {residual_mode: mult, delta_max: 0.05, ent_coef: 0.01,  n_seeds: 1, nota: "ablación δ=0.05"}
+    F2-d10:   {residual_mode: mult, delta_max: 0.10, ent_coef: 0.01,  n_seeds: 1, nota: "ablación δ=0.10"}
+    F2-d20:   {residual_mode: mult, delta_max: 0.20, ent_coef: 0.01,  n_seeds: 1, nota: "ablación δ=0.20"}
+    F2-d30:   {residual_mode: mult, delta_max: 0.30, ent_coef: 0.01,  n_seeds: 1, nota: "ablación δ=0.30"}
     # --- F4: DAWN off ---
-    F4-nodawn: {residual_mode: mult, delta_max: 0.15, ent_coef: 0.01, dawn_warmup_steps: 0, nota: "sin warmup MPC"}
+    F4-nodawn: {residual_mode: mult, delta_max: 0.15, ent_coef: 0.01, dawn_warmup_steps: 0, n_seeds: 1, nota: "sin warmup MPC"}
     # --- F6: ruido de pronóstico (s15 == SAC-C) ---
-    F6-s05:   {residual_mode: mult, delta_max: 0.15, ent_coef: 0.01, sigma_consumo: 0.05, nota: "σ_consumo 5%"}
-    F6-s25:   {residual_mode: mult, delta_max: 0.15, ent_coef: 0.01, sigma_consumo: 0.25, nota: "σ_consumo 25%"}
+    F6-s05:   {residual_mode: mult, delta_max: 0.15, ent_coef: 0.01, sigma_consumo: 0.05, n_seeds: 1, nota: "σ_consumo 5%"}
+    F6-s25:   {residual_mode: mult, delta_max: 0.15, ent_coef: 0.01, sigma_consumo: 0.25, n_seeds: 1, nota: "σ_consumo 25%"}
   # Estudios SOLO de evaluación (reutilizan modelos ya entrenados, sin reentrenar):
   estudios_eval:
     F1: "Significancia de SAC-C: IC95% (bootstrap) + Wilcoxon vs MPC realista sobre 10 semillas×50 semanas"

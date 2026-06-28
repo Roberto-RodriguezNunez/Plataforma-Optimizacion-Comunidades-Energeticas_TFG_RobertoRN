@@ -27,7 +27,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from src.envs.energy_env import EnergyEnv
 from src.training.multiseed import entrenar_multiseed
 from src.training.callbacks import DiscreteMetricasCallback
-from src.training.registro import cargar_version, seeds_comunes
+from src.training.registro import cargar_version, seeds_comunes, seeds_para_version
 
 LOG_DIR    = os.path.join(ROOT, "logs")
 MODEL_DIR  = os.path.join(ROOT, "models")
@@ -81,9 +81,9 @@ def make_model(train_env, seed):
 def main(version="DQN-2", seeds=None, total_timesteps=None):
     global _CFG
     _CFG = cargar_version("dqn", version)
-    train_seeds, _eval_seeds, eval_episodes = seeds_comunes()
+    _train_seeds, _eval_seeds, eval_episodes = seeds_comunes()
     if seeds is None:
-        seeds = train_seeds
+        seeds = seeds_para_version("dqn", version)
     if total_timesteps is None:
         total_timesteps = int(_CFG["total_timesteps"])
 

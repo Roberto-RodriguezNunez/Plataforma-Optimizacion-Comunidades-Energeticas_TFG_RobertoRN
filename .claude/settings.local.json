@@ -82,7 +82,12 @@
       "Bash(git push *)",
       "Bash(git config *)",
       "Bash(git -c core.filemode=true status -s)",
-      "Bash(git.exe status *)"
+      "Bash(git.exe status *)",
+      "Bash(grep -oE 'value=\"[^\"]{4,70}\"' doc/diagramas/arquitectura_capas.drawio)",
+      "Bash(grep -v '/$')",
+      "Bash(ps -eo pid,etime,cmd)",
+      "Bash(PYTHONPATH=/mnt/c/Users/rober/TFG .venv/bin/python /tmp/claude-1000/-mnt-c-Users-rober-TFG/32668eb0-1e66-421f-a35b-a6af13789f3e/scratchpad/smoke_n_seeds.py)",
+      "Bash(git -C /mnt/c/Users/rober/TFG status --short src/ config/experimentos.yaml)"
     ]
   }
 }

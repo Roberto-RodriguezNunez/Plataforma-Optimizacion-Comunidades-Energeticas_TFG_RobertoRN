@@ -26,7 +26,7 @@ from src.envs.energy_env_continuo import EnergyEnvContinuo
 from src.envs.residual_env import ResidualEnv
 from src.training.multiseed import entrenar_multiseed
 from src.training.callbacks import ResidualMetricasCallback
-from src.training.registro import cargar_version, seeds_comunes
+from src.training.registro import cargar_version, seeds_comunes, seeds_para_version
 from src.training.dawn_warmup import dawn_warmup         # warmup MPC compartido
 from src.training.action_noise import construir_action_noise
 
@@ -85,9 +85,9 @@ def warmup(model, train_env, seed):
 def main(version="DDPG-2", seeds=None, total_timesteps=None):
     global _VCFG
     _VCFG = cargar_version("ddpg_residual", version)
-    train_seeds, _es, eval_episodes = seeds_comunes()
+    _train_seeds, _es, eval_episodes = seeds_comunes()
     if seeds is None:
-        seeds = train_seeds
+        seeds = seeds_para_version("ddpg_residual", version)
     if total_timesteps is None:
         total_timesteps = int(_VCFG['total_timesteps'])
 
