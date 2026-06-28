@@ -1,14 +1,14 @@
 <mxfile host="app.diagrams.net">
-  <diagram id="flujo_residual_sac" name="Flujo Residual SAC (serpiente + pasos)">
-    <mxGraphModel dx="2943" dy="1506" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1020" pageHeight="2650" math="0" shadow="0">
+  <diagram id="flujo_residual_sac" name="Flujo Residual SAC (archivos, serpiente por fases)">
+    <mxGraphModel dx="1144" dy="586" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3200" pageHeight="1240" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="leg" parent="1" style="text;html=1;align=left;fontSize=11;fontStyle=2;" value="Cada paquete se lee en SERPIENTE (derecha, baja, izquierda, baja...).   AMARILLO = codigo unificado (compartido por varios algoritmos/fases).   NARANJA = entrada · GRIS = paso/funcion · AZUL = dato · VERDE = artefacto · BLANCO = solo-produccion · MORADO = SaaS." vertex="1">
-          <mxGeometry height="34" width="980" x="20" y="8" as="geometry" />
+        <mxCell id="leg" parent="1" style="text;html=1;align=left;fontSize=13;fontStyle=2;" value="aal" vertex="1">
+          <mxGeometry height="44" width="3120" x="40" y="10" as="geometry" />
         </mxCell>
-        <mxCell id="L1" parent="1" style="swimlane;startSize=32;html=1;rounded=1;fillColor=#EAF3FB;strokeColor=#3B6EA5;fontStyle=1;fontSize=15;verticalAlign=top;" value="1 · DATOS / ETL" vertex="1">
-          <mxGeometry height="230" width="980" x="20" y="60" as="geometry" />
+        <mxCell id="L1" parent="1" style="swimlane;startSize=32;html=1;rounded=1;fillColor=#EAF3FB;strokeColor=#3B6EA5;fontStyle=1;fontSize=16;verticalAlign=top;" value="1 · DATOS / ETL" vertex="1">
+          <mxGeometry height="230" width="1000" x="40" y="70" as="geometry" />
         </mxCell>
         <mxCell id="d1" parent="L1" style="rounded=0;html=1;fillColor=#CDE7FF;strokeColor=#3B6EA5;" value="data/raw/ (4 csv: consumo · precios · compensacion · solar)" vertex="1">
           <mxGeometry height="44" width="290" x="20" y="50" as="geometry" />
@@ -25,22 +25,34 @@
         <mxCell id="d5" parent="L1" style="rounded=0;html=1;fillColor=#CDE7FF;strokeColor=#3B6EA5;" value="=&gt; data/processed/metadata.json" vertex="1">
           <mxGeometry height="44" width="290" x="345" y="134" as="geometry" />
         </mxCell>
-        <mxCell id="L2" parent="1" style="swimlane;startSize=32;html=1;rounded=1;fillColor=#FDF1E3;strokeColor=#B07A2A;fontStyle=1;fontSize=15;verticalAlign=top;" value="2 · ENTRENO  (main_residual_sac.py)" vertex="1">
-          <mxGeometry height="490" width="980" x="1060" y="60" as="geometry" />
+        <mxCell id="ed1" edge="1" parent="1" source="d1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="d2" value="+ config">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed2" edge="1" parent="1" source="d2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="d3" value="entrada">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed3" edge="1" parent="1" source="d3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="d4" value="genera">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed4" edge="1" parent="1" source="d4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="d5" value="+ hash">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="L2" parent="1" style="swimlane;startSize=32;html=1;rounded=1;fillColor=#FDF1E3;strokeColor=#B07A2A;fontStyle=1;fontSize=16;verticalAlign=top;" value="2 · ENTRENO  (main_residual_sac.py)" vertex="1">
+          <mxGeometry height="490" width="1000" x="1100" y="70" as="geometry" />
         </mxCell>
         <mxCell id="n1" parent="L2" style="rounded=0;html=1;fillColor=#FFE0B2;strokeColor=#B07A2A;" value="main_residual_sac.py" vertex="1">
           <mxGeometry height="44" width="290" x="20" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="n2" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="cargar_version()  →  registro.py" vertex="1">
+        <mxCell id="n2" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="cargar_version() → registro.py" vertex="1">
           <mxGeometry height="44" width="290" x="345" y="50" as="geometry" />
         </mxCell>
         <mxCell id="n3" parent="L2" style="rounded=0;html=1;fillColor=#CDE7FF;strokeColor=#3B6EA5;" value="(lee) config/experimentos.yaml" vertex="1">
           <mxGeometry height="44" width="290" x="670" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="n4" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="entrenar_multiseed()  →  multiseed.py" vertex="1">
+        <mxCell id="n4" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="entrenar_multiseed() → multiseed.py" vertex="1">
           <mxGeometry height="44" width="290" x="670" y="134" as="geometry" />
         </mxCell>
-        <mxCell id="n5" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="make_envs()  →  residual_env.py" vertex="1">
+        <mxCell id="n5" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="make_envs() → residual_env.py" vertex="1">
           <mxGeometry height="44" width="290" x="345" y="134" as="geometry" />
         </mxCell>
         <mxCell id="n6" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="energy_env_continuo.py" vertex="1">
@@ -49,68 +61,140 @@
         <mxCell id="n7" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="energy_env.py" vertex="1">
           <mxGeometry height="44" width="290" x="20" y="218" as="geometry" />
         </mxCell>
-        <mxCell id="n8" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="usa  core/simulador.py" vertex="1">
+        <mxCell id="n8" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="usa core/simulador.py" vertex="1">
           <mxGeometry height="44" width="290" x="345" y="218" as="geometry" />
         </mxCell>
-        <mxCell id="n9" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="usa  core/forecast.py  +  obs_builder.py" vertex="1">
+        <mxCell id="n9" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="usa core/forecast.py + obs_builder.py" vertex="1">
           <mxGeometry height="44" width="290" x="670" y="218" as="geometry" />
         </mxCell>
-        <mxCell id="n10" parent="L2" style="rounded=1;html=1;fillColor=#ECECEC;strokeColor=#888888;" value="make_model()  →  SAC" vertex="1">
+        <mxCell id="n10" parent="L2" style="rounded=1;html=1;fillColor=#ECECEC;strokeColor=#888888;" value="make_model() → SAC" vertex="1">
           <mxGeometry height="44" width="290" x="670" y="302" as="geometry" />
         </mxCell>
-        <mxCell id="n11" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="warmup()  →  dawn_warmup.py" vertex="1">
+        <mxCell id="n11" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="warmup() → dawn_warmup.py" vertex="1">
           <mxGeometry height="44" width="290" x="345" y="302" as="geometry" />
         </mxCell>
-        <mxCell id="n12" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="usa  mpc_benchmark.py  (MPC online)" vertex="1">
+        <mxCell id="n12" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="usa mpc_benchmark.py (MPC online)" vertex="1">
           <mxGeometry height="44" width="290" x="20" y="302" as="geometry" />
         </mxCell>
-        <mxCell id="n13" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="model.learn()  →  callbacks.py" vertex="1">
+        <mxCell id="n13" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="model.learn() → callbacks.py" vertex="1">
           <mxGeometry height="44" width="290" x="20" y="386" as="geometry" />
         </mxCell>
         <mxCell id="n14" parent="L2" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="SeededEvalCallback (en multiseed)" vertex="1">
           <mxGeometry height="44" width="290" x="345" y="386" as="geometry" />
         </mxCell>
-        <mxCell id="n15" parent="L2" style="rounded=0;html=1;fillColor=#C8E6C9;strokeColor=#3F7A41;" value="=&gt; models/best/residual_sac_SAC-C.zip" vertex="1">
+        <mxCell id="n15" parent="L2" style="rounded=0;html=1;fillColor=#C8E6C9;strokeColor=#3F7A41;fontStyle=1;" value="=&gt; models/best/residual_sac_SAC-C.zip" vertex="1">
           <mxGeometry height="44" width="290" x="670" y="386" as="geometry" />
         </mxCell>
-        <mxCell id="L3" parent="1" style="swimlane;startSize=32;html=1;rounded=1;fillColor=#FDF1E3;strokeColor=#B07A2A;fontStyle=1;fontSize=15;verticalAlign=top;" value="3 · EVALUACION  (eval_suite.py)" vertex="1">
-          <mxGeometry height="400" width="980" x="1080" y="600" as="geometry" />
+        <mxCell id="en1" edge="1" parent="1" source="n1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="n2" value="lee version">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="v1" parent="L3" style="rounded=0;html=1;fillColor=#FFE0B2;strokeColor=#B07A2A;" value="eval_suite.py  (dispatcher)" vertex="1">
+        <mxCell id="en2" edge="1" parent="1" source="n2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="n3" value="hiperparams">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="en3" edge="1" parent="1" source="n3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="n4" value="orquesta">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="en4" edge="1" parent="1" source="n4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="n5" value="crea envs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="en5" edge="1" parent="1" source="n5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="n6" value="envuelve">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="en6" edge="1" parent="1" source="n6" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="n7" value="hereda">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="en7" edge="1" parent="1" source="n7" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="n8" value="simula">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="en8" edge="1" parent="1" source="n8" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="n9" value="observacion">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="en9" edge="1" parent="1" source="n9" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="n10" value="crea SAC">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="en10" edge="1" parent="1" source="n10" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="n11" value="DAWN">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="en11" edge="1" parent="1" source="n11" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="n12" value="MPC puro">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="en12" edge="1" parent="1" source="n12" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="n13" value="learn()">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="en13" edge="1" parent="1" source="n13" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="n14" value="eval">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="en14" edge="1" parent="1" source="n14" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="n15" value="guarda mejor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="L3" parent="1" style="swimlane;startSize=32;html=1;rounded=1;fillColor=#FDF1E3;strokeColor=#B07A2A;fontStyle=1;fontSize=16;verticalAlign=top;" value="3 · EVALUACION  (eval_suite.py)" vertex="1">
+          <mxGeometry height="400" width="1000" x="2160" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="v1" parent="L3" style="rounded=0;html=1;fillColor=#FFE0B2;strokeColor=#B07A2A;" value="eval_suite.py (dispatcher)" vertex="1">
           <mxGeometry height="44" width="290" x="20" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="v2" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="cargar_version()  →  registro.py" vertex="1">
+        <mxCell id="v2" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="cargar_version() → registro.py" vertex="1">
           <mxGeometry height="44" width="290" x="345" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="v3" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="construir controller  →  residual_sac_controller.py" vertex="1">
+        <mxCell id="v3" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="construir controller → residual_sac_controller.py" vertex="1">
           <mxGeometry height="44" width="290" x="670" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="v4" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="usa  residual_base.py  +  base.py" vertex="1">
+        <mxCell id="v4" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="usa residual_base.py + base.py" vertex="1">
           <mxGeometry height="44" width="290" x="670" y="134" as="geometry" />
         </mxCell>
-        <mxCell id="v5" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="evaluar_multiseed()  →  eval_unificada.py" vertex="1">
+        <mxCell id="v5" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="evaluar_multiseed() → eval_unificada.py" vertex="1">
           <mxGeometry height="44" width="290" x="345" y="134" as="geometry" />
         </mxCell>
-        <mxCell id="v6" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="ventana_observada()  →  forecast.py" vertex="1">
+        <mxCell id="v6" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="ventana_observada() → forecast.py" vertex="1">
           <mxGeometry height="44" width="290" x="20" y="134" as="geometry" />
         </mxCell>
-        <mxCell id="v7" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="controller.solve()  usa  obs_builder.py" vertex="1">
+        <mxCell id="v7" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="controller.solve() usa obs_builder.py" vertex="1">
           <mxGeometry height="44" width="290" x="20" y="218" as="geometry" />
         </mxCell>
-        <mxCell id="v8" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="solve  usa  mpc_benchmark.py" vertex="1">
+        <mxCell id="v8" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="solve usa mpc_benchmark.py" vertex="1">
           <mxGeometry height="44" width="290" x="345" y="218" as="geometry" />
         </mxCell>
-        <mxCell id="v9" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="simular_hora_mpc()  →  simulador.py" vertex="1">
+        <mxCell id="v9" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="simular_hora_mpc() → simulador.py" vertex="1">
           <mxGeometry height="44" width="290" x="670" y="218" as="geometry" />
         </mxCell>
-        <mxCell id="v10" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="estadistica (IC95 + Wilcoxon)  →  estadistica.py" vertex="1">
+        <mxCell id="v10" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="estadistica (IC95 + Wilcoxon) → estadistica.py" vertex="1">
           <mxGeometry height="44" width="290" x="670" y="302" as="geometry" />
         </mxCell>
-        <mxCell id="v11" parent="L3" style="rounded=0;html=1;fillColor=#CDE7FF;strokeColor=#3B6EA5;" value="=&gt; resultados/resultados.csv (+ JSON)" vertex="1">
+        <mxCell id="v11" parent="L3" style="rounded=0;html=1;fillColor=#CDE7FF;strokeColor=#3B6EA5;fontStyle=1;" value="=&gt; resultados/resultados.csv (+ JSON)" vertex="1">
           <mxGeometry height="44" width="290" x="345" y="302" as="geometry" />
         </mxCell>
-        <mxCell id="L4" parent="1" style="swimlane;startSize=32;html=1;rounded=1;fillColor=#FDF1E3;strokeColor=#B07A2A;fontStyle=1;fontSize=15;verticalAlign=top;" value="4 · EXPORT ONNX" vertex="1">
-          <mxGeometry height="230" width="980" x="10" y="290" as="geometry" />
+        <mxCell id="ev1" edge="1" parent="1" source="v1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="v2" value="lee version">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ev2" edge="1" parent="1" source="v2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="v3" value="carga modelo">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ev3" edge="1" parent="1" source="v3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="v4" value="hereda">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ev4" edge="1" parent="1" source="v4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="v5" value="evalua">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ev5" edge="1" parent="1" source="v5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="v6" value="observacion">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ev6" edge="1" parent="1" source="v6" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="v7" value="obs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ev7" edge="1" parent="1" source="v7" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="v8" value="accion base">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ev8" edge="1" parent="1" source="v8" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="v9" value="simula hora">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ev9" edge="1" parent="1" source="v9" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="v10" value="metricas">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ev10" edge="1" parent="1" source="v10" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="v11" value="escribe">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="L4" parent="1" style="swimlane;startSize=32;html=1;rounded=1;fillColor=#FDF1E3;strokeColor=#B07A2A;fontStyle=1;fontSize=16;verticalAlign=top;" value="4 · EXPORT ONNX" vertex="1">
+          <mxGeometry height="230" width="1000" x="2160" y="640" as="geometry" />
         </mxCell>
         <mxCell id="x1" parent="L4" style="rounded=0;html=1;fillColor=#C8E6C9;strokeColor=#3F7A41;" value="models/best_model.zip" vertex="1">
           <mxGeometry height="44" width="290" x="20" y="50" as="geometry" />
@@ -127,38 +211,74 @@
         <mxCell id="x5" parent="L4" style="rounded=0;html=1;fillColor=#C8E6C9;strokeColor=#3F7A41;" value="=&gt; vec_normalize_v5_1M.npz" vertex="1">
           <mxGeometry height="44" width="290" x="345" y="134" as="geometry" />
         </mxCell>
-        <mxCell id="L5" parent="1" style="swimlane;startSize=32;html=1;rounded=1;fillColor=#FDF1E3;strokeColor=#B07A2A;fontStyle=1;fontSize=15;verticalAlign=top;" value="5 · PRODUCCION / EDGE  (cada hora)" vertex="1">
-          <mxGeometry height="400" width="980" x="60" y="590" as="geometry" />
+        <mxCell id="ex1" edge="1" parent="1" source="x1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="x2" value="+ vecnorm">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ex2" edge="1" parent="1" source="x2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="x3" value="carga">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ex3" edge="1" parent="1" source="x3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="x4" value="exporta">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ex4" edge="1" parent="1" source="x4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="x5" value="+ norm">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="L5" parent="1" style="swimlane;startSize=32;html=1;rounded=1;fillColor=#FDF1E3;strokeColor=#B07A2A;fontStyle=1;fontSize=16;verticalAlign=top;" value="5 · PRODUCCION / EDGE  (cada hora)" vertex="1">
+          <mxGeometry height="320" width="1000" x="1100" y="640" as="geometry" />
         </mxCell>
         <mxCell id="g1" parent="L5" style="rounded=0;html=1;fillColor=#FFE0B2;strokeColor=#B07A2A;" value="production/edge_loop.py" vertex="1">
           <mxGeometry height="44" width="290" x="20" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="g2" parent="L5" style="rounded=0;html=1;fillColor=#FFFFFF;strokeColor=#666666;" value="get_feed()  →  api/data_feed.py" vertex="1">
+        <mxCell id="g2" parent="L5" style="rounded=0;html=1;fillColor=#FFFFFF;strokeColor=#666666;" value="get_feed() → api/data_feed.py" vertex="1">
           <mxGeometry height="44" width="290" x="345" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="g3" parent="L5" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="usa  core/simulador.py  +  forecast.py" vertex="1">
+        <mxCell id="g3" parent="L5" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="usa core/simulador.py + forecast.py" vertex="1">
           <mxGeometry height="44" width="290" x="670" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="g4" parent="L5" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="crear_mpc()  →  mpc_benchmark.py" vertex="1">
+        <mxCell id="g4" parent="L5" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="crear_mpc() → mpc_benchmark.py" vertex="1">
           <mxGeometry height="44" width="290" x="670" y="134" as="geometry" />
         </mxCell>
-        <mxCell id="g5" parent="L5" style="rounded=0;html=1;fillColor=#FFFFFF;strokeColor=#666666;" value="OnnxResidualController  →  onnx_inference.py" vertex="1">
+        <mxCell id="g5" parent="L5" style="rounded=0;html=1;fillColor=#FFFFFF;strokeColor=#666666;" value="OnnxResidualController → onnx_inference.py" vertex="1">
           <mxGeometry height="44" width="290" x="345" y="134" as="geometry" />
         </mxCell>
         <mxCell id="g6" parent="L5" style="rounded=0;html=1;fillColor=#C8E6C9;strokeColor=#3F7A41;" value="(lee) residual_sac_actor.onnx + vec_normalize.npz" vertex="1">
           <mxGeometry height="44" width="290" x="20" y="134" as="geometry" />
         </mxCell>
-        <mxCell id="g7" parent="L5" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="solve()  →  residual_base.py" vertex="1">
+        <mxCell id="g7" parent="L5" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="solve() → residual_base.py" vertex="1">
           <mxGeometry height="44" width="290" x="20" y="218" as="geometry" />
         </mxCell>
-        <mxCell id="g8" parent="L5" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="usa  obs_builder.py  +  mpc_benchmark.py" vertex="1">
+        <mxCell id="g8" parent="L5" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="usa obs_builder.py + mpc_benchmark.py" vertex="1">
           <mxGeometry height="44" width="290" x="345" y="218" as="geometry" />
         </mxCell>
-        <mxCell id="g9" parent="L5" style="rounded=0;html=1;fillColor=#E1D5F5;strokeColor=#7A5BA6;" value="=&gt; HTTP POST /api/edge/decision + /generar-cierre" vertex="1">
+        <mxCell id="g9" parent="L5" style="rounded=0;html=1;fillColor=#E1D5F5;strokeColor=#7A5BA6;fontStyle=1;" value="=&gt; HTTP POST /api/edge/decision + /generar-cierre" vertex="1">
           <mxGeometry height="44" width="290" x="670" y="218" as="geometry" />
         </mxCell>
-        <mxCell id="L6" parent="1" style="swimlane;startSize=32;html=1;rounded=1;fillColor=#F2EBFA;strokeColor=#7A5BA6;fontStyle=1;fontSize=15;verticalAlign=top;" value="6 · SaaS  (camino del SAC)" vertex="1">
-          <mxGeometry height="490" width="980" x="70" y="1030" as="geometry" />
+        <mxCell id="eg1" edge="1" parent="1" source="g1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="g2" value="feed">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eg2" edge="1" parent="1" source="g2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="g3" value="estado">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eg3" edge="1" parent="1" source="g3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="g4" value="MPC">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eg4" edge="1" parent="1" source="g4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="g5" value="inferencia">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eg5" edge="1" parent="1" source="g5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="g6" value="lee modelo">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eg6" edge="1" parent="1" source="g6" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="g7" value="delta">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eg7" edge="1" parent="1" source="g7" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="g8" value="obs + MPC">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eg8" edge="1" parent="1" source="g8" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="g9" value="envia">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="L6" parent="1" style="swimlane;startSize=32;html=1;rounded=1;fillColor=#F2EBFA;strokeColor=#7A5BA6;fontStyle=1;fontSize=16;verticalAlign=top;" value="6 · SaaS (Flask)  (camino del SAC)" vertex="1">
+          <mxGeometry height="490" width="1000" x="40" y="640" as="geometry" />
         </mxCell>
         <mxCell id="s1" parent="L6" style="rounded=0;html=1;fillColor=#EDE3FA;strokeColor=#7A5BA6;" value="app factory: __init__.py · config.py · extensions.py (db)" vertex="1">
           <mxGeometry height="44" width="290" x="20" y="50" as="geometry" />
@@ -199,175 +319,55 @@
         <mxCell id="s13" parent="L6" style="rounded=0;html=1;fillColor=#E1D5F5;strokeColor=#7A5BA6;" value="static/js/charts.js + ajax.js" vertex="1">
           <mxGeometry height="44" width="290" x="20" y="386" as="geometry" />
         </mxCell>
-        <mxCell id="ed1" edge="1" parent="1" source="d1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="d2">
+        <mxCell id="es1" edge="1" parent="1" source="s1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="s2" value="rutas">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="ed2" edge="1" parent="1" source="d2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="d3">
+        <mxCell id="es2" edge="1" parent="1" source="s2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="s3" value="recibe">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="ed3" edge="1" parent="1" source="d3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="d4">
+        <mxCell id="es3" edge="1" parent="1" source="s3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="s4" value="persiste">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="ed4" edge="1" parent="1" source="d4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="d5">
+        <mxCell id="es4" edge="1" parent="1" source="s4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="s5" value="SoC">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="en1" edge="1" parent="1" source="n1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="n2">
+        <mxCell id="es5" edge="1" parent="1" source="s5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="s6" value="endpoint">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="en2" edge="1" parent="1" source="n2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="n3">
+        <mxCell id="es6" edge="1" parent="1" source="s6" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="s7" value="cierre">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="en3" edge="1" parent="1" source="n3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="n4">
+        <mxCell id="es7" edge="1" parent="1" source="s7" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="s8" value="calcula">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="en4" edge="1" parent="1" source="n4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="n5">
+        <mxCell id="es8" edge="1" parent="1" source="s8" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="s9" value="guarda">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="en5" edge="1" parent="1" source="n5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="n6">
+        <mxCell id="es9" edge="1" parent="1" source="s9" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="s10" value="relaciona">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="en6" edge="1" parent="1" source="n6" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="n7">
+        <mxCell id="es10" edge="1" parent="1" source="s10" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="s11" value="CRUD">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="en7" edge="1" parent="1" source="n7" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="n8">
+        <mxCell id="es11" edge="1" parent="1" source="s11" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="s12" value="render">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="en8" edge="1" parent="1" source="n8" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="n9">
+        <mxCell id="es12" edge="1" parent="1" source="s12" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;fontSize=11;" target="s13" value="graficas">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="en9" edge="1" parent="1" source="n9" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="n10">
+        <mxCell id="sp12" edge="1" parent="1" source="d4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#222222;fontStyle=1;fontSize=13;exitX=1;exitY=0.2;entryX=0;entryY=0.2;" target="n1" value="dataset_final.csv">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="en10" edge="1" parent="1" source="n10" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="n11">
+        <mxCell id="sp23" edge="1" parent="1" source="n15" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#222222;fontStyle=1;fontSize=13;exitX=1;exitY=0.85;entryX=0;entryY=0.15;" target="v1" value="models/best/*.zip">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="en11" edge="1" parent="1" source="n11" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="n12">
+        <mxCell id="sp24" edge="1" parent="1" source="n15" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#222222;fontStyle=1;fontSize=13;exitX=0.9;exitY=1;entryX=0.1;entryY=0;" target="x1" value="best_model.zip + .pkl  (baja)">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="en12" edge="1" parent="1" source="n12" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="n13">
+        <mxCell id="sp45" edge="1" parent="1" source="x4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#222222;fontStyle=1;fontSize=13;exitX=0;exitY=0.85;entryX=1;entryY=0.15;" target="g1" value=".onnx + .npz">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="en13" edge="1" parent="1" source="n13" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="n14">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="en14" edge="1" parent="1" source="n14" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="n15">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ev1" edge="1" parent="1" source="v1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="v2">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ev2" edge="1" parent="1" source="v2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="v3">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ev3" edge="1" parent="1" source="v3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="v4">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ev4" edge="1" parent="1" source="v4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="v5">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ev5" edge="1" parent="1" source="v5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="v6">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ev6" edge="1" parent="1" source="v6" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="v7">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ev7" edge="1" parent="1" source="v7" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="v8">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ev8" edge="1" parent="1" source="v8" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="v9">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ev9" edge="1" parent="1" source="v9" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="v10">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ev10" edge="1" parent="1" source="v10" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="v11">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ex1" edge="1" parent="1" source="x1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="x2">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ex2" edge="1" parent="1" source="x2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="x3">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ex3" edge="1" parent="1" source="x3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="x4">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ex4" edge="1" parent="1" source="x4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="x5">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="eg1" edge="1" parent="1" source="g1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="g2">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="eg2" edge="1" parent="1" source="g2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="g3">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="eg3" edge="1" parent="1" source="g3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="g4">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="eg4" edge="1" parent="1" source="g4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="g5">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="eg5" edge="1" parent="1" source="g5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="g6">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="eg6" edge="1" parent="1" source="g6" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="g7">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="eg7" edge="1" parent="1" source="g7" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="g8">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="eg8" edge="1" parent="1" source="g8" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="g9">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="es1" edge="1" parent="1" source="s1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="s2">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="es2" edge="1" parent="1" source="s2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="s3">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="es3" edge="1" parent="1" source="s3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="s4">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="es4" edge="1" parent="1" source="s4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="s5">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="es5" edge="1" parent="1" source="s5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="s6">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="es6" edge="1" parent="1" source="s6" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="s7">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="es7" edge="1" parent="1" source="s7" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="s8">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="es8" edge="1" parent="1" source="s8" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="s9">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="es9" edge="1" parent="1" source="s9" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="s10">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="es10" edge="1" parent="1" source="s10" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="s11">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="es11" edge="1" parent="1" source="s11" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="s12">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="es12" edge="1" parent="1" source="s12" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" target="s13">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="sp12" edge="1" parent="1" source="d4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#222222;fontStyle=1;exitX=0.5;exitY=1;entryX=0.1;entryY=0;" target="n1" value="dataset_final.csv">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="sp23" edge="1" parent="1" source="n15" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#222222;fontStyle=1;exitX=0.5;exitY=1;entryX=0.1;entryY=0;" target="v1" value="models/best/*.zip">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="sp24" edge="1" parent="1" source="n15" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#222222;fontStyle=1;exitX=0.9;exitY=1;entryX=0.1;entryY=0;" target="x1" value="best_model.zip + .pkl">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="sp45" edge="1" parent="1" source="x4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#222222;fontStyle=1;exitX=0.9;exitY=1;entryX=0.1;entryY=0;" target="g1" value=".onnx + .npz">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="sp56" edge="1" parent="1" source="g9" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#222222;fontStyle=1;exitX=0.5;exitY=1;entryX=0.1;entryY=0;" target="s2" value="HTTP POST">
+        <mxCell id="sp56" edge="1" parent="1" source="g9" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#222222;fontStyle=1;fontSize=13;exitX=0;exitY=0.85;entryX=1;entryY=0.15;" target="s2" value="HTTP POST">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>
