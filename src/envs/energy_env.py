@@ -6,7 +6,7 @@ from src.core.simulador import ComunidadSimulador
 from src.core.forecast import (
     ventana_observada, generar_factores_precio, avanzar_ar1,
 )
-from src.production.obs_builder import build_obs
+from src.core.obs_builder import build_obs
 
 class EnergyEnv(gym.Env):
     """

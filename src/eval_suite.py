@@ -28,7 +28,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from src.eval_unificada import (
+from src.reporting.eval_unificada import (
     evaluar_controlador, evaluar_multiseed, IdleController,
     ComunidadSimulador, DATASET_PATH, crear_mpc, SEED,
 )

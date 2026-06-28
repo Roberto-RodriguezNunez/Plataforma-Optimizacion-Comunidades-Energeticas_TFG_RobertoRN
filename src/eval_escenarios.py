@@ -41,7 +41,7 @@ from src.benchmarks.mpc_benchmark import (
     ComunidadSimulador, DATASET_PATH, EPISODE_LENGTH,
     simular_semana_idle,
 )
-from src.eval_unificada import (
+from src.reporting.eval_unificada import (
     evaluar_controlador, IdleController, crear_mpc, crear_residual_sac,
 )
 from src.controllers.heuristic_controller import HeuristicController

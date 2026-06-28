@@ -26,7 +26,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from src.controllers.base import BaseController
-from src.production.obs_builder import build_obs
+from src.core.obs_builder import build_obs
 
 # Mapa de 9 acciones discretas (idéntico a simulador.py)
 ACTION_MAP = {

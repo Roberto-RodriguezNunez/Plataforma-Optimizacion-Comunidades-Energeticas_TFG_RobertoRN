@@ -14,13 +14,14 @@ pulsa Enter. Espera a que termine antes de pegar el siguiente.
 
 ## ⚠️ ANTES DE EMPEZAR (esto lo hace Roberto, no papá)
 
-La rama con los datos y el código actualizado tiene que estar subida a GitHub:
+La rama **`entrenamiento`** (datos + código actualizado) ya está subida a GitHub. Si
+en el futuro haces más cambios, recuerda subirlos antes de que papá clone:
 
 ```bash
-git push origin feature/entreno-residual-sac
+git push origin entrenamiento
 ```
 
-Si esto no se hace, papá descargará una versión vieja y sin datos. **Imprescindible.**
+Si no, papá descargaría una versión vieja o sin datos. **Imprescindible.**
 
 ---
 
@@ -70,7 +71,7 @@ cd TFG
 ```
 
 ```bash
-git checkout feature/entreno-residual-sac
+git checkout entrenamiento
 ```
 
 > Este último paso es **obligatorio**: cambia a la versión del proyecto que tiene los
@@ -199,7 +200,7 @@ Eso crea `resultados_ppo.zip` dentro de la carpeta `TFG`. Ese es el que me manda
 cd ~
 git clone https://github.com/Roberto-RodriguezNunez/Plataforma-Optimizacion-Comunidades-Energeticas_TFG_RobertoRN.git TFG
 cd TFG
-git checkout feature/entreno-residual-sac
+git checkout entrenamiento
 
 # 2. Instalar
 python -m venv .venv
@@ -217,4 +218,3 @@ cd ~/TFG && powershell -Command "Compress-Archive -Path resultados\* -Destinatio
 
 ## Si algo falla
 Haz una foto de la ventana de Git Bash (que se vea el error en rojo) y mándamela.
-</content>

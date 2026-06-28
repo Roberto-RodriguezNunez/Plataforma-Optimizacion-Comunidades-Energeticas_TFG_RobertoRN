@@ -10,7 +10,7 @@ Protocolo idéntico al de correr_episodios del MPC benchmark:
 Esto garantiza que delta=0 via ResidualSAC = MPC realista exactamente.
 
 Uso:
-    python src/eval_unificada.py
+    python src/reporting/eval_unificada.py
 """
 
 import argparse
@@ -21,7 +21,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import yaml
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 

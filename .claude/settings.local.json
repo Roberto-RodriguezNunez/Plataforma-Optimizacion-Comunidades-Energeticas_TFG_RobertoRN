@@ -74,7 +74,15 @@
       "Bash(export SMOKE_OUT=/tmp/claude-1000/-mnt-c-Users-rober-TFG/1323e2d4-1c2a-436e-8e90-0c2501f144a7/scratchpad/smoke_out)",
       "Bash(mkdir -p /tmp/claude-1000/-mnt-c-Users-rober-TFG/1323e2d4-1c2a-436e-8e90-0c2501f144a7/scratchpad/smoke_out)",
       "Bash(git checkout *)",
-      "Bash(git commit -q -m ' *)"
+      "Bash(git commit -q -m ' *)",
+      "Bash(git ls-remote *)",
+      "Bash(awk '{print $2}')",
+      "Bash(grep -E \"^\\(requirements.txt|config/experimentos.yaml|config/system.yaml|data/processed/|data/raw/|experimentos/run_familia.sh|src/main_ppo.py|src/eval_suite.py\\)$\")",
+      "Bash(git ls-tree *)",
+      "Bash(git push *)",
+      "Bash(git config *)",
+      "Bash(git -c core.filemode=true status -s)",
+      "Bash(git.exe status *)"
     ]
   }
 }

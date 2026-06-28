@@ -15,7 +15,7 @@ from typing import Dict, Optional
 import numpy as np
 
 from src.controllers.base import BaseController
-from src.production.obs_builder import build_obs
+from src.core.obs_builder import build_obs
 
 _ALGOS = ('SAC', 'PPO')
 

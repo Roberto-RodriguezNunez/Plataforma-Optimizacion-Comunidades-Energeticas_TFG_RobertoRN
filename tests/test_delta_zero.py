@@ -43,7 +43,7 @@ def crear_mpc():
 
 def test_mpc_standalone(mode='realista'):
     """MPC via eval_unificada path."""
-    from src.eval_unificada import evaluar_controlador
+    from src.reporting.eval_unificada import evaluar_controlador
     mpc = crear_mpc()
     res = evaluar_controlador(mpc, forecast_mode=mode)
     return res['bens_marg']
