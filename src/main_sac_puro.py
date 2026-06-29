@@ -31,7 +31,7 @@ MODEL_DIR = os.path.join(ROOT, "models")
 _VCFG = None
 
 
-def make_envs(seed):
+def make_envs():
     def _mk(mode):
         return lambda: Monitor(EnergyEnvContinuo(forecast_noise=True, mode=mode))
     train_env = VecNormalize(DummyVecEnv([_mk('train')]),

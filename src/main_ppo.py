@@ -34,7 +34,7 @@ _CFG = None
 _TOTAL = None
 
 
-def make_envs(seed):
+def make_envs():
     """Factoría de entornos PPO (discreto) envueltos en VecNormalize."""
     def _mk():
         return Monitor(EnergyEnv())

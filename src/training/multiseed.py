@@ -47,6 +47,32 @@ class SeededEvalCallback(EvalCallback):
         return result
 
 
+def _semilla_completa(run_dir, total_timesteps, eval_freq):
+    """True si la semilla TERMINÓ su entrenamiento completo.
+
+    Se detecta por su ``evaluations.npz`` (lo escribe SB3 en cada evaluación):
+    una semilla terminada tiene su última evaluación a ~``total_timesteps``; una
+    interrumpida (p.ej. un apagón) la tiene por debajo. La semilla a medias NO
+    supera esta comprobación y se reentrena desde cero, porque su
+    ``best_model.zip`` guardado es parcial y no representa un entreno completo.
+    """
+    ev = os.path.join(run_dir, "evaluations.npz")
+    if not os.path.exists(ev):
+        return False
+    try:
+        ts = np.load(ev)["timesteps"]
+    except Exception:
+        return False
+    return len(ts) > 0 and int(ts[-1]) >= int(total_timesteps) - int(eval_freq)
+
+
+def _score_semilla(run_dir):
+    """Recompensa de eval (equivalente a ``best_mean_reward``) de una semilla ya
+    completa, recuperada de su ``evaluations.npz`` sin reentrenar."""
+    ev = np.load(os.path.join(run_dir, "evaluations.npz"))
+    return float(ev["results"].mean(axis=1).max())
+
+
 def entrenar_multiseed(
     algo: str,
     version: str,
@@ -66,7 +92,8 @@ def entrenar_multiseed(
         algo:            nombre del algoritmo, p.ej. "dqn", "ppo", "residual_sac".
         version:         etiqueta de la versión entrenada (define el nombre de salida).
         seeds:           lista de semillas, p.ej. [42, 1337, 2024].
-        make_envs(seed): -> (train_env, eval_env)  ya envueltos en VecNormalize.
+        make_envs(): -> (train_env, eval_env)  ya envueltos en VecNormalize.
+                          (no recibe seed: la siembra la aplica make_model vía SB3).
         make_model(train_env, seed): -> modelo SB3 (con seed aplicado).
         warmup(model, train_env, seed): opcional (p.ej. DAWN warmup del Residual SAC).
         extra_callbacks(model): opcional -> lista de BaseCallback extra (métricas, etc.).
@@ -82,11 +109,22 @@ def entrenar_multiseed(
         run_dir = os.path.join(RUNS_DIR, run_name)
         os.makedirs(run_dir, exist_ok=True)
 
+        # Reanudación: si la semilla ya terminó en una ejecución previa, se
+        # reutiliza su resultado sin reentrenar. La que quedó a medias (apagón)
+        # no supera la comprobación y se reentrena entera (sobrescribe su parcial).
+        if _semilla_completa(run_dir, total_timesteps, eval_freq):
+            resultados[seed] = _score_semilla(run_dir)
+            print("=" * 62)
+            print(f"  {algo.upper()}  {version}  —  SEMILLA {seed}  "
+                  f"[YA COMPLETA → reutilizada, reward {resultados[seed]:.2f}]")
+            print("=" * 62)
+            continue
+
         print("=" * 62)
         print(f"  {algo.upper()}  {version}  —  SEMILLA {seed}")
         print("=" * 62)
 
-        train_env, eval_env = make_envs(seed)
+        train_env, eval_env = make_envs()
         model = make_model(train_env, seed)
         if warmup is not None:
             warmup(model, train_env, seed)

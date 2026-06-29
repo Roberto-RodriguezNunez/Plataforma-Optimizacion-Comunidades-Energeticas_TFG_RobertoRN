@@ -1,10 +1,4 @@
 """
-main_dqn.py -- Entrenamiento del agente DQN (familia A de la suite)
-===================================================================
-Registry-driven: los hiperparámetros de cada versión (DQN-1..6) se leen de
-config/experimentos.yaml vía src/training/registro.py. El runner multi-semilla
-(entrenar_multiseed) y la factoría make_envs/make_model se mantienen.
-
 N-step: si la versión pide n_step>1 se cablea NStepReplayBuffer
 (gamma del modelo = base_gamma**n_step, el buffer acumula el retorno N-step).
 
@@ -36,7 +30,7 @@ MODEL_DIR  = os.path.join(ROOT, "models")
 _CFG = None
 
 
-def make_envs(seed):
+def make_envs():
     """Factoría de entornos DQN (discreto) envueltos en VecNormalize."""
     def _mk():
         return Monitor(EnergyEnv())

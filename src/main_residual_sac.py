@@ -98,7 +98,7 @@ def _get_mpc():
     return _MPC_SHARED
 
 
-def make_envs(seed):
+def make_envs():
     """Factoría de entornos Residual SAC (ResidualEnv sobre MPC) con VecNormalize."""
     mpc = _get_mpc()
     train_env = VecNormalize(

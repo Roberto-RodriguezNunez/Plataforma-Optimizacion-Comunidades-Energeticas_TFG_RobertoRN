@@ -51,7 +51,7 @@ def _make_residual_env(mpc, mode='train'):
     return Monitor(renv)
 
 
-def make_envs(seed):
+def make_envs():
     mpc = _get_mpc()
     train_env = VecNormalize(DummyVecEnv([lambda: _make_residual_env(mpc, 'train')]),
                              norm_obs=True, norm_reward=False, clip_obs=10.0)
