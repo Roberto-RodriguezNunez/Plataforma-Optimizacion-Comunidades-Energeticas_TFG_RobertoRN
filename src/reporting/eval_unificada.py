@@ -102,7 +102,11 @@ def evaluar_controlador(
             state = {'soc': sim.soc, 'step': sim.current_step}
             action = controller.solve(state, window)
 
-            # Ejecutar con física de simular_hora_mpc
+            # Ejecutar con la física (aplicar_fisica_4flujos vía simular_hora_mpc).
+            # F3: `bm` es el beneficio_marginal LIMPIO (sin shaping). El reward de
+            # ENTRENO añade además coste_oportunidad + pendiente/terminal, por eso
+            # el reward de entreno (~37) sale por debajo de esta media de eval (~39):
+            # son métricas distintas a propósito, no un bug.
             b, bm = simular_hora_mpc(
                 sim,
                 action['P_carga_solar'],

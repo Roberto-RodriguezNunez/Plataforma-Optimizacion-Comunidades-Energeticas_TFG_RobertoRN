@@ -27,19 +27,8 @@ if ROOT not in sys.path:
 
 from src.controllers.base import BaseController
 from src.core.obs_builder import build_obs
-
-# Mapa de 9 acciones discretas (idéntico a simulador.py)
-ACTION_MAP = {
-    0: ("IDLE",           0.0),
-    1: ("CARGAR_SOLAR",   1.0),
-    2: ("CARGAR_MIXTA",   0.33),
-    3: ("CARGAR_MIXTA",   0.66),
-    4: ("CARGAR_MIXTA",   1.0),
-    5: ("DESCARGAR_CASA", 1.0),
-    6: ("DESCARGAR_RED",  0.33),
-    7: ("DESCARGAR_RED",  0.66),
-    8: ("DESCARGAR_RED",  1.0),
-}
+# El decode discreto (acción -> 4 flujos) es ComunidadSimulador.accion_a_flujos
+# (staticmethod, fuente única), llamado vía self._sim. Antes estaba duplicado aquí.
 
 
 class DiscreteRLController(BaseController):
@@ -107,63 +96,28 @@ class DiscreteRLController(BaseController):
         action_idx, _ = self._model.predict(obs, deterministic=True)
         action_idx = int(action_idx)
 
-        # 4. Decodificar a 4 flujos
-        return self._decode_action(action_idx, state)
+        # 4. Decodificar a 4 flujos con la FUENTE ÚNICA (misma que el entreno).
+        return self._decode_action(action_idx, forecast)
 
     def nombre(self) -> str:
         return f"{self._algo}"
 
-    def _decode_action(self, action_idx: int, state: Dict) -> Dict[str, float]:
+    def _decode_action(self, action_idx: int, forecast: np.ndarray) -> Dict[str, float]:
+        """Convierte la acción discreta (0-8) a 4 flujos kW vía `accion_a_flujos`.
+
+        gen/cons de la hora actual se toman de `forecast[0]` (la MISMA ventana
+        observada con ruido que reciben el MPC y los controladores residual/continuo),
+        NO del dato real del dataset → comparación justa. Los flujos van sin recortar
+        por batería: el recorte lo hace `aplicar_fisica_4flujos` (vía simular_hora_mpc),
+        igual que en el entreno (cols de la ventana: 0=consumo, 1=generacion).
         """
-        Convierte acción discreta (0-8) a dict de 4 flujos kW.
-        Replica la lógica de simulador.ejecutar_accion_fisica().
-        """
-        sim = self._sim
-        step = state['step']
-        soc = state['soc']
+        cons = float(forecast[0, 0])
+        gen = float(forecast[0, 1])
+        exc_disp = max(0.0, gen - cons)
+        def_cub = max(0.0, cons - gen)
 
-        # Datos de la hora actual
-        row = sim.df.iloc[step]
-        gen = row['generacion_total']
-        cons = row['consumo_total']
-        balance = gen - cons
-        exc_disp = max(0.0, balance)
-        def_cub = max(0.0, -balance)
-
-        # Estado batería (con autodescarga, igual que simular_hora_mpc)
-        soc_ad = soc * (1 - sim.AUTODESCARGA_POR_HORA)
-        bateria_kwh = soc_ad * sim.BATERIA_CAPACIDAD
-        espacio_libre = max(0.0, sim.SOC_MAX * sim.BATERIA_CAPACIDAD - bateria_kwh)
-        bat_disponible = max(0.0, bateria_kwh - sim.SOC_MIN * sim.BATERIA_CAPACIDAD)
-
-        estrategia, nivel = ACTION_MAP[action_idx]
-        P_obj = nivel * self._P_MAX
-
-        cs, cm, dc, dr = 0.0, 0.0, 0.0, 0.0
-
-        if estrategia == "IDLE":
-            pass  # No hay flujos de batería
-
-        elif estrategia == "CARGAR_SOLAR":
-            max_entrada = espacio_libre / self._EFF_C
-            cs = min(exc_disp, max_entrada)
-
-        elif estrategia == "CARGAR_MIXTA":
-            max_entrada = espacio_libre / self._EFF_C
-            carga_total = min(max_entrada, P_obj)
-            cs = min(exc_disp, carga_total)
-            cm = carga_total - cs
-
-        elif estrategia == "DESCARGAR_CASA":
-            dc = min(def_cub / self._EFF_D, bat_disponible)
-
-        elif estrategia == "DESCARGAR_RED":
-            descarga_total = min(bat_disponible, P_obj)
-            energia_util = descarga_total * self._EFF_D
-            para_casa = min(energia_util, def_cub)
-            para_red = energia_util - para_casa
-            dc = para_casa / self._EFF_D if self._EFF_D > 0 else 0.0
-            dr = para_red / self._EFF_D if self._EFF_D > 0 else 0.0
+        cs, cm, dc, dr = self._sim.accion_a_flujos(
+            action_idx, exc_disp, def_cub, self._P_MAX, self._EFF_C, self._EFF_D)
 
         return {
             'P_carga_solar': cs,
@@ -183,6 +137,13 @@ class DiscreteRLController(BaseController):
         son un prefijo exacto, por lo que basta con recortar para modelos antiguos.
         """
         obs = build_obs(state, forecast, self._sim)  # 108-dim, fuente única
+        # F5: el recorte solo es válido para dims legacy que son PREFIJO exacto de
+        # la obs de 108 (101 = 5+96, 107 = 5+96+6). Si el layout cambiara, fallar
+        # en vez de meter features equivocadas en silencio.
+        assert self._obs_dim in (101, 107, 108), (
+            f"obs_dim {self._obs_dim} no es un prefijo legacy conocido de la obs de 108"
+        )
+        assert len(obs) >= self._obs_dim, "build_obs devolvió menos dims de las esperadas"
         if self._obs_dim < 108:
             obs = obs[:self._obs_dim]                # legacy 101/107 = prefijo
         return obs.astype(np.float32)

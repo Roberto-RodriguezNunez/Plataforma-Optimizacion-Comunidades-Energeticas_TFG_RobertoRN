@@ -2,9 +2,7 @@
 obs_builder.py — Construcción del vector de observación de 108 dimensiones
 ===========================================================================
 Función pura extraída de ResidualSACController._build_obs. Es la única fuente
-de verdad para construir las 108 dims base compartidas por ResidualSACController
-y OnnxResidualController, garantizando que ambas rutas de inferencia son idénticas.
-
+de verdad para construir las 108 dims base compartidas.
 Sin dependencias de SB3, Gymnasium ni torch — apto para el contenedor edge.
 """
 
