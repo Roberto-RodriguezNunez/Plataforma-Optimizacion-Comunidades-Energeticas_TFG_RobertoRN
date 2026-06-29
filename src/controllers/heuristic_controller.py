@@ -8,16 +8,10 @@ no vende batería a red).
 Es la heurística más natural para un usuario doméstico sin optimización.
 """
 
-import os
-import yaml
-
 from src.controllers.base import BaseController
+from src.config import bateria as _bateria_cfg
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-_CONFIG_PATH = os.path.join(ROOT, 'config', 'system.yaml')
-with open(_CONFIG_PATH, 'r', encoding='utf-8') as f:
-    _BAT = yaml.safe_load(f)['bateria']
+_BAT = _bateria_cfg()
 
 
 class HeuristicController(BaseController):

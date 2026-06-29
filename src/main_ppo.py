@@ -23,85 +23,62 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from src.envs.energy_env import EnergyEnv
-from src.training.multiseed import entrenar_multiseed
 from src.training.callbacks import DiscreteMetricasCallback, EntCoefScheduler
-from src.training.registro import cargar_version, seeds_comunes, seeds_para_version, es_decay, schedule_lineal
+from src.training.registro import es_decay, schedule_lineal
+from src.training.scaffold_mains import entrenar, cli, LOG_DIR
 
-LOG_DIR    = os.path.join(ROOT, "logs")
-MODEL_DIR  = os.path.join(ROOT, "models")
-
-_CFG = None
-_TOTAL = None
+FAMILIA = "ppo"
 
 
-def make_envs():
-    """Factoría de entornos PPO (discreto) envueltos en VecNormalize."""
-    def _mk():
-        return Monitor(EnergyEnv())
-    train_env = VecNormalize(DummyVecEnv([_mk]), norm_obs=True, norm_reward=False, clip_obs=10.0)
-    eval_env = VecNormalize(DummyVecEnv([_mk]), norm_obs=True, norm_reward=False, clip_obs=10.0)
-    return train_env, eval_env
+def _build(cfg, total_timesteps):
+    def make_envs():
+        def _mk():
+            return Monitor(EnergyEnv())
+        train_env = VecNormalize(DummyVecEnv([_mk]), norm_obs=True, norm_reward=False, clip_obs=10.0)
+        eval_env = VecNormalize(DummyVecEnv([_mk]), norm_obs=True, norm_reward=False, clip_obs=10.0)
+        return train_env, eval_env
 
+    def make_model(train_env, seed):
+        ent = cfg["ent_coef"]
+        ent_init = float(ent["init"]) if es_decay(ent) else float(ent)
+        return PPO(
+            policy        = "MlpPolicy",
+            env           = train_env,
+            learning_rate = schedule_lineal(cfg["learning_rate"]),
+            n_steps       = int(cfg["n_steps"]),
+            batch_size    = int(cfg["batch_size"]),
+            n_epochs      = int(cfg["n_epochs"]),
+            gamma         = float(cfg["gamma"]),
+            gae_lambda    = float(cfg["gae_lambda"]),
+            clip_range    = float(cfg["clip_range"]),
+            ent_coef      = ent_init,
+            vf_coef       = float(cfg["vf_coef"]),
+            policy_kwargs = {"net_arch": {"pi": cfg["net_arch_pi"], "vf": cfg["net_arch_vf"]}},
+            verbose       = 0,
+            seed          = seed,
+            device        = "cpu",
+            tensorboard_log = LOG_DIR,
+        )
 
-def make_model(train_env, seed):
-    """Factoría del modelo PPO según la versión (lr/ent const o decay)."""
-    c = _CFG
-    ent = c["ent_coef"]
-    ent_init = float(ent["init"]) if es_decay(ent) else float(ent)
-    return PPO(
-        policy        = "MlpPolicy",
-        env           = train_env,
-        learning_rate = schedule_lineal(c["learning_rate"]),
-        n_steps       = int(c["n_steps"]),
-        batch_size    = int(c["batch_size"]),
-        n_epochs      = int(c["n_epochs"]),
-        gamma         = float(c["gamma"]),
-        gae_lambda    = float(c["gae_lambda"]),
-        clip_range    = float(c["clip_range"]),
-        ent_coef      = ent_init,
-        vf_coef       = float(c["vf_coef"]),
-        policy_kwargs = {"net_arch": {"pi": c["net_arch_pi"], "vf": c["net_arch_vf"]}},
-        verbose       = 0,
-        seed          = seed,
-        device        = "cpu",
-        tensorboard_log = LOG_DIR,
-    )
+    def extra_callbacks(model):
+        cbs = [DiscreteMetricasCallback()]
+        ent = cfg["ent_coef"]
+        if es_decay(ent):
+            cbs.append(EntCoefScheduler(ent["init"], ent["final"], total_timesteps))
+        return cbs
 
-
-def _extra_callbacks(model):
-    cbs = [DiscreteMetricasCallback()]
-    ent = _CFG["ent_coef"]
-    if es_decay(ent):
-        cbs.append(EntCoefScheduler(ent["init"], ent["final"], _TOTAL))
-    return cbs
+    return {
+        "make_envs": make_envs,
+        "make_model": make_model,
+        "extra_callbacks": extra_callbacks,
+        "pre_entreno": lambda: check_env(EnergyEnv(), warn=True),
+    }
 
 
 def main(version="PPO-D4", seeds=None, total_timesteps=None):
-    global _CFG, _TOTAL
-    _CFG = cargar_version("ppo", version)
-    _train_seeds, _eval_seeds, eval_episodes = seeds_comunes()
-    if seeds is None:
-        seeds = seeds_para_version("ppo", version)
-    _TOTAL = int(total_timesteps) if total_timesteps else int(_CFG["total_timesteps"])
-
-    os.makedirs(MODEL_DIR, exist_ok=True)
-    os.makedirs(LOG_DIR, exist_ok=True)
-    check_env(EnergyEnv(), warn=True)
-
-    entrenar_multiseed(
-        algo="ppo", version=version, seeds=list(seeds),
-        make_envs=make_envs, make_model=make_model,
-        total_timesteps=_TOTAL,
-        eval_freq=int(_CFG["eval_freq"]), n_eval_episodes=eval_episodes,
-        extra_callbacks=_extra_callbacks,
-    )
+    entrenar(FAMILIA, _build, version=version, seeds=seeds, total_timesteps=total_timesteps)
 
 
 if __name__ == "__main__":
-    import argparse
-    p = argparse.ArgumentParser(description="Entrena PPO discreto (familia B) multi-semilla.")
-    p.add_argument("--version", default="PPO-D4")
-    p.add_argument("--seeds", type=int, nargs="+", default=None)
-    p.add_argument("--timesteps", type=int, default=None, help="Override total timesteps (smoke).")
-    a = p.parse_args()
-    main(version=a.version, seeds=a.seeds, total_timesteps=a.timesteps)
+    cli(FAMILIA, _build, version_default="PPO-D4",
+        description="Entrena PPO discreto (familia B) multi-semilla.")

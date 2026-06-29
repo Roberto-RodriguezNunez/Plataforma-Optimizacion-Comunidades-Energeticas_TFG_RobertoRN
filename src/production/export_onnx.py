@@ -25,13 +25,15 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
+from src.core.obs_builder import OBS_DIM_RESIDUAL
+
 # ── Rutas (defaults sobreescribibles por CLI) ────────────────────────────────
 MODEL_ZIP  = os.path.join(ROOT, 'models', 'best_model.zip')
 VEC_NORM   = os.path.join(ROOT, 'models', 'best_vecnormalize.pkl')
 ONNX_OUT   = os.path.join(ROOT, 'models', 'residual_sac_actor.onnx')
 NPZ_OUT    = os.path.join(ROOT, 'models', 'vec_normalize_v5_1M.npz')
 
-OBS_DIM    = 112
+OBS_DIM    = OBS_DIM_RESIDUAL
 ACTION_DIM = 4
 OPSET      = 17
 

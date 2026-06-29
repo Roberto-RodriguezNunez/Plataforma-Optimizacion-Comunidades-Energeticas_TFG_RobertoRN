@@ -20,7 +20,6 @@ from typing import Optional
 import numpy as np
 
 from src.controllers.residual_base import ResidualControllerBase
-from src.benchmarks.mpc_benchmark import LinearMPC
 
 
 _ALGOS_TORCH = ('SAC', 'TD3', 'DDPG')
@@ -45,7 +44,7 @@ class ResidualSACController(ResidualControllerBase):
     def __init__(
         self,
         model_path: str,
-        mpc: LinearMPC,
+        mpc,                      # cualquier controlador MPC con .solve(state, forecast)
         sim,
         delta_max: float,
         vec_normalize_path: Optional[str] = None,

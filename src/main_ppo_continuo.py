@@ -25,79 +25,60 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from src.envs.energy_env_continuo import EnergyEnvContinuo
-from src.training.multiseed import entrenar_multiseed
-from src.training.registro import cargar_version, seeds_comunes, seeds_para_version, es_decay, schedule_lineal
 from src.training.callbacks import EntCoefScheduler   # compartido (decay de entropía)
+from src.training.registro import es_decay, schedule_lineal
+from src.training.scaffold_mains import entrenar, cli, LOG_DIR
 
-LOG_DIR   = os.path.join(ROOT, "logs")
-MODEL_DIR = os.path.join(ROOT, "models")
-
-_VCFG = None
-_TOTAL = None
+FAMILIA = "ppo_continuo"
 
 
-def make_envs():
-    def _mk(mode):
-        return lambda: Monitor(EnergyEnvContinuo(forecast_noise=True, mode=mode))
-    train_env = VecNormalize(DummyVecEnv([_mk('train')]),
-                             norm_obs=True, norm_reward=False, clip_obs=10.0)
-    eval_env = VecNormalize(DummyVecEnv([_mk('eval')]),
-                            norm_obs=True, norm_reward=False, clip_obs=10.0)
-    return train_env, eval_env
+def _build(cfg, total_timesteps):
+    def make_envs():
+        def _mk(mode):
+            return lambda: Monitor(EnergyEnvContinuo(forecast_noise=True, mode=mode))
+        train_env = VecNormalize(DummyVecEnv([_mk('train')]),
+                                 norm_obs=True, norm_reward=False, clip_obs=10.0)
+        eval_env = VecNormalize(DummyVecEnv([_mk('eval')]),
+                                norm_obs=True, norm_reward=False, clip_obs=10.0)
+        return train_env, eval_env
 
+    def make_model(train_env, seed):
+        ent = cfg["ent_coef"]
+        ent_init = float(ent["init"]) if es_decay(ent) else float(ent)
+        # action_std_init → log_std_init (desviación inicial de la gaussiana)
+        if "action_std_init" in cfg:
+            log_std_init = math.log(float(cfg["action_std_init"]))
+        else:
+            log_std_init = float(cfg.get("log_std_init", -0.7))
+        return PPO(
+            policy="MlpPolicy", env=train_env,
+            learning_rate=schedule_lineal(cfg["learning_rate"]),
+            n_steps=int(cfg["n_steps"]), batch_size=int(cfg["batch_size"]),
+            n_epochs=int(cfg["n_epochs"]), gamma=float(cfg["gamma"]),
+            gae_lambda=float(cfg["gae_lambda"]), clip_range=float(cfg["clip_range"]),
+            ent_coef=ent_init, vf_coef=float(cfg["vf_coef"]),
+            policy_kwargs={"net_arch": {"pi": cfg["net_arch_pi"], "vf": cfg["net_arch_vf"]},
+                           "log_std_init": log_std_init},
+            verbose=0, seed=seed, device="cpu", tensorboard_log=LOG_DIR,
+        )
 
-def make_model(train_env, seed):
-    c = _VCFG
-    ent = c["ent_coef"]
-    ent_init = float(ent["init"]) if es_decay(ent) else float(ent)
-    # action_std_init → log_std_init (desviación inicial de la gaussiana)
-    if "action_std_init" in c:
-        log_std_init = math.log(float(c["action_std_init"]))
-    else:
-        log_std_init = float(c.get("log_std_init", -0.7))
-    return PPO(
-        policy="MlpPolicy", env=train_env,
-        learning_rate=schedule_lineal(c["learning_rate"]),
-        n_steps=int(c["n_steps"]), batch_size=int(c["batch_size"]),
-        n_epochs=int(c["n_epochs"]), gamma=float(c["gamma"]),
-        gae_lambda=float(c["gae_lambda"]), clip_range=float(c["clip_range"]),
-        ent_coef=ent_init, vf_coef=float(c["vf_coef"]),
-        policy_kwargs={"net_arch": {"pi": c["net_arch_pi"], "vf": c["net_arch_vf"]},
-                       "log_std_init": log_std_init},
-        verbose=0, seed=seed, device="cpu", tensorboard_log=LOG_DIR,
-    )
+    def extra_callbacks(model):
+        ent = cfg["ent_coef"]
+        if es_decay(ent):
+            return [EntCoefScheduler(ent["init"], ent["final"], total_timesteps)]
+        return []
 
-
-def _extra_callbacks(model):
-    ent = _VCFG["ent_coef"]
-    if es_decay(ent):
-        return [EntCoefScheduler(ent["init"], ent["final"], _TOTAL)]
-    return []
+    return {
+        "make_envs": make_envs,
+        "make_model": make_model,
+        "extra_callbacks": extra_callbacks,
+    }
 
 
 def main(version="PPO-C1", seeds=None, total_timesteps=None):
-    global _VCFG, _TOTAL
-    _VCFG = cargar_version("ppo_continuo", version)
-    _train_seeds, _es, eval_episodes = seeds_comunes()
-    if seeds is None:
-        seeds = seeds_para_version("ppo_continuo", version)
-    _TOTAL = int(total_timesteps) if total_timesteps else int(_VCFG["total_timesteps"])
-
-    os.makedirs(MODEL_DIR, exist_ok=True); os.makedirs(LOG_DIR, exist_ok=True)
-    entrenar_multiseed(
-        algo="ppo_continuo", version=version, seeds=list(seeds),
-        make_envs=make_envs, make_model=make_model,
-        total_timesteps=_TOTAL,
-        eval_freq=int(_VCFG["eval_freq"]), n_eval_episodes=eval_episodes,
-        extra_callbacks=_extra_callbacks,
-    )
+    entrenar(FAMILIA, _build, version=version, seeds=seeds, total_timesteps=total_timesteps)
 
 
 if __name__ == "__main__":
-    import argparse
-    p = argparse.ArgumentParser(description="Entrena PPO continuo (familia C) multi-semilla.")
-    p.add_argument("--version", default="PPO-C1")
-    p.add_argument("--seeds", type=int, nargs="+", default=None)
-    p.add_argument("--timesteps", type=int, default=None)
-    a = p.parse_args()
-    main(version=a.version, seeds=a.seeds, total_timesteps=a.timesteps)
+    cli(FAMILIA, _build, version_default="PPO-C1",
+        description="Entrena PPO continuo (familia C) multi-semilla.")

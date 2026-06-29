@@ -23,6 +23,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from src.controllers.residual_base import ResidualControllerBase
+from src.core.obs_builder import OBS_DIM_RESIDUAL
 
 # Rutas por defecto (relativas a ROOT)
 _DEFAULT_ONNX = os.path.join(ROOT, 'models', 'residual_sac_actor.onnx')
@@ -69,7 +70,7 @@ class OnnxResidualController(ResidualControllerBase):
     def _infer(self, obs_norm: np.ndarray) -> np.ndarray:
         delta = self._session.run(
             ['delta'],
-            {'obs': obs_norm.reshape(1, 112)},
+            {'obs': obs_norm.reshape(1, OBS_DIM_RESIDUAL)},
         )[0][0]  # (1, 4) → (4,)
         return delta
 

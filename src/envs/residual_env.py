@@ -23,6 +23,7 @@ import numpy as np
 from src.core.forecast import (
     ventana_observada, generar_factores_precio, avanzar_ar1,
 )
+from src.core.obs_builder import OBS_DIM_RESIDUAL
 
 
 class ResidualEnv(gym.Wrapper):
@@ -50,8 +51,8 @@ class ResidualEnv(gym.Wrapper):
         self._P_MAX = env.simulador.POTENCIA_INVERSOR
 
         # Obs aumentada: 108 original + 4 MPC features = 112
-        low = np.full(112, -np.inf, dtype=np.float32)
-        high = np.full(112, np.inf, dtype=np.float32)
+        low = np.full(OBS_DIM_RESIDUAL, -np.inf, dtype=np.float32)
+        high = np.full(OBS_DIM_RESIDUAL, np.inf, dtype=np.float32)
         self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
 
         # Accion del agente: delta 4D in [-1, 1]

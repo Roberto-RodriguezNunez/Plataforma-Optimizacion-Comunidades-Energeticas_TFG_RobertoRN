@@ -41,7 +41,6 @@ import time
 from typing import Dict, Optional
 
 import numpy as np
-import yaml
 from scipy.optimize import linprog
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -53,11 +52,10 @@ from src.core.simulador import ComunidadSimulador
 from src.core.forecast import (
     ventana_observada, generar_factores_precio, avanzar_ar1,
 )
+from src.config import cargar_system as _cargar_system
 
-# --- Cargar configuración ---
-_CONFIG_PATH = os.path.join(ROOT, 'config', 'system.yaml')
-with open(_CONFIG_PATH, 'r', encoding='utf-8') as f:
-    _CFG = yaml.safe_load(f)
+# --- Cargar configuración (fuente única src.config) ---
+_CFG = _cargar_system()
 
 # Parámetros de configuración
 _BAT    = _CFG['bateria']

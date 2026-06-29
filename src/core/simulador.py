@@ -1,17 +1,12 @@
-import os
 import numpy as np
 import pandas as pd
-import yaml
 
-# Parámetros de batería desde config/system.yaml (FUENTE ÚNICA — antes
-# hardcodeados, lo que provocó que el config dijera 80 kWh y el simulador
-# entrenara con 100). Fallback a los valores del config por si no se encuentra.
-_CFG_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    'config', 'system.yaml')
+# Parámetros de batería desde config/system.yaml vía la fuente única src.config
+# (antes hardcodeados, lo que provocó que el config dijera 80 kWh y el simulador
+# entrenara con 100). Fallback a {} por si no se encuentra (lo cubren los .get()).
+from src.config import bateria as _bateria_cfg
 try:
-    with open(_CFG_PATH, 'r', encoding='utf-8') as _f:
-        _BAT = yaml.safe_load(_f)['bateria']
+    _BAT = _bateria_cfg()
 except Exception:
     _BAT = {}
 

@@ -8,6 +8,11 @@ Sin dependencias de SB3, Gymnasium ni torch — apto para el contenedor edge.
 
 import numpy as np
 
+# Dimensiones de la observación (FUENTE ÚNICA — antes hardcodeadas como 108/112
+# en env, ResidualEnv, export_onnx, onnx_inference...).
+OBS_DIM_BASE = 108                    # lo que construye build_obs (ver estructura abajo)
+OBS_DIM_RESIDUAL = OBS_DIM_BASE + 4   # 112: + 4 features de la acción MPC (ResidualEnv)
+
 
 def build_obs(state: dict, forecast: np.ndarray, sim) -> np.ndarray:
     """

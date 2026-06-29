@@ -30,20 +30,26 @@ agente) y obtener exactamente el mismo resultado.
 
 import numpy as np
 
-# --- Constantes de ruido (ÚNICA definición; antes duplicadas en env y mpc) ---
-SIGMA_CONS_BASE = 0.15   # 15% MAE consumo, ~plano con el horizonte
-SIGMA_SOL_H1    = 0.05   # 5%  error solar en el primer paso de pronóstico
-SIGMA_SOL_H24   = 0.25   # 25% error solar en el último paso del horizonte
-RHO_SOLAR = 0.7          # nubes persisten varias horas
-RHO_CONS  = 0.3          # consumo más variable, patrón horario domina
+from src.config import pronostico as _pronostico
+
+# --- Constantes de ruido (ÚNICA definición; desde config/system.yaml vía
+#     src.config — antes hardcodeadas aquí y duplicadas en env y mpc) ---
+_PRON = _pronostico()
+_PRECIO = _PRON.get("precio", {})
+
+SIGMA_CONS_BASE = _PRON["sigma_consumo"]    # 15% MAE consumo, ~plano con el horizonte
+SIGMA_SOL_H1    = _PRON["sigma_solar_h1"]   # 5%  error solar en el primer paso de pronóstico
+SIGMA_SOL_H24   = _PRON["sigma_solar_h24"]  # 25% error solar en el último paso del horizonte
+RHO_SOLAR = _PRON["rho_solar"]              # nubes persisten varias horas
+RHO_CONS  = _PRON["rho_consumo"]            # consumo más variable, patrón horario domina
 
 # Precio PVPC — modelo 3 capas (publicación a las 20:30 del día anterior)
-HORA_PUBLICACION    = 20.5
-SIGMA_PRECIO_INTRA  = 0.05   # Capa 2: OMIE intradiario
-SIGMA_PRECIO_STAT   = 0.15   # Capa 3: estimación estadística
-RHO_PRECIO_INTRA    = 0.5
-RHO_PRECIO_STAT     = 0.7
-MARGEN_INTRA_H      = 6      # horas cubiertas por OMIE intraday
+HORA_PUBLICACION    = _PRECIO.get("hora_publicacion", 20.5)
+SIGMA_PRECIO_INTRA  = _PRECIO.get("sigma_intradiario", 0.05)   # Capa 2: OMIE intradiario
+SIGMA_PRECIO_STAT   = _PRECIO.get("sigma_estadistico", 0.15)   # Capa 3: estimación estadística
+RHO_PRECIO_INTRA    = _PRECIO.get("rho_intradiario", 0.5)
+RHO_PRECIO_STAT     = _PRECIO.get("rho_estadistico", 0.7)
+MARGEN_INTRA_H      = _PRECIO.get("margen_intradiario_h", 6)   # horas cubiertas por OMIE intraday
 
 HORIZON = 24
 

@@ -6,7 +6,7 @@ from src.core.simulador import ComunidadSimulador
 from src.core.forecast import (
     ventana_observada, generar_factores_precio, avanzar_ar1,
 )
-from src.core.obs_builder import build_obs
+from src.core.obs_builder import build_obs, OBS_DIM_BASE
 
 class EnergyEnv(gym.Env):
     """
@@ -28,31 +28,9 @@ class EnergyEnv(gym.Env):
 
     # Ruta al dataset (misma que usa ComunidadSimulador)
     _DATASET_PATH = 'data/processed/dataset_final.csv'
-    # Sigmas base de cada variable en la ventana de pronóstico
-    # Orden columnas dataset: [consumo, generacion, precio_kwh, precio_excedente]
-    _SIGMA_CONS_BASE  = 0.15   # 15% MAE — relativamente plano con el horizonte
-    # Justificación σ=0.15: el perfil 2.0TD (ESIOS) es la media nacional de
-    # millones de hogares. Con solo 15 viviendas la diversificación es menor y
-    # la variabilidad local no está capturada. La literatura reporta errores de
-    # 10-20% para grupos pequeños (Haben et al. 2016). [VERIFICAR CITA]
-    _SIGMA_SOL_H1     = 0.05   # 5%  error en hora+1
-    _SIGMA_SOL_H24    = 0.25   # 25% error en hora+24  (crece linealmente)
-
-    # Autocorrelación temporal del error de pronóstico (proceso AR(1))
-    # Solar: ρ=0.7 — las nubes persisten varias horas
-    # Consumo: ρ=0.3 — más variable, patron horario domina sobre inercia
-    _RHO_SOLAR = 0.7
-    _RHO_CONS  = 0.3
-
-    # Ruido de precio PVPC — modelo 3 capas
-    # PVPC se publica a las 20:30h del día anterior por REE.
-    # Capa 1: ya publicado → exacto. Capa 2: OMIE intradiario. Capa 3: estimación.
-    _HORA_PUBLICACION    = 20.5
-    _SIGMA_PRECIO_INTRA  = 0.05   # Capa 2: ~5% error (mercados intradiarios OMIE)
-    _SIGMA_PRECIO_STAT   = 0.15   # Capa 3: ~15% error (estimación estadística)
-    _RHO_PRECIO_INTRA    = 0.5    # Capa 2: ρ=0.5 (correcciones OMIE frecuentes)
-    _RHO_PRECIO_STAT     = 0.7    # Capa 3: ρ=0.7 (condiciones mercado persisten)
-    _MARGEN_INTRA_H      = 6      # Horas cubiertas por OMIE intraday
+    # Las constantes de ruido AR(1)/precio viven en la FUENTE ÚNICA src.core.forecast
+    # (cargadas de config/system.yaml). El env consume avanzar_ar1 /
+    # generar_factores_precio de allí, así que no las redefine.
 
     def __init__(self, forecast_noise: bool = True, mode: str = 'all',
                  rng=None):
@@ -96,7 +74,7 @@ class EnergyEnv(gym.Env):
         # + 1 margen_solar (solar excedente que desbordará la batería en 24h / CAP)
         #     Alta → D_RED útil para hacer hueco; Cero → D_RED probablemente innecesario
         self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(108,), dtype=np.float32
+            low=-np.inf, high=np.inf, shape=(OBS_DIM_BASE,), dtype=np.float32
         )
         
         # Configuración del Episodio
@@ -156,41 +134,6 @@ class EnergyEnv(gym.Env):
         if self._rng is not None:
             return self._rng.standard_normal()
         return np.random.normal()
-
-    def _generar_precio_noise(self, hora_actual):
-        """
-        Genera factores multiplicativos de ruido de precio para 24 posiciones
-        de forecast (offsets 0..23 horas adelante desde hora_actual).
-
-        El AR(1) avanza POR HORA dentro del forecast (draw nuevo cada hora),
-        con ρ distinto por capa. Esto cambia el ranking de precios entre
-        horas, no solo el nivel general.
-
-        Exactamente 24 draws — coincide con aplicar_ruido_precio_3capas()
-        del MPC benchmark (offset=0), garantizando coherencia RNG.
-
-        - MPC (offset=0): usa factors[0..23] directamente
-        - _get_obs (offset=1): usa factors[h+1] con clamp a 23
-        """
-        if hora_actual >= self._HORA_PUBLICACION:
-            horas_publicadas = 24 + (24 - hora_actual)
-        else:
-            horas_publicadas = 24 - hora_actual
-
-        factors = np.ones(24)
-        eps = 0.0
-        for h_ahead in range(24):
-            if h_ahead < horas_publicadas:
-                continue  # Capa 1: precio publicado exacto
-            elif h_ahead < horas_publicadas + self._MARGEN_INTRA_H:
-                rho = self._RHO_PRECIO_INTRA    # Capa 2: ρ=0.5
-                sigma = self._SIGMA_PRECIO_INTRA
-            else:
-                rho = self._RHO_PRECIO_STAT     # Capa 3: ρ=0.7
-                sigma = self._SIGMA_PRECIO_STAT
-            eps = rho * eps + np.sqrt(1 - rho**2) * self._noise()
-            factors[h_ahead] = 1.0 + sigma * eps
-        return factors
 
     def _get_hora_actual_from_step(self, step):
         """Obtiene hora del día (0-23) para un step."""
