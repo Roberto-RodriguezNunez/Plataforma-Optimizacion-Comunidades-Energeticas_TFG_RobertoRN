@@ -96,7 +96,10 @@
       "Bash(git diff *)",
       "Bash(chmod +x experimentos/entrenar.sh)",
       "Bash(bash -n experimentos/entrenar.sh)",
-      "Bash(ps -eo etime,cmd)"
+      "Bash(ps -eo etime,cmd)",
+      "Bash(git fetch *)",
+      "Bash(git branch *)",
+      "Bash(git restore *)"
     ]
   }
 }

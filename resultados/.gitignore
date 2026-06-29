@@ -2,3 +2,5 @@
 *.csv
 *.json
 *.npy
+# Logs de entreno (redirección de nohup, p.ej. log_G_dqn.txt) — no se versionan
+*.txt
