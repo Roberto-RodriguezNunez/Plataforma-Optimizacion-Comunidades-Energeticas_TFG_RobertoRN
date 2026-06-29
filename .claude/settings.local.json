@@ -99,7 +99,8 @@
       "Bash(ps -eo etime,cmd)",
       "Bash(git fetch *)",
       "Bash(git branch *)",
-      "Bash(git restore *)"
+      "Bash(git restore *)",
+      "Bash(grep -nA12 \"class ResidualSACController\" src/controllers/residual_sac_controller.py)"
     ]
   }
 }
