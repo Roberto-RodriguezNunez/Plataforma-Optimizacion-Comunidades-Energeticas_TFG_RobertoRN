@@ -971,6 +971,59 @@ Esta no linealidad es intencional y tiene una consecuencia metodológica crucial
 el MPC, que linealiza la degradación como $K = 0{,}005$\,€/kWh fijo, introduce
 un error sistemático de modelado que el Residual SAC puede aprender a corregir.
 
+\subsubsection{Calibración del Coste Base de Degradación}
+\label{sub:calibracion-degradacion}
+
+El valor $C_{\text{base}} = 0{,}005$\,€/kWh de la ecuación~\eqref{eq:degradacion}
+no es el coste de degradación directamente, sino el \emph{coeficiente base} que,
+una vez modulado por los factores de estrés, reproduce el coste de amortización
+realista de la batería. La calibración parte del coste marginal de reposición de
+las \emph{celdas} —el único componente que se desgasta con el ciclado, frente al
+inversor o la instalación, que son capital hundido (CAPEX)—:
+\begin{equation}
+  c_{\text{amort}} = \frac{c_{\text{celda}}}{2\,N_{\text{ciclos}}},
+  \label{eq:calibracion}
+\end{equation}
+donde el factor $2$ refleja que el coste se imputa sobre el \emph{throughput
+bidireccional} (carga más descarga, $E_{\text{movida}}$). Con un coste neto de
+celdas LFP de $c_{\text{celda}}\!\approx\!90\text{--}100$\,€/kWh —tras la
+subvención al almacenamiento del Real Decreto~477/2021 \citep{RD477_2021} y la
+caída sostenida del precio de celda \citep{BNEF2024,Schmidt2019}— y una vida útil
+$N_{\text{ciclos}}\!\approx\!8\,000$ ciclos completos hasta el 80\,\% de SoH, propia
+de celdas LFP de aplicación estacionaria, la ecuación~\eqref{eq:calibracion}
+arroja $c_{\text{amort}}\!\approx\!0{,}006$\,€/kWh. La cifra es \emph{independiente
+de la capacidad nominal}, lo que justifica fijarla como parámetro constante en
+€/kWh.
+
+El coste imputado por la ecuación~\eqref{eq:degradacion} no es plano, sino
+$C_{\text{base}}\cdot f_P\cdot f_{\text{SoC}}$. Sobre las trayectorias evaluadas, el
+multiplicador medio (ponderado por energía) de los factores de estrés resulta
+$\overline{f_P\,f_{\text{SoC}}}\!\approx\!1{,}2$, de modo que el coste efectivo
+medio es $C_{\text{base}}\cdot 1{,}2\!\approx\!0{,}006$\,€/kWh, \emph{coincidente
+con el coste de amortización} $c_{\text{amort}}$ de la
+ecuación~\eqref{eq:calibracion}. En otras palabras, $C_{\text{base}}=0{,}005$ se
+fija para que el coste \emph{efectivo} —no el coeficiente— iguale la amortización
+realista de una batería LFP subvencionada. La ventaja de la formulación no lineal
+es que reparte ese coste medio según el estrés electroquímico real de cada
+operación —mayor a alta corriente, por efecto Joule, y en los extremos de SoC
+\citep{Vetter2005, Xu2016}— en lugar de mediante un coste plano, que es
+precisamente la aproximación de primer orden del MPC.
+
+Conviene ser explícito sobre la dependencia de los supuestos: la igualdad anterior
+descansa en la subvención del RD~477/2021 —aplicable a la instalación
+considerada— y en una vida útil de gama estacionaria; sin subvención, el coste de
+amortización de un \emph{pack} no subvencionado se situaría en torno a
+$0{,}013\text{--}0{,}017$\,€/kWh, y $C_{\text{base}}$ constituiría una cota
+inferior. En cualquier caso, y de forma determinante para la validez del estudio,
+el coste de degradación se aplica de manera \emph{idéntica} a todos los
+controladores (MPC, DQN, PPO y Residual SAC) y en la métrica de evaluación. Por
+tanto, \textbf{el orden comparativo entre controladores y su significancia
+estadística son invariantes al valor absoluto de $C_{\text{base}}$}: solo el ahorro
+absoluto en €/año escala —de forma aproximadamente lineal— con dicho parámetro. La
+conclusión central de este trabajo —que la arquitectura residual supera al MPC
+realista— no depende, por tanto, de esta calibración
+(Sección~\ref{sec:limitaciones}).
+
 \subsubsection{Modelo Económico}
 
 El beneficio marginal respecto a IDLE en cada paso es:
@@ -1861,7 +1914,16 @@ no constituyen mediciones de una instalación física.
 función de recompensa que induce un uso conservador del almacenamiento, pero no
 reduce la capacidad útil a lo largo del episodio; el efecto del envejecimiento
 sobre la vida útil se traslada al análisis de viabilidad económica mediante el
-coste de capital amortizado (Anexo~\ref{app:viabilidad}).
+coste de capital amortizado (Anexo~\ref{app:viabilidad}). Asimismo, solo se
+contabiliza el envejecimiento por \emph{ciclado} (proporcional a la energía
+movida, dominante en una batería de uso diario); el envejecimiento de
+\emph{calendario} —degradación por tiempo y temperatura, independiente del uso—
+queda fuera del alcance del modelo. Además, el coste de
+degradación efectivo ($\approx0{,}006$\,€/kWh, Sección~\ref{sub:calibracion-degradacion})
+se calibra a la amortización de una batería LFP \emph{subvencionada}; bajo un
+coste no subvencionado el ahorro absoluto reportado sería algo menor. En todo
+caso, al aplicarse de forma idéntica a todos los controladores, la comparación
+entre ellos —objeto del estudio— es invariante a su valor.
 
 \textbf{Marco regulatorio en evolución.} El tratamiento normativo del
 almacenamiento compartido se encuentra en evolución: junto al Real Decreto-ley

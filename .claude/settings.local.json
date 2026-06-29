@@ -87,7 +87,16 @@
       "Bash(grep -v '/$')",
       "Bash(ps -eo pid,etime,cmd)",
       "Bash(PYTHONPATH=/mnt/c/Users/rober/TFG .venv/bin/python /tmp/claude-1000/-mnt-c-Users-rober-TFG/32668eb0-1e66-421f-a35b-a6af13789f3e/scratchpad/smoke_n_seeds.py)",
-      "Bash(git -C /mnt/c/Users/rober/TFG status --short src/ config/experimentos.yaml)"
+      "Bash(git -C /mnt/c/Users/rober/TFG status --short src/ config/experimentos.yaml)",
+      "Bash(echo \"--- exit: $? ---\")",
+      "Bash(awk -F, '{print \"  media=\"$5\"  vs_mpc_realista=\"$10\"  \\(\"$NF\"\\)\"}')",
+      "Bash(awk '/def step\\\\\\(/{f=1} f{print} /def _get_obs|def render|return obs/{if\\(f\\)exit}' src/envs/energy_env.py)",
+      "Bash(grep -nA6 \"^rutas:\" config/system.yaml)",
+      "Bash(awk -F, '{print \"  media=\"$5\"  vs_mpc=\"$10\"  \\(\"$NF\"\\)\"}')",
+      "Bash(git diff *)",
+      "Bash(chmod +x experimentos/entrenar.sh)",
+      "Bash(bash -n experimentos/entrenar.sh)",
+      "Bash(ps -eo etime,cmd)"
     ]
   }
 }

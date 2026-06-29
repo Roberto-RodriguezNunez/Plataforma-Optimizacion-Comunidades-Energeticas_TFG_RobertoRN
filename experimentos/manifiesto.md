@@ -15,6 +15,32 @@ evalúa con 10 semillas de ruido y añade la fila a `resultados/resultados.csv`.
 
 ---
 
+## Entrenar desde WSL / Linux
+
+En WSL el script ya usa `.venv/bin/python` por defecto → **no hace falta el prefijo `PYTHON=`**:
+
+```bash
+cd /mnt/c/Users/rober/TFG
+./experimentos/run_familia.sh dqn                  # familia entera (entrena + evalúa)
+.venv/bin/python src/main_dqn.py --version DQN-2   # una sola versión
+```
+
+Dejarlo corriendo en segundo plano (sobrevive a cerrar la terminal + deja log):
+
+```bash
+nohup ./experimentos/run_familia.sh dqn > resultados/log_dqn.txt 2>&1 &
+echo "PID: $!"
+tail -f resultados/log_dqn.txt   # ver avance (Ctrl-C sale del tail, NO para el entreno)
+```
+
+> **Relanzar una familia ya entrenada NO borra nada:** la reentrena desde cero
+> (sobrescribe su modelo en `models/best/` al terminar) y **añade** filas a
+> `resultados/resultados.csv` (quedan duplicadas → vale la última por `familia,version`).
+> No toca otras familias. Para solo re-evaluar sin reentrenar:
+> `./experimentos/run_familia.sh <fam> --solo-eval`.
+
+---
+
 ## Orden recomendado (bloqueos)
 
 1. **PRIMERO, en cualquier máquina:** baselines G (bloquean las métricas relativas).
