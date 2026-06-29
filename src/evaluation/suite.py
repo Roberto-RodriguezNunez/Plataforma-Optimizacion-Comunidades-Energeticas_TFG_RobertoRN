@@ -33,8 +33,8 @@ from src.evaluation.unified import (
     ComunidadSimulador, DATASET_PATH, crear_mpc, SEED,
 )
 from src.controllers.heuristic import HeuristicController
-from src.controllers.rl import DiscreteRLController
-from src.controllers.rl import ContinuousController
+from src.controllers.discrete import DiscreteRLController
+from src.controllers.continuous import ContinuousController
 from src.controllers.residual import ResidualSACController
 from src.training.registry import cargar_version, familias, listar_versiones
 from src.evaluation.stats import ic95_bootstrap, wilcoxon_vs

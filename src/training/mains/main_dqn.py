@@ -18,7 +18,7 @@ from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
-from src.envs.energy_env import EnergyEnv
+from src.envs.energy_env_discreto import EnergyEnvDiscreto
 from src.training.callbacks import DiscreteMetricasCallback
 from src.training.scaffold_mains import entrenar, cli, LOG_DIR
 
@@ -28,7 +28,7 @@ FAMILIA = "dqn"
 def _build(cfg, total_timesteps):
     def make_envs():
         def _mk():
-            return Monitor(EnergyEnv())
+            return Monitor(EnergyEnvDiscreto())
         train_env = VecNormalize(DummyVecEnv([_mk]), norm_obs=True, norm_reward=False, clip_obs=10.0)
         eval_env = VecNormalize(DummyVecEnv([_mk]), norm_obs=True, norm_reward=False, clip_obs=10.0)
         return train_env, eval_env
@@ -64,7 +64,7 @@ def _build(cfg, total_timesteps):
         "make_envs": make_envs,
         "make_model": make_model,
         "extra_callbacks": lambda m: [DiscreteMetricasCallback()],
-        "pre_entreno": lambda: check_env(EnergyEnv(), warn=True),
+        "pre_entreno": lambda: check_env(EnergyEnvDiscreto(), warn=True),
     }
 
 

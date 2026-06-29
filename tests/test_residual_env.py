@@ -13,7 +13,7 @@ import pytest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from src.envs.energy_env import EnergyEnvContinuo
+from src.envs.energy_env_continuo import EnergyEnvContinuo
 from src.envs.residual_env import ResidualEnv
 from src.controllers.mpc import (
     LinearMPC, ComunidadSimulador, simular_hora_mpc,

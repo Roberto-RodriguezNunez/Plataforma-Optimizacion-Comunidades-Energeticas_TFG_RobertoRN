@@ -13,7 +13,7 @@ import pytest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from src.envs.energy_env import EnergyEnvContinuo
+from src.envs.energy_env_continuo import EnergyEnvContinuo
 
 
 @pytest.fixture(scope='module')

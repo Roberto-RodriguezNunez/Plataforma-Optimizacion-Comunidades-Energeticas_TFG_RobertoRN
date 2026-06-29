@@ -1,16 +1,12 @@
 """
-rl.py — Controladores RL de inferencia directa sobre el entorno (sin MPC)
-=========================================================================
-Dos controladores que mapean la observación a flujos directamente con un modelo
-SB3, sin MPC base ni corrección residual:
+discrete.py — Controlador para agentes RL discretos (DQN/PPO)
+============================================================================
+Convierte la acción discreta (0-8) de un agente DQN o PPO al formato
+de 4 flujos que espera evaluation/unified.py.
 
-  - DiscreteRLController: agentes discretos (DQN/PPO) — acción 0-8 → 4 flujos
-    vía `ComunidadSimulador.accion_a_flujos` (fuente única del decode).
-  - ContinuousController: agentes continuos (SAC puro / PPO continuo) — la
-    política emite los 4 flujos en [0, P_MAX] directamente.
-
-Ambos comparten la observación con todo el sistema vía `observation.build_obs`
-→ entreno == evaluación. (Antes en discrete_rl_controller.py y continuous_controller.py.)
+La decodificación replica la lógica de simulador.ejecutar_accion_fisica()
+pero solo devuelve los flujos intendidos, sin ejecutar física
+(simular_hora_mpc se encarga en la evaluación).
 """
 
 import os
@@ -25,8 +21,8 @@ if ROOT not in sys.path:
 
 from src.controllers.base import BaseController
 from src.core.observation import build_obs
-
-_ALGOS_CONTINUOS = ('SAC', 'PPO')
+# El decode discreto (acción -> 4 flujos) es ComunidadSimulador.accion_a_flujos
+# (staticmethod, fuente única), llamado vía self._sim.
 
 
 class DiscreteRLController(BaseController):
@@ -145,65 +141,3 @@ class DiscreteRLController(BaseController):
         if self._obs_dim < 108:
             obs = obs[:self._obs_dim]                # legacy 101/107 = prefijo
         return obs.astype(np.float32)
-
-
-class ContinuousController(BaseController):
-    """
-    Controlador continuo directo (sin MPC). `model.predict(obs_108) -> 4 flujos`.
-
-    Args:
-        model_path: Ruta al modelo (.zip).
-        sim: ComunidadSimulador (parámetros físicos; P_MAX para el clip).
-        vec_normalize_path: Stats de VecNormalize (.pkl). None → sin normalizar.
-        algo: 'SAC' | 'PPO'.
-    """
-
-    def __init__(
-        self,
-        model_path: str,
-        sim,
-        vec_normalize_path: Optional[str] = None,
-        algo: str = 'SAC',
-    ):
-        import stable_baselines3 as sb3
-
-        algo = algo.upper()
-        if algo not in _ALGOS_CONTINUOS:
-            raise ValueError(f"algo '{algo}' no soportado; usa uno de {_ALGOS_CONTINUOS}")
-
-        self._sim = sim
-        self._algo = algo
-        self._P_MAX = sim.POTENCIA_INVERSOR
-        self._model = getattr(sb3, algo).load(model_path, device='cpu')
-
-        self._mean = None
-        self._var = None
-        self._clip_obs = 10.0
-        if vec_normalize_path and os.path.exists(vec_normalize_path):
-            import pickle
-            with open(vec_normalize_path, 'rb') as f:
-                vec_norm = pickle.load(f)
-            self._mean = vec_norm.obs_rms.mean
-            self._var = vec_norm.obs_rms.var
-            self._clip_obs = vec_norm.clip_obs
-
-    def solve(self, state: Dict, forecast: np.ndarray) -> Dict[str, float]:
-        obs = build_obs(state, forecast, self._sim).astype(np.float32)  # 108
-        if self._mean is not None:
-            obs = np.clip(
-                (obs - self._mean) / np.sqrt(self._var + 1e-8),
-                -self._clip_obs, self._clip_obs,
-            ).astype(np.float32)
-
-        action, _ = self._model.predict(obs, deterministic=True)
-        # Acción ya en [0, P_MAX] (SAC squash); clip por seguridad (PPO sin bound).
-        a = np.clip(action, 0.0, self._P_MAX)
-        return {
-            'P_carga_solar':   float(a[0]),
-            'P_carga_red':     float(a[1]),
-            'P_descarga_casa': float(a[2]),
-            'P_descarga_red':  float(a[3]),
-        }
-
-    def nombre(self) -> str:
-        return f"Continuo{self._algo}"

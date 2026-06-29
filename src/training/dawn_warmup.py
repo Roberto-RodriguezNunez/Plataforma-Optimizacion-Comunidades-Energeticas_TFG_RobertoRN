@@ -12,7 +12,7 @@ ahí, lo cual era un pequeño smell).
 
 import numpy as np
 
-from src.envs.energy_env import EnergyEnvContinuo
+from src.envs.energy_env_continuo import EnergyEnvContinuo
 from src.envs.residual_env import ResidualEnv
 
 

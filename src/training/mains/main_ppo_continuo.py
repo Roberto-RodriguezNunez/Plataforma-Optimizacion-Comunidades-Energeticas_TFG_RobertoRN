@@ -24,7 +24,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
-from src.envs.energy_env import EnergyEnvContinuo
+from src.envs.energy_env_continuo import EnergyEnvContinuo
 from src.training.callbacks import EntCoefScheduler   # compartido (decay de entropía)
 from src.training.registry import es_decay, schedule_lineal
 from src.training.scaffold_mains import entrenar, cli, LOG_DIR

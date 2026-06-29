@@ -20,7 +20,7 @@ from src.controllers.mpc import (
     simular_semana_idle,
     SOC_INICIAL, SEED, EPISODE_LENGTH,
 )
-from src.envs.energy_env import EnergyEnvContinuo
+from src.envs.energy_env_continuo import EnergyEnvContinuo
 from src.envs.residual_env import ResidualEnv
 
 _CONFIG_PATH = os.path.join(ROOT, 'config', 'system.yaml')

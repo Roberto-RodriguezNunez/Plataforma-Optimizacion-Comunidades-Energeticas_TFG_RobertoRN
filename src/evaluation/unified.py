@@ -206,7 +206,7 @@ def crear_onnx_residual_sac(onnx_path: str, npz_path: str,
 def crear_discrete_rl(model_path: str, vec_norm_path: str,
                       algo: str = 'DQN') -> BaseController:
     """Crea DiscreteRLController para DQN o PPO."""
-    from src.controllers.rl import DiscreteRLController
+    from src.controllers.discrete import DiscreteRLController
     sim = ComunidadSimulador(DATASET_PATH)
     return DiscreteRLController(
         model_path=model_path,

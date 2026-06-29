@@ -98,10 +98,10 @@ def _snap_simulador():
 
 
 def _snap_energy_env():
-    from src.envs.energy_env import EnergyEnv
+    from src.envs.energy_env_discreto import EnergyEnvDiscreto
 
     np.random.seed(123)  # reset() sortea el SoC inicial con el RNG global
-    env = EnergyEnv(forecast_noise=True, mode="eval", rng=np.random.default_rng(123))
+    env = EnergyEnvDiscreto(forecast_noise=True, mode="eval", rng=np.random.default_rng(123))
     obs0, _ = env.reset(seed=123)
     rewards = []
     obs = obs0
@@ -118,7 +118,7 @@ def _snap_energy_env():
 
 
 def _snap_residual_env():
-    from src.envs.energy_env import EnergyEnvContinuo
+    from src.envs.energy_env_continuo import EnergyEnvContinuo
     from src.envs.residual_env import ResidualEnv
     from src.controllers.mpc import crear_mpc
 
