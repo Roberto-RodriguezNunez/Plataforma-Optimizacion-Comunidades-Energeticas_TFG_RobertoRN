@@ -33,18 +33,18 @@ import sys
 import numpy as np
 import yaml
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from src.benchmarks.mpc_benchmark import (
+from src.controllers.mpc import (
     ComunidadSimulador, DATASET_PATH, EPISODE_LENGTH,
     simular_semana_idle,
 )
-from src.reporting.eval_unificada import (
+from src.evaluation.unified import (
     evaluar_controlador, IdleController, crear_mpc, crear_residual_sac,
 )
-from src.controllers.heuristic_controller import HeuristicController
+from src.controllers.heuristic import HeuristicController
 
 _CONFIG_PATH = os.path.join(ROOT, 'config', 'system.yaml')
 with open(_CONFIG_PATH, 'r', encoding='utf-8') as f:

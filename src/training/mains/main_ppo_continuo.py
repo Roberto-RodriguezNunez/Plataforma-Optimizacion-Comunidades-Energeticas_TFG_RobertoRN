@@ -16,7 +16,7 @@ import math
 import os
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
@@ -24,9 +24,9 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
-from src.envs.energy_env_continuo import EnergyEnvContinuo
+from src.envs.energy_env import EnergyEnvContinuo
 from src.training.callbacks import EntCoefScheduler   # compartido (decay de entropía)
-from src.training.registro import es_decay, schedule_lineal
+from src.training.registry import es_decay, schedule_lineal
 from src.training.scaffold_mains import entrenar, cli, LOG_DIR
 
 FAMILIA = "ppo_continuo"

@@ -23,13 +23,13 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 import numpy as np
-from src.training.registro import cargar_version, seeds_comunes
-from src.reporting.eval_unificada import evaluar_multiseed
-from src.reporting.estadistica import ic95_bootstrap
-from src.eval_suite import _construir_controller, _paths, _baseline_mpc_pooled
-from src.benchmarks.mpc_benchmark import crear_mpc
-from src.core.simulador import ComunidadSimulador
-import src.eval_suite as ES
+from src.training.registry import cargar_version, seeds_comunes
+from src.evaluation.unified import evaluar_multiseed
+from src.evaluation.stats import ic95_bootstrap
+from src.evaluation.suite import _construir_controller, _paths, _baseline_mpc_pooled
+from src.controllers.mpc import crear_mpc
+from src.core.simulator import ComunidadSimulador
+import src.evaluation.suite as ES
 
 
 def main():

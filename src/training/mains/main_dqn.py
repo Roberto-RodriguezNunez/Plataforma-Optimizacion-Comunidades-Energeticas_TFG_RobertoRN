@@ -9,7 +9,7 @@ Ejecución desde la raíz del proyecto (carpeta TFG/):
 import os
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
@@ -54,7 +54,7 @@ def _build(cfg, total_timesteps):
             tensorboard_log        = LOG_DIR,
         )
         if n_step > 1:
-            from src.buffers.nstep_replay_buffer import NStepReplayBuffer
+            from src.training.nstep_buffer import NStepReplayBuffer
             kwargs["gamma"] = base_gamma ** n_step          # γ^n para el bootstrap
             kwargs["replay_buffer_class"] = NStepReplayBuffer
             kwargs["replay_buffer_kwargs"] = {"n_steps": n_step, "base_gamma": base_gamma}

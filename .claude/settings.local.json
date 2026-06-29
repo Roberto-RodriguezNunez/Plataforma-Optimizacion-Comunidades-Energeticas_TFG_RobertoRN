@@ -100,7 +100,10 @@
       "Bash(git fetch *)",
       "Bash(git branch *)",
       "Bash(git restore *)",
-      "Bash(grep -nA12 \"class ResidualSACController\" src/controllers/residual_sac_controller.py)"
+      "Bash(grep -nA12 \"class ResidualSACController\" src/controllers/residual_sac_controller.py)",
+      "Bash(grep -niA30 \"td3\" config/experimentos.yaml)",
+      "Bash(grep -niA6 \"train_seeds\\\\|^comun\\\\|^common\\\\|comun:\" config/experimentos.yaml)",
+      "Bash(awk '{print $5\"\\\\t\"$9}')"
     ]
   }
 }

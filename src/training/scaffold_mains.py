@@ -35,7 +35,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from src.training.multiseed import entrenar_multiseed
-from src.training.registro import cargar_version, seeds_comunes, seeds_para_version
+from src.training.registry import cargar_version, seeds_comunes, seeds_para_version
 
 LOG_DIR = os.path.join(ROOT, "logs")
 MODEL_DIR = os.path.join(ROOT, "models")

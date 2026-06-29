@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
 
-# Parámetros de batería desde config/system.yaml vía la fuente única src.config
+# Parámetros de batería desde config/system.yaml vía la fuente única src.core.config
 # (antes hardcodeados, lo que provocó que el config dijera 80 kWh y el simulador
 # entrenara con 100). Fallback a {} por si no se encuentra (lo cubren los .get()).
-from src.config import bateria as _bateria_cfg
+from src.core.config import bateria as _bateria_cfg
 try:
     _BAT = _bateria_cfg()
 except Exception:

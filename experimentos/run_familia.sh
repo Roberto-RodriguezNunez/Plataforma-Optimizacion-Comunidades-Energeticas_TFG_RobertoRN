@@ -35,7 +35,7 @@ echo "### Familia '$FAM' -> versiones: $VERSIONS ###"
 for V in $VERSIONS; do
   if [[ "$MODE" != "--solo-eval" ]]; then
     echo "================ ENTRENO  $FAM / $V  (3 semillas) ================"
-    "$PY" "src/main_${FAM}.py" --version "$V"
+    "$PY" "src/training/mains/main_${FAM}.py" --version "$V"
   fi
   echo "================ EVAL     $FAM / $V  (10 semillas) ==============="
   "$PY" src/eval_suite.py --familia "$FAM" --version "$V"

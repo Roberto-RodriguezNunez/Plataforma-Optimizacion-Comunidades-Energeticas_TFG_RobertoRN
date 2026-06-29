@@ -13,7 +13,7 @@ Ejecución desde la raíz del proyecto (carpeta TFG/):
 import os
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
@@ -24,7 +24,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from src.envs.energy_env import EnergyEnv
 from src.training.callbacks import DiscreteMetricasCallback, EntCoefScheduler
-from src.training.registro import es_decay, schedule_lineal
+from src.training.registry import es_decay, schedule_lineal
 from src.training.scaffold_mains import entrenar, cli, LOG_DIR
 
 FAMILIA = "ppo"

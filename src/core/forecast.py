@@ -1,39 +1,24 @@
 """
-forecast.py — Fuente ÚNICA de verdad del pronóstico observado
-=============================================================
-Toda la lógica de "qué ventana de pronóstico ve un controlador" vive aquí.
-La usan por igual el entorno de RL (`energy_env`), el benchmark MPC
-(`mpc_benchmark`) y el wrapper residual (`residual_env`), de modo que es
-IMPOSIBLE por construcción que reciban datos distintos → comparación justa.
+forecast.py — Fuente ÚNICA del pronóstico observado (ventana 24h con ruido).
+Compartida por env, MPC y residual_env → por construcción ven los MISMOS datos.
 
-Convención (única y documentada):
-  - El controlador decide la acción de cada hora a partir de su PRONÓSTICO, no
-    del valor realizado. Por eso TODA la ventana, incluida la hora actual
-    (window[0]), lleva ruido de pronóstico: la hora actual es el PRIMER paso de
-    pronóstico (σ mínima), no un dato exacto. Esto evita cualquier lookahead y
-    garantiza que el MPC y el agente reciben EXACTAMENTE la misma información.
-    La física y la recompensa sí usan el valor REAL de la hora (el resultado
-    realizado), que se lee directamente del simulador, no de esta ventana.
-  - Ruido (k = 0..H-1):
-       * solar:   ruido multiplicativo AR(1) que crece con el horizonte
-                  (σ: 5% en k=0 → 25% en k=23).
-       * consumo: ruido multiplicativo AR(1) fijo (15%).
-       * precio:  modelo de 3 capas según publicación del PVPC (la hora actual
-                  suele estar publicada → exacta).
-
-Las funciones de construcción de ventana son PURAS (deterministas dadas
-`error_solar`, `error_cons` y `precio_factores`). El avance del estado AR(1)
-y la generación de factores de precio (que consumen RNG) están separados, para
-que un mismo paso pueda construir la ventana varias veces (MPC base + obs del
-agente) y obtener exactamente el mismo resultado.
+Invariantes que NO se deben romper:
+  - window[0] (hora actual) lleva ruido: es el PRIMER paso de pronóstico, NO un
+    dato exacto → sin lookahead. La física/recompensa sí usan el valor real (lo
+    lee el simulador, no esta ventana).
+  - Las funciones de ventana son PURAS (deterministas dados error_solar/_cons y
+    precio_factores). El avance AR(1) y los factores de precio (que consumen RNG)
+    van aparte, para reconstruir la misma ventana varias veces por paso (MPC + obs).
+  - Ruido: solar AR(1) creciente (σ 5%→25%), consumo AR(1) fijo (15%), precio en
+    3 capas según publicación del PVPC.
 """
 
 import numpy as np
 
-from src.config import pronostico as _pronostico
+from src.core.config import pronostico as _pronostico
 
 # --- Constantes de ruido (ÚNICA definición; desde config/system.yaml vía
-#     src.config — antes hardcodeadas aquí y duplicadas en env y mpc) ---
+#     src.core.config — antes hardcodeadas aquí y duplicadas en env y mpc) ---
 _PRON = _pronostico()
 _PRECIO = _PRON.get("precio", {})
 
@@ -67,14 +52,7 @@ def avanzar_ar1(error_solar, error_cons, noise_fn):
 
 
 def sigma_solar(k, horizon=HORIZON):
-    """σ del ruido solar para el paso k del horizonte.
-
-    k=0 = hora actual: es el PRIMER paso de pronóstico (σ mínima), NO un dato
-    exacto. El controlador decide la acción de la hora a partir de su pronóstico
-    (no conoce el consumo/generación realizados de la hora hasta que termina);
-    la física/recompensa sí usan el valor real. Así no hay lookahead y el MPC y
-    el agente reciben exactamente la misma información.
-    """
+    """σ del ruido solar en el paso k del horizonte (crece lineal 5%→25%)."""
     return SIGMA_SOL_H1 + k * ((SIGMA_SOL_H24 - SIGMA_SOL_H1) / (horizon - 1))
 
 
@@ -105,16 +83,8 @@ def generar_factores_precio(hora_actual, noise_fn, horizon=HORIZON):
 
 
 def aplicar_ruido_ventana(window, error_solar, error_cons, precio_factores):
-    """Aplica el ruido de pronóstico a una ventana YA ENSAMBLADA.
-
-    El ruido de consumo/generación se aplica DESDE k=0 (la hora actual es el
-    primer paso de pronóstico, con σ mínima): el controlador decide a partir del
-    pronóstico, no del valor realizado → sin lookahead, e idéntico para MPC y
-    agente. El precio de la hora actual queda exacto si ya está publicado
-    (lo gestionan los `precio_factores`, 3 capas). Modifica y devuelve `window`.
-    Usada por `ventana_observada` (env/MPC) y por el feed de producción
-    (`api/data_feed`).
-    """
+    """Aplica el ruido (cons/gen desde k=0; precio por capas vía precio_factores)
+    a una ventana ya ensamblada. Modifica y devuelve `window`."""
     horizon = len(window)
     for k in range(horizon):
         s_sol = sigma_solar(k, horizon)
@@ -129,16 +99,9 @@ def aplicar_ruido_ventana(window, error_solar, error_cons, precio_factores):
 
 def ventana_observada(sim, step, error_solar, error_cons, precio_factores,
                       con_ruido, horizon=HORIZON):
-    """ÚNICA fuente de verdad de la ventana (horizon, 4) que ven TODOS los
-    controladores. Columnas: [consumo, generacion, precio_kwh, precio_excedente].
-
-    Función PURA: dado (error_solar, error_cons, precio_factores) el resultado
-    es determinista, así que env y MPC obtienen byte a byte la misma ventana.
-
-    Todas las horas (incluida la actual, k=0) llevan ruido de pronóstico — el
-    presente es el primer paso de pronóstico, no un dato exacto. Si
-    con_ruido=False (oráculo) devuelve la ventana cruda (previsión perfecta).
-    """
+    """Ventana (horizon, 4) = [consumo, generacion, precio_kwh, precio_excedente]
+    que ven TODOS los controladores. PURA (determinista dados los errores y
+    factores). con_ruido=False → ventana cruda (oráculo, previsión perfecta)."""
     window = sim.get_data_window(step, horizon=horizon).copy()
     if not con_ruido:
         return window

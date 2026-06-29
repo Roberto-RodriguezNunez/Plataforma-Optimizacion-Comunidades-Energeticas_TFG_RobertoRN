@@ -19,7 +19,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from src.core.forecast import ventana_observada, generar_factores_precio
-from src.benchmarks.mpc_benchmark import (
+from src.controllers.mpc import (
     ComunidadSimulador,
     DATASET_PATH,
     LinearMPC,
@@ -49,7 +49,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope='module')
 def controllers():
-    from src.controllers.residual_sac_controller import ResidualSACController
+    from src.controllers.residual import ResidualSACController
     from src.production.onnx_inference import OnnxResidualController
 
     sim_sb3  = ComunidadSimulador(DATASET_PATH)

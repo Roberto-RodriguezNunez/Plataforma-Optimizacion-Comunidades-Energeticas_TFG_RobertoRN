@@ -7,7 +7,7 @@ Aquí viven una sola vez. (El esqueleto/CLI común está en scaffold_mains.py.)
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
-from src.envs.energy_env_continuo import EnergyEnvContinuo
+from src.envs.energy_env import EnergyEnvContinuo
 from src.envs.residual_env import ResidualEnv
 from src.training.dawn_warmup import dawn_warmup
 

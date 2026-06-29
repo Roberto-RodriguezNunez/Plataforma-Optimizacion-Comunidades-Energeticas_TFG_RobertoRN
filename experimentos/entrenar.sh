@@ -57,7 +57,7 @@ for V in $VERSIONS; do
   #   - semilla terminada  -> la reutiliza (no reentrena)
   #   - semilla a medias    -> la reentrena entera
   #   - semilla no empezada -> la entrena
-  "$PY" "src/main_${FAM}.py" --version "$V"
+  "$PY" "src/training/mains/main_${FAM}.py" --version "$V"
 
   echo "================ EVAL     $FAM / $V ================"
   "$PY" src/eval_suite.py --familia "$FAM" --version "$V"

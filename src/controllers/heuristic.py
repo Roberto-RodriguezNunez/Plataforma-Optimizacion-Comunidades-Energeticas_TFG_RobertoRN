@@ -9,7 +9,7 @@ Es la heurística más natural para un usuario doméstico sin optimización.
 """
 
 from src.controllers.base import BaseController
-from src.config import bateria as _bateria_cfg
+from src.core.config import bateria as _bateria_cfg
 
 _BAT = _bateria_cfg()
 

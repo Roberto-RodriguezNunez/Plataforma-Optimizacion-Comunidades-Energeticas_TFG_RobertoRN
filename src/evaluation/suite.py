@@ -24,20 +24,20 @@ from datetime import datetime
 
 import numpy as np
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from src.reporting.eval_unificada import (
+from src.evaluation.unified import (
     evaluar_controlador, evaluar_multiseed, IdleController,
     ComunidadSimulador, DATASET_PATH, crear_mpc, SEED,
 )
-from src.controllers.heuristic_controller import HeuristicController
-from src.controllers.discrete_rl_controller import DiscreteRLController
-from src.controllers.continuous_controller import ContinuousController
-from src.controllers.residual_sac_controller import ResidualSACController
-from src.training.registro import cargar_version, familias, listar_versiones
-from src.reporting.estadistica import ic95_bootstrap, wilcoxon_vs
+from src.controllers.heuristic import HeuristicController
+from src.controllers.rl import DiscreteRLController
+from src.controllers.rl import ContinuousController
+from src.controllers.residual import ResidualSACController
+from src.training.registry import cargar_version, familias, listar_versiones
+from src.evaluation.stats import ic95_bootstrap, wilcoxon_vs
 
 BEST_DIR = os.path.join(ROOT, "models", "best")
 RES_DIR = os.path.join(ROOT, "resultados")

@@ -27,7 +27,7 @@ import pandas as pd
 import yaml
 
 # --- Cargar configuración ---
-_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _CONFIG_PATH = os.path.join(_ROOT, 'config', 'system.yaml')
 
 with open(_CONFIG_PATH, 'r', encoding='utf-8') as f:

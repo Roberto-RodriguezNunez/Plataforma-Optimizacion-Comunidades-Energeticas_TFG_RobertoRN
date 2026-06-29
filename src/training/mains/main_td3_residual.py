@@ -14,17 +14,17 @@ residuales compartidas (make_residual_envs + make_dawn_warmup).
 import os
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from stable_baselines3 import TD3
 
-from src.benchmarks.mpc_benchmark import crear_mpc
+from src.controllers.mpc import crear_mpc
 from src.training.action_noise import construir_action_noise
 from src.training.callbacks import ResidualMetricasCallback
 from src.training.scaffold_mains import entrenar, cli, LOG_DIR
-from src.training.factorias_residual import make_residual_envs, make_dawn_warmup
+from src.training.residual_factories import make_residual_envs, make_dawn_warmup
 
 FAMILIA = "td3_residual"
 

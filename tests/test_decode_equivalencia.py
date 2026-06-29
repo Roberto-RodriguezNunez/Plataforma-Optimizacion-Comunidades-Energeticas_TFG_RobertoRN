@@ -16,7 +16,7 @@ import pytest
 from tests._golden_decode import (
     DATASET_PATH, GOLDEN_PATH, generar_casos, capturar,
 )
-from src.core.simulador import ComunidadSimulador
+from src.core.simulator import ComunidadSimulador
 
 
 @pytest.mark.skipif(not os.path.exists(GOLDEN_PATH), reason="falta el golden; corre _golden_decode.py")

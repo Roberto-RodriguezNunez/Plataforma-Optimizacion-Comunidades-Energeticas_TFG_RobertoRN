@@ -15,12 +15,12 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 import yaml
-from src.benchmarks.mpc_benchmark import (
+from src.controllers.mpc import (
     LinearMPC, ComunidadSimulador, DATASET_PATH,
     simular_semana_idle,
     SOC_INICIAL, SEED, EPISODE_LENGTH,
 )
-from src.envs.energy_env_continuo import EnergyEnvContinuo
+from src.envs.energy_env import EnergyEnvContinuo
 from src.envs.residual_env import ResidualEnv
 
 _CONFIG_PATH = os.path.join(ROOT, 'config', 'system.yaml')
@@ -43,7 +43,7 @@ def crear_mpc():
 
 def test_mpc_standalone(mode='realista'):
     """MPC via eval_unificada path."""
-    from src.reporting.eval_unificada import evaluar_controlador
+    from src.evaluation.unified import evaluar_controlador
     mpc = crear_mpc()
     res = evaluar_controlador(mpc, forecast_mode=mode)
     return res['bens_marg']

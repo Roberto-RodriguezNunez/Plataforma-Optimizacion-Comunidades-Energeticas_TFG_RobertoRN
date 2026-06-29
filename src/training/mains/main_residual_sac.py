@@ -16,17 +16,17 @@ Ejecucion desde la raiz del proyecto (carpeta TFG/):
 import os
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from stable_baselines3 import SAC
 
-from src.benchmarks.mpc_benchmark import crear_mpc
-from src.config import cargar_system as _cargar_system
+from src.controllers.mpc import crear_mpc
+from src.core.config import cargar_system as _cargar_system
 from src.training.callbacks import ResidualMetricasCallback
 from src.training.scaffold_mains import entrenar, cli, LOG_DIR
-from src.training.factorias_residual import make_residual_envs, make_dawn_warmup
+from src.training.residual_factories import make_residual_envs, make_dawn_warmup
 
 FAMILIA = "residual_sac"
 

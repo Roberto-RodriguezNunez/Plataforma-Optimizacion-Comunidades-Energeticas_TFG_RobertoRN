@@ -17,7 +17,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from src.core.simulador import ComunidadSimulador
+from src.core.simulator import ComunidadSimulador
 
 DATA = os.path.join(ROOT, 'data', 'processed', 'dataset_final.csv')
 

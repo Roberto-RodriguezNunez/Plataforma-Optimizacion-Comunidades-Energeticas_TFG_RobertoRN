@@ -23,7 +23,7 @@ import numpy as np
 from src.core.forecast import (
     ventana_observada, generar_factores_precio, avanzar_ar1,
 )
-from src.core.obs_builder import OBS_DIM_RESIDUAL
+from src.core.observation import OBS_DIM_RESIDUAL
 
 
 class ResidualEnv(gym.Wrapper):

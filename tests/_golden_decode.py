@@ -15,7 +15,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from src.core.simulador import ComunidadSimulador  # noqa: E402
+from src.core.simulator import ComunidadSimulador  # noqa: E402
 
 _CFG = yaml.safe_load(open(os.path.join(ROOT, "config", "system.yaml")))
 DATASET_PATH = os.path.join(ROOT, _CFG["rutas"]["dataset_final"])

@@ -1,8 +1,8 @@
 """config.py — Fuente ÚNICA de carga de config/system.yaml.
 
-Antes, `system.yaml` se abría y parseaba por separado en `core/simulador.py`,
-`controllers/heuristic_controller.py`, `benchmarks/mpc_benchmark.py`,
-`reporting/eval_unificada.py`... — varias "fuentes de verdad" con riesgo de
+Antes, `system.yaml` se abría y parseaba por separado en `core/simulator.py`,
+`controllers/heuristic.py`, `controllers/mpc.py`,
+`evaluation/unified.py`... — varias "fuentes de verdad" con riesgo de
 desincronizarse. Este módulo lo carga una sola vez (cacheado) y expone
 accesores. NO valida ni transforma: devuelve el dict tal cual del YAML, de modo
 que el comportamiento es idéntico al de las cargas anteriores.
@@ -10,7 +10,7 @@ que el comportamiento es idéntico al de las cargas anteriores.
 import os
 import yaml
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SYSTEM_PATH = os.path.join(ROOT, "config", "system.yaml")
 
 _cache = None

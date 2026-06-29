@@ -50,7 +50,7 @@ def _recortar_semanas_eval(n):
     Parchea ComunidadSimulador.__init__ (la misma clase que instancia
     internamente evaluar_controlador) para no replicar su bucle aquí.
     """
-    from src.core.simulador import ComunidadSimulador
+    from src.core.simulator import ComunidadSimulador
     orig = ComunidadSimulador.__init__
 
     def parcheado(self, *a, **k):
@@ -65,9 +65,9 @@ def _recortar_semanas_eval(n):
 
 
 def _snap_obs_builder():
-    from src.core.simulador import ComunidadSimulador
-    from src.core.obs_builder import build_obs
-    from src.benchmarks.mpc_benchmark import DATASET_PATH
+    from src.core.simulator import ComunidadSimulador
+    from src.core.observation import build_obs
+    from src.controllers.mpc import DATASET_PATH
 
     sim = ComunidadSimulador(DATASET_PATH)
     step = 100
@@ -78,8 +78,8 @@ def _snap_obs_builder():
 
 def _snap_simulador():
     """Rollout determinista (sin RNG) de la física: acciones cíclicas 0..8."""
-    from src.core.simulador import ComunidadSimulador
-    from src.benchmarks.mpc_benchmark import DATASET_PATH
+    from src.core.simulator import ComunidadSimulador
+    from src.controllers.mpc import DATASET_PATH
 
     sim = ComunidadSimulador(DATASET_PATH)
     start = 672
@@ -118,9 +118,9 @@ def _snap_energy_env():
 
 
 def _snap_residual_env():
-    from src.envs.energy_env_continuo import EnergyEnvContinuo
+    from src.envs.energy_env import EnergyEnvContinuo
     from src.envs.residual_env import ResidualEnv
-    from src.benchmarks.mpc_benchmark import crear_mpc
+    from src.controllers.mpc import crear_mpc
 
     np.random.seed(7)
     inner = EnergyEnvContinuo(forecast_noise=True, mode="eval",
@@ -147,8 +147,8 @@ def _snap_residual_env():
 
 
 def _snap_mpc_eval():
-    from src.reporting.eval_unificada import evaluar_controlador, crear_mpc
-    from src.benchmarks.mpc_benchmark import SEED
+    from src.evaluation.unified import evaluar_controlador, crear_mpc
+    from src.controllers.mpc import SEED
 
     with _recortar_semanas_eval(_N_SEMANAS_GOLDEN):
         res = evaluar_controlador(crear_mpc(), forecast_mode="realista", seed=SEED)
@@ -159,8 +159,8 @@ def _snap_mpc_eval():
 
 
 def _snap_dqn_eval():
-    from src.reporting.eval_unificada import evaluar_controlador, crear_discrete_rl
-    from src.benchmarks.mpc_benchmark import SEED
+    from src.evaluation.unified import evaluar_controlador, crear_discrete_rl
+    from src.controllers.mpc import SEED
 
     if not os.path.exists(_DQN_MODEL):
         return {}  # sin modelo no se puede anclar este golden

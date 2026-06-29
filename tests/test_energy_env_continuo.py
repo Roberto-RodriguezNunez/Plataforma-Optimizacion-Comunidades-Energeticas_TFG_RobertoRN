@@ -13,7 +13,7 @@ import pytest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from src.envs.energy_env_continuo import EnergyEnvContinuo
+from src.envs.energy_env import EnergyEnvContinuo
 
 
 @pytest.fixture(scope='module')
@@ -184,7 +184,7 @@ class TestNoCicloSimultaneo:
         MPC realista (~+47.7 €/sem; coincide con el benchmark, ya que el env
         no introduce error respecto a simular_hora_mpc)."""
         import yaml
-        from src.benchmarks.mpc_benchmark import (
+        from src.controllers.mpc import (
             LinearMPC, ComunidadSimulador, simular_semana_idle,
             DATASET_PATH, SOC_INICIAL, SEED, EPISODE_LENGTH, HORIZON,
             _RHO_SOLAR, _RHO_CONS,

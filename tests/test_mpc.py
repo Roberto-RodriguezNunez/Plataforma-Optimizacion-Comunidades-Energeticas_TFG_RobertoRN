@@ -14,8 +14,8 @@ import pytest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from src.core.simulador import ComunidadSimulador
-from src.benchmarks.mpc_benchmark import (
+from src.core.simulator import ComunidadSimulador
+from src.controllers.mpc import (
     LinearMPC, simular_hora_mpc, simular_semana_idle,
     DATASET_PATH, EPISODE_LENGTH, HORIZON, SOC_INICIAL,
 )

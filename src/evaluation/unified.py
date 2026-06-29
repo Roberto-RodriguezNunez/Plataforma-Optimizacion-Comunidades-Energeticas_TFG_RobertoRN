@@ -24,7 +24,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from src.benchmarks.mpc_benchmark import (
+from src.controllers.mpc import (
     LinearMPC, ComunidadSimulador, DATASET_PATH,
     simular_hora_mpc, simular_semana_idle, _get_hora_actual, crear_mpc,
     SOC_INICIAL, SEED, EPISODE_LENGTH, HORIZON,
@@ -34,9 +34,9 @@ from src.core.forecast import (
     ventana_observada, generar_factores_precio, avanzar_ar1,
 )
 from src.controllers.base import BaseController
-from src.config import cargar_system as _cargar_system
+from src.core.config import cargar_system as _cargar_system
 
-# Cargar config (fuente única src.config)
+# Cargar config (fuente única src.core.config)
 _CFG = _cargar_system()
 _MPC_CFG = _CFG['mpc']
 
@@ -176,7 +176,7 @@ class IdleController(BaseController):
 def crear_residual_sac(model_path: str, vec_norm_path: str,
                        delta_max: float) -> BaseController:
     """Crea ResidualSACController con el MPC configurado."""
-    from src.controllers.residual_sac_controller import ResidualSACController
+    from src.controllers.residual import ResidualSACController
     sim = ComunidadSimulador(DATASET_PATH)
     mpc = crear_mpc()
     return ResidualSACController(
@@ -206,7 +206,7 @@ def crear_onnx_residual_sac(onnx_path: str, npz_path: str,
 def crear_discrete_rl(model_path: str, vec_norm_path: str,
                       algo: str = 'DQN') -> BaseController:
     """Crea DiscreteRLController para DQN o PPO."""
-    from src.controllers.discrete_rl_controller import DiscreteRLController
+    from src.controllers.rl import DiscreteRLController
     sim = ComunidadSimulador(DATASET_PATH)
     return DiscreteRLController(
         model_path=model_path,
