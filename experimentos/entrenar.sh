@@ -23,6 +23,15 @@ PY="${PYTHON:-.venv/bin/python}"
 export PYTHONUNBUFFERED=1
 cd "$(dirname "$0")/.."          # raíz del proyecto
 
+# Comprobar que el intérprete existe (en un clon fresco la .venv no está: es ignorada por git)
+if [[ ! -x "$PY" ]] && ! command -v "$PY" >/dev/null 2>&1; then
+  echo "ERROR: no encuentro el intérprete '$PY'." >&2
+  echo "  Falta la .venv en este PC (git la ignora). Créala con:" >&2
+  echo "    python3 -m venv .venv && .venv/bin/pip install -r requirements.txt" >&2
+  echo "  O usa otro python:  PYTHON=python3 ./experimentos/entrenar.sh $FAM" >&2
+  exit 1
+fi
+
 CSV="resultados/resultados.csv"
 
 # --- Baselines G1-G4 (no entrena, solo evalúa) ------------------------------

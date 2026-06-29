@@ -116,7 +116,7 @@ def entrenar_multiseed(
             resultados[seed] = _score_semilla(run_dir)
             print("=" * 62)
             print(f"  {algo.upper()}  {version}  —  SEMILLA {seed}  "
-                  f"[YA COMPLETA → reutilizada, reward {resultados[seed]:.2f}]")
+                  f"[YA COMPLETA -> reutilizada, reward {resultados[seed]:.2f}]")
             print("=" * 62)
             continue
 
