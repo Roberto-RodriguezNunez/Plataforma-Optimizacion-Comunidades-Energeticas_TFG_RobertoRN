@@ -25,11 +25,11 @@ cd "$(dirname "$0")/.."
 
 if [[ "$FAM" == "G" ]]; then
   echo "### Baselines G1-G4 (10 semillas) ###"
-  "$PY" src/eval_suite.py --baselines
+  "$PY" src/evaluation/suite.py --baselines
   exit 0
 fi
 
-VERSIONS=$("$PY" -c "from src.training.registro import listar_versiones; print(' '.join(listar_versiones('$FAM')))")
+VERSIONS=$("$PY" -c "from src.training.registry import listar_versiones; print(' '.join(listar_versiones('$FAM')))")
 echo "### Familia '$FAM' -> versiones: $VERSIONS ###"
 
 for V in $VERSIONS; do
@@ -38,7 +38,7 @@ for V in $VERSIONS; do
     "$PY" "src/training/mains/main_${FAM}.py" --version "$V"
   fi
   echo "================ EVAL     $FAM / $V  (10 semillas) ==============="
-  "$PY" src/eval_suite.py --familia "$FAM" --version "$V"
+  "$PY" src/evaluation/suite.py --familia "$FAM" --version "$V"
 done
 
 echo "### Familia '$FAM' COMPLETA -> resultados/resultados.csv ###"

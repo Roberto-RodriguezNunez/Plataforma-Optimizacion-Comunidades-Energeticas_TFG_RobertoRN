@@ -37,12 +37,12 @@ CSV="resultados/resultados.csv"
 # --- Baselines G1-G4 (no entrena, solo evalúa) ------------------------------
 if [[ "$FAM" == "G" ]]; then
   echo "### Baselines G1-G4 ###"
-  "$PY" src/eval_suite.py --baselines
+  "$PY" src/evaluation/suite.py --baselines
   exit 0
 fi
 
 # --- Lista de versiones de la familia (desde la registry) -------------------
-VERSIONS=$("$PY" -c "from src.training.registro import listar_versiones; print(' '.join(listar_versiones('$FAM')))")
+VERSIONS=$("$PY" -c "from src.training.registry import listar_versiones; print(' '.join(listar_versiones('$FAM')))")
 echo "### Familia '$FAM' -> versiones: $VERSIONS ###"
 
 for V in $VERSIONS; do
@@ -60,7 +60,7 @@ for V in $VERSIONS; do
   "$PY" "src/training/mains/main_${FAM}.py" --version "$V"
 
   echo "================ EVAL     $FAM / $V ================"
-  "$PY" src/eval_suite.py --familia "$FAM" --version "$V"
+  "$PY" src/evaluation/suite.py --familia "$FAM" --version "$V"
 done
 
 echo "### Familia '$FAM' COMPLETA  ->  resultados/resultados.csv ###"
