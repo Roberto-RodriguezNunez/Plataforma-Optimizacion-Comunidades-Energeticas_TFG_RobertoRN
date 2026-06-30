@@ -1130,14 +1130,14 @@ evaluación (50 semanas, SoC inicial 50\,\%, semilla 42).
 que garantiza el \emph{óptimo global de su función objetivo} y un tiempo de
 resolución de milisegundos, apto para operación en tiempo real en el nodo
 \textit{edge}. Esa linealidad obliga, no obstante, a aproximar la degradación
-—no lineal en la realidad, ecuación~\eqref{eq:degradacion}— mediante un coste
+(no lineal en la realidad, ecuación~\eqref{eq:degradacion}) mediante un coste
 marginal constante $K$. En consecuencia, el MPC es óptimo respecto a su
 \emph{modelo lineal}, no necesariamente respecto al problema no lineal subyacente:
 un MPC no lineal (NLP) o un esquema de programación dinámica que incorporasen la
 degradación exacta podrían aproximarse mejor al óptimo verdadero, a costa de
 perder la convexidad, la garantía de óptimo global y la resolución en tiempo real
-del LP. Se adopta por ello el MPC lineal como cota de referencia —la práctica
-estándar en la gestión de almacenamiento—, en el entendido de que no constituye
+del LP. Se adopta por ello el MPC lineal como cota de referencia, que es la práctica
+estándar en la gestión de almacenamiento, en el entendido de que no constituye
 el mejor controlador sin aprendizaje \emph{concebible}, sino el más fuerte y
 práctico; y es precisamente esta brecha de linealización la que el residual
 aprende a capturar con coste de inferencia despreciable (Sección~\ref{sub:justificacion},
@@ -1183,6 +1183,19 @@ que el MPC realista se situaba en $+48{,}73$\,€/semana; el controlador final y
 cotas se reevaluaron sobre el dimensionado definitivo de \SI{42}{kWp}/\SI{80}{kWh}
 (Sección~\ref{sub:resultados}), por lo que las cifras de DQN y PPO de esta
 sección corresponden a aquella fase.
+
+\paragraph{Dos fases: exploración y validación.} La experimentación se organiza en
+dos fases de propósito distinto. En la \textbf{fase de exploración}, que es la de esta
+sección, cada configuración se entrena con \emph{una sola semilla} y de forma
+deliberadamente barata; su fin es \emph{generar hipótesis y acotar} el espacio de
+arquitecturas e hiperparámetros, por lo que sus cifras son \emph{indicativas} y no
+soportan por sí solas conclusiones cuantitativas. Las configuraciones que superan
+este cribado pasan a la \textbf{fase de validación} (Sección~\ref{sub:suite}), donde
+se entrenan con \textbf{tres semillas} y se evalúan con \textbf{diez semillas de
+ruido} (intervalo de confianza al 95\,\% por \textit{bootstrap} y test de Wilcoxon)
+sobre el dimensionado definitivo. Es esta segunda fase la que sustenta las
+conclusiones del trabajo; la exploración solo justifica \emph{por qué} se valida cada
+candidato.
 
 \subsubsection{Controlador Heurístico (Suelo de Rendimiento)}
 
@@ -1511,6 +1524,48 @@ evaluación unificada (SoC fijo y beneficio marginal puro), de modo que el model
 no se selecciona sobre la misma medida que se reporta. El optimismo de selección
 residual es, por tanto, despreciable —y nulo en la práctica para el Residual SAC,
 cuyas tres semillas rinden casi idéntico por la garantía de suelo—.
+
+\subsection{Diseño de la Suite de Validación}
+\label{sub:suite}
+
+La exploración fija qué hipótesis merece la pena confirmar con rigor; de ella se
+deriva la \emph{suite de validación}: las familias y versiones que se entrenan con
+tres semillas y se evalúan con diez semillas de ruido bajo el protocolo de la
+Sección~\ref{sub:seleccion}. Cada familia no es una prueba ciega, sino que responde
+a una hipótesis concreta, encadenadas en el mismo razonamiento que llevó al
+controlador final:
+
+\begin{itemize}
+  \item \textbf{DQN} (DQN-1\,\ldots\,6): comprueba si un método \emph{basado en valor}
+    puro supera al MPC y delimita el efecto del horizonte de propagación de crédito
+    (barrido de \textit{n-step} 1/4/8/24, descuento y tasa de aprendizaje). Hipótesis:
+    no lo supera y el error de cuantización del espacio discreto es estructural.
+  \item \textbf{PPO discreto} (PPO-D1\,\ldots\,5): confirma que el \textit{on-policy}
+    con entropía constante colapsa y que el decaimiento conjunto de entropía y tasa
+    de aprendizaje lo evita.
+  \item \textbf{PPO continuo} (PPO-C1\,\ldots\,3): aísla la pregunta «¿basta con pasar
+    a acción continua?». Al ser \textit{on-policy} no puede aprovechar las
+    demostraciones del MPC (DAWN), de modo que separa el mérito del espacio continuo
+    del de la arquitectura residual.
+  \item \textbf{Residual SAC} (SAC-A/B/C más ablaciones): es el controlador propuesto.
+    SAC-A/B/C contrastan la forma del residual (aditivo frente a multiplicativo), el
+    rango de corrección $\delta$ y el coeficiente de entropía; las ablaciones aíslan
+    cada componente: \textbf{F2} barre $\delta$ (0,05--0,30), \textbf{F4} elimina el
+    \textit{warmup} DAWN, y \textbf{F6} estresa la robustez variando el ruido de
+    consumo ($\sigma=5\,\%$ y $25\,\%$).
+  \item \textbf{TD3 y DDPG residuales}: misma arquitectura residual con otros
+    algoritmos \textit{off-policy}; justifican \emph{por comparación y descarte} la
+    elección de SAC (regularización por entropía y doble crítico).
+  \item \textbf{SAC puro} (F5): SAC continuo directo, sin MPC base ni DAWN; aísla el
+    mérito de la \emph{arquitectura residual} frente al del algoritmo en sí.
+\end{itemize}
+
+Cada candidato existe, por tanto, para confirmar o descartar una hipótesis derivada
+de la exploración. Los resultados agregados (3 semillas $\times$ 10 semillas de
+ruido) se reportan en la Sección~\ref{sub:resultados}: a fecha de redacción está
+validado el controlador propuesto (Residual SAC, SAC-C) y permanecen
+\textit{pendientes de cómputo} las ablaciones y las familias comparativas restantes,
+cuyos valores se incorporarán al completarse los entrenamientos.
 
 \subsection{Resultados Experimentales}
 \label{sub:resultados}
@@ -1933,6 +1988,17 @@ al consumo medio del hogar español, no un registro de quince viviendas reales; 
 desglose por vivienda de la capa de facturación es, en consecuencia, una
 proyección sintética. Los resultados son válidos bajo las hipótesis del modelo y
 no constituyen mediciones de una instalación física.
+
+\textbf{Especialización a la comunidad de estudio.} El controlador residual aprende
+sobre el perfil concreto de la comunidad modelada (quince viviendas, \SI{42}{kWp},
+batería de \SI{80}{kWh}); trasladarlo a otra comunidad de distinto tamaño,
+generación o consumo exige regenerar el dataset y reentrenar, pues la política se
+ajusta a esa distribución de carga y generación. No obstante, el \textbf{MPC base
+opera sin reentrenamiento} sobre cualquier comunidad, pues resuelve su \acrshort{lp}
+con los datos que reciba, de modo que el sistema \textbf{degrada de forma controlada}:
+ante una comunidad no vista, el peor caso es operar con el MPC realista mientras se
+reentrena el residual. Un ajuste fino por comunidad (\textit{transfer learning})
+queda como línea de trabajo futuro (Capítulo~\ref{chap:futuro}).
 
 \textbf{Modelo de degradación.} La degradación se modela como un coste en la
 función de recompensa que induce un uso conservador del almacenamiento, pero no
