@@ -1,5 +1,5 @@
 """
-test_dataset.py — Tests del pipeline ETL (generar_dataset_final.py)
+test_dataset.py — Tests del pipeline ETL (build_dataset.py)
 ===================================================================
 Ejecutar desde la raíz del proyecto (carpeta TFG/):
     pytest tests/test_dataset.py -v
@@ -26,7 +26,7 @@ METADATA_PATH = os.path.join(ROOT, 'data', 'processed', 'metadata.json')
 def df():
     """Carga el dataset generado."""
     assert os.path.exists(DATASET_PATH), (
-        f"No se encuentra {DATASET_PATH}. Ejecuta primero generar_dataset_final.py.")
+        f"No se encuentra {DATASET_PATH}. Ejecuta primero build_dataset.py.")
     return pd.read_csv(DATASET_PATH, parse_dates=['fecha'])
 
 
@@ -34,7 +34,7 @@ def df():
 def metadata():
     """Carga el metadata.json generado."""
     assert os.path.exists(METADATA_PATH), (
-        f"No se encuentra {METADATA_PATH}. Ejecuta primero generar_dataset_final.py.")
+        f"No se encuentra {METADATA_PATH}. Ejecuta primero build_dataset.py.")
     with open(METADATA_PATH, 'r', encoding='utf-8') as f:
         return json.load(f)
 
@@ -122,8 +122,8 @@ class TestDeterminismo:
         """Ejecutar dos veces con la misma semilla produce datasets idénticos."""
         # Importar y ejecutar la función directamente (evita problemas de memoria
         # con subprocess en entornos con paging file limitado)
-        sys.path.insert(0, os.path.join(ROOT, 'src', 'utils'))
-        from generar_dataset_final import generar
+        sys.path.insert(0, os.path.join(ROOT, 'experimentos'))
+        from build_dataset import generar
 
         # Guardar CSV original
         df1 = pd.read_csv(DATASET_PATH)

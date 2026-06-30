@@ -176,7 +176,7 @@ class IdleController(BaseController):
 def crear_residual_sac(model_path: str, vec_norm_path: str,
                        delta_max: float) -> BaseController:
     """Crea ResidualSACController con el MPC configurado."""
-    from src.controllers.residual import ResidualSACController
+    from src.controllers.residual_sac_controller import ResidualSACController
     sim = ComunidadSimulador(DATASET_PATH)
     mpc = crear_mpc()
     return ResidualSACController(

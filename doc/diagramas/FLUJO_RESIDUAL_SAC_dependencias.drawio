@@ -169,13 +169,13 @@
         <mxCell id="v_reg" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="cargar_version() → training/registry.py" vertex="1">
           <mxGeometry height="50" width="300" x="380" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="v_ctrl" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;whiteSpace=wrap;" value="controllers/residual.py · ResidualSACController" vertex="1">
+        <mxCell id="v_ctrl" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;whiteSpace=wrap;" value="controllers/residual_sac_controller.py · ResidualSAC" vertex="1">
           <mxGeometry height="50" width="300" x="380" y="150" as="geometry" />
         </mxCell>
         <mxCell id="v_core" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="core/ observation · forecast · simulator" vertex="1">
           <mxGeometry height="50" width="300" x="380" y="250" as="geometry" />
         </mxCell>
-        <mxCell id="v_base" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="controllers/residual.py (base) + base.py" vertex="1">
+        <mxCell id="v_base" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="controllers/residual_base.py + base.py" vertex="1">
           <mxGeometry height="50" width="310" x="740" y="150" as="geometry" />
         </mxCell>
         <mxCell id="v_mpc" parent="L3" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="controllers/mpc.py (MPC realista)" vertex="1">
@@ -238,7 +238,7 @@
         <mxCell id="g_onnx" parent="L5" style="rounded=0;html=1;fillColor=#FFFFFF;strokeColor=#666666;whiteSpace=wrap;" value="production/onnx_inference.py (OnnxResidualController)" vertex="1">
           <mxGeometry height="50" width="300" x="30" y="150" as="geometry" />
         </mxCell>
-        <mxCell id="g_solve" parent="L5" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="controllers/residual.py · solve()" vertex="1">
+        <mxCell id="g_solve" parent="L5" style="rounded=0;html=1;fillColor=#FFF3B0;strokeColor=#B0A52A;" value="controllers/residual_base.py · solve()" vertex="1">
           <mxGeometry height="50" width="300" x="30" y="350" as="geometry" />
         </mxCell>
         <mxCell id="g_http" parent="L5" style="rounded=0;html=1;fillColor=#E1D5F5;strokeColor=#7A5BA6;" value="=&gt; HTTP POST /api/edge/decision · /generar-cierre" vertex="1">

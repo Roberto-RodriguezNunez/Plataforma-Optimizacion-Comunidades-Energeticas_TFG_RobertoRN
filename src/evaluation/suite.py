@@ -35,7 +35,7 @@ from src.evaluation.unified import (
 from src.controllers.heuristic import HeuristicController
 from src.controllers.discrete import DiscreteRLController
 from src.controllers.continuous import ContinuousController
-from src.controllers.residual import ResidualSACController
+from src.controllers.residual_sac_controller import ResidualSACController
 from src.training.registry import cargar_version, familias, listar_versiones
 from src.evaluation.stats import ic95_bootstrap, wilcoxon_vs
 

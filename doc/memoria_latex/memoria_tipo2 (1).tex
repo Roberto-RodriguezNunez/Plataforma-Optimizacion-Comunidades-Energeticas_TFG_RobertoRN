@@ -1086,6 +1086,13 @@ efectivamente ahorrado durante la semana, y al aplicarse de forma \emph{idéntic
 a todos los controladores, la comparación permanece justa. En \textbf{producción}
 la cuestión no se plantea: al no existir episodios, no hay frontera que corregir.
 
+Como consecuencia directa, la recompensa observada \emph{durante} el entrenamiento
+(que incorpora los términos de frontera) queda de forma sistemática algo por debajo
+del beneficio marginal limpio reportado en la evaluación: ambas métricas se calculan
+sobre las mismas 50 semanas \textit{held-out}, pero la de entrenamiento descuenta en
+neto el coste inicial frente al valor terminal. Esta brecha es esperable por
+construcción y no refleja un peor rendimiento real del modelo.
+
 % ==============================================================
 \section{Motor de Decisión Energético}
 \label{sec:motor}

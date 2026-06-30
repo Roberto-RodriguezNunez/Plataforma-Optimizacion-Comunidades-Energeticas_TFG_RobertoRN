@@ -22,7 +22,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from src.controllers.residual import ResidualControllerBase
+from src.controllers.residual_base import ResidualControllerBase
 from src.core.observation import OBS_DIM_RESIDUAL
 
 # Rutas por defecto (relativas a ROOT)

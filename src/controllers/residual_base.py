@@ -1,15 +1,13 @@
 """
-residual.py — Controlador Residual (MPC + δ): base común + backend torch
-=========================================================================
-Toda la lógica residual vive en `ResidualControllerBase`. Las subclases solo
-implementan el backend de inferencia `_infer(obs_norm) -> delta`:
+residual_base.py — Base común del controlador Residual (MPC + δ)
+=================================================================
+Toda la lógica residual compartida vive aquí, en `ResidualControllerBase`. Las
+subclases solo implementan el backend de inferencia `_infer(obs_norm) -> delta`:
 
-  - ResidualSACController (evaluación): carga el .zip y usa SAC.predict (torch).
-  - OnnxResidualController (producción, en src/production/onnx_inference.py):
-    usa onnxruntime session.run.
+  - ResidualSACController (residual_sac_controller.py): backend torch (SB3.predict).
+  - OnnxResidualController (production/onnx_inference.py):  backend onnxruntime.
 
-Pipeline común de `solve()` (idéntico para ambos → garantiza por construcción
-que evaluación == producción):
+Pipeline común de `solve()` (idéntico para ambos → evaluación == producción):
     1. MPC base                → cs, cm, dc, dr
     2. observation.build_obs   → obs_108
     3. añadir 4 features MPC    → obs_112
@@ -17,13 +15,12 @@ que evaluación == producción):
     5. _infer(obs_norm)         → delta 4D  (torch u ONNX)
     6. residual multiplicativo  → max(0, mpc_flow * (1 + delta * delta_max))
 
-La BASE no importa torch ni onnxruntime → segura para el contenedor edge.
-(Antes en residual_base.py + residual_sac_controller.py.)
+La base NO importa torch ni onnxruntime → segura para el contenedor edge.
 """
 
 import os
 import sys
-from typing import Dict, Optional
+from typing import Dict
 
 import numpy as np
 
@@ -33,8 +30,6 @@ if ROOT not in sys.path:
 
 from src.controllers.base import BaseController
 from src.core.observation import build_obs
-
-_ALGOS_TORCH = ('SAC', 'TD3', 'DDPG')
 
 
 class ResidualControllerBase(BaseController):
@@ -120,55 +115,3 @@ class ResidualControllerBase(BaseController):
 
     def nombre(self) -> str:
         raise NotImplementedError
-
-
-class ResidualSACController(ResidualControllerBase):
-    """
-    Controlador residual con inferencia torch (SB3). Sirve para cualquier
-    algoritmo off-policy continuo entrenado sobre ResidualEnv (SAC, TD3, DDPG):
-    todos exponen `model.predict(obs, deterministic=True) -> (delta, _)`.
-
-    Args:
-        model_path: Ruta al modelo (.zip).
-        mpc: Controlador MPC con `.solve(state, forecast)`.
-        sim: ComunidadSimulador (parámetros físicos).
-        delta_max: Fracción (hiperparámetro del modelo entrenado).
-        vec_normalize_path: Ruta a las stats de VecNormalize (.pkl). None → sin normalizar.
-        algo: 'SAC' | 'TD3' | 'DDPG' (define la clase SB3 que carga el .zip).
-        residual_mode: 'mult' | 'add' (debe coincidir con el del entreno).
-    """
-
-    def __init__(
-        self,
-        model_path: str,
-        mpc,                      # cualquier controlador MPC con .solve(state, forecast)
-        sim,
-        delta_max: float,
-        vec_normalize_path: Optional[str] = None,
-        algo: str = 'SAC',
-        residual_mode: str = 'mult',
-    ):
-        import stable_baselines3 as sb3
-
-        algo = algo.upper()
-        if algo not in _ALGOS_TORCH:
-            raise ValueError(f"algo '{algo}' no soportado; usa uno de {_ALGOS_TORCH}")
-
-        super().__init__(mpc, sim, delta_max, residual_mode=residual_mode)
-        self._algo = algo
-        self._model = getattr(sb3, algo).load(model_path, device='cpu')
-
-        if vec_normalize_path and os.path.exists(vec_normalize_path):
-            import pickle
-            with open(vec_normalize_path, 'rb') as f:
-                vec_norm = pickle.load(f)
-            self._mean = vec_norm.obs_rms.mean
-            self._var = vec_norm.obs_rms.var
-            self._clip_obs = vec_norm.clip_obs
-
-    def _infer(self, obs_norm: np.ndarray) -> np.ndarray:
-        delta, _ = self._model.predict(obs_norm, deterministic=True)
-        return delta
-
-    def nombre(self) -> str:
-        return f"Residual{self._algo}({self._residual_mode},dmax={self._delta_max})"

@@ -49,7 +49,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope='module')
 def controllers():
-    from src.controllers.residual import ResidualSACController
+    from src.controllers.residual_sac_controller import ResidualSACController
     from src.production.onnx_inference import OnnxResidualController
 
     sim_sb3  = ComunidadSimulador(DATASET_PATH)
