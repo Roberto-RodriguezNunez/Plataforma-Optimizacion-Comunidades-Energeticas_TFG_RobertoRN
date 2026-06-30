@@ -21,9 +21,9 @@ Escenarios:
   K  Paneles, bateria + Residual SAC
 
 Uso:
-    python src/eval_escenarios.py                          # A-J (sin SAC)
-    python src/eval_escenarios.py --skip-battery           # solo A, B, G
-    python src/eval_escenarios.py --sac-model models/sac.zip --sac-norm models/norm.pkl
+    python src/evaluation/scenarios.py                          # A-J (sin SAC)
+    python src/evaluation/scenarios.py --skip-battery           # solo A, B, G
+    python src/evaluation/scenarios.py --sac-model models/sac.zip --sac-norm models/norm.pkl
 """
 
 import argparse

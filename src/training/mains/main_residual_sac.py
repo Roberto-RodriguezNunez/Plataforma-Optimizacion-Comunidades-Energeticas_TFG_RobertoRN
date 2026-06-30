@@ -10,7 +10,7 @@ Protocolo DAWN (Data-Anchored Warmup):
   3. El critic aprende primero que delta=0 da reward MPC, luego explora.
 
 Ejecucion desde la raiz del proyecto (carpeta TFG/):
-    python src/main_residual_sac.py [--version SAC-C] [--seeds 42 1337 2024]
+    python src/training/mains/main_residual_sac.py [--version SAC-C] [--seeds 42 1337 2024]
 """
 
 import os

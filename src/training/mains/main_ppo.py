@@ -7,7 +7,7 @@ o {init, final} (decay lineal); el EntCoefScheduler solo se añade si la versió
 pide decay de entropía.
 
 Ejecución desde la raíz del proyecto (carpeta TFG/):
-    python src/main_ppo.py --version PPO-D4 --seeds 42 1337 2024
+    python src/training/mains/main_ppo.py --version PPO-D4 --seeds 42 1337 2024
 """
 
 import os

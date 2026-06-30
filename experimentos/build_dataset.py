@@ -1,5 +1,5 @@
 """
-generar_dataset_final.py — Pipeline ETL para el dataset de la comunidad energética
+build_dataset.py — Pipeline ETL para el dataset de la comunidad energética
 ==================================================================================
 Genera data/processed/dataset_final.csv a partir de fuentes ESIOS y PVGIS.
 
@@ -12,7 +12,7 @@ Cambios principales respecto a la versión anterior:
   - Semilla configurable por argumento (default: 42).
 
 Ejecución desde la raíz del proyecto (carpeta TFG/):
-    python src/utils/generar_dataset_final.py [--semilla 42]
+    python experimentos/build_dataset.py [--semilla 42]
 """
 
 import argparse

@@ -863,7 +863,7 @@ de venta de excedentes.
 
 \subsection{Pipeline ETL}
 
-El módulo \texttt{src/utils/generar\_dataset\_final.py} convierte los cuatro
+El módulo \texttt{experimentos/build\_dataset.py} convierte los cuatro
 ficheros crudos de \texttt{data/raw/} en el dataset final de simulación.
 Primero escala el consumo: el perfil normalizado 2.0TD (ESIOS 1006) se
 multiplica por \num{3500}\,kWh/año y por las quince viviendas, y sobre la
@@ -1125,6 +1125,23 @@ porque hacerlo requeriría predecir el futuro con exactitud.
 
 \textbf{Resultado:} $+56{,}64$\,€/semana sobre el pool de
 evaluación (50 semanas, SoC inicial 50\,\%, semilla 42).
+
+\textbf{Alcance de la optimalidad.} El MPC se formula como un programa lineal, lo
+que garantiza el \emph{óptimo global de su función objetivo} y un tiempo de
+resolución de milisegundos, apto para operación en tiempo real en el nodo
+\textit{edge}. Esa linealidad obliga, no obstante, a aproximar la degradación
+—no lineal en la realidad, ecuación~\eqref{eq:degradacion}— mediante un coste
+marginal constante $K$. En consecuencia, el MPC es óptimo respecto a su
+\emph{modelo lineal}, no necesariamente respecto al problema no lineal subyacente:
+un MPC no lineal (NLP) o un esquema de programación dinámica que incorporasen la
+degradación exacta podrían aproximarse mejor al óptimo verdadero, a costa de
+perder la convexidad, la garantía de óptimo global y la resolución en tiempo real
+del LP. Se adopta por ello el MPC lineal como cota de referencia —la práctica
+estándar en la gestión de almacenamiento—, en el entendido de que no constituye
+el mejor controlador sin aprendizaje \emph{concebible}, sino el más fuerte y
+práctico; y es precisamente esta brecha de linealización la que el residual
+aprende a capturar con coste de inferencia despreciable (Sección~\ref{sub:justificacion},
+Argumento~1).
 
 \subsubsection{MPC con Pronóstico Realista (Baseline Competitivo)}
 

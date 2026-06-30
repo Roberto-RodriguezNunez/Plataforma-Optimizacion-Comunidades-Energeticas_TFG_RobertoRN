@@ -8,7 +8,7 @@ empíricamente la elección de SAC frente a TD3.
 Registry-driven (TD3-1..4 en config/experimentos.yaml). Reutiliza las factorías
 residuales compartidas (make_residual_envs + make_dawn_warmup).
 
-    python src/main_td3_residual.py --version TD3-1 --seeds 42 1337 2024
+    python src/training/mains/main_td3_residual.py --version TD3-1 --seeds 42 1337 2024
 """
 
 import os

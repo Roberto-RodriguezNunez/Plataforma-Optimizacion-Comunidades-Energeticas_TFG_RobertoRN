@@ -10,7 +10,7 @@ Protocolo idéntico al de correr_episodios del MPC benchmark:
 Esto garantiza que delta=0 via ResidualSAC = MPC realista exactamente.
 
 Uso:
-    python src/reporting/eval_unificada.py
+    python src/evaluation/unified.py
 """
 
 import argparse

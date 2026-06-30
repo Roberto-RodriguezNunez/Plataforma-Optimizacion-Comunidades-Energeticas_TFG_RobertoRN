@@ -2,7 +2,7 @@
 # =============================================================================
 # entrenar.sh — Entrena + evalúa una familia entera, REANUDABLE tras un corte
 # =============================================================================
-# Sustituye a run_familia.sh con dos mejoras:
+# Dos garantías que lo hacen reanudable tras un corte:
 #   1) Salta las versiones YA evaluadas (las que tienen fila en resultados.csv).
 #   2) Reanuda las versiones a medias: el runner (multiseed) reutiliza las
 #      semillas ya terminadas y reentrena la que quedó cortada (p.ej. apagón).

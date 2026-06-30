@@ -3,7 +3,7 @@ N-step: si la versión pide n_step>1 se cablea NStepReplayBuffer
 (gamma del modelo = base_gamma**n_step, el buffer acumula el retorno N-step).
 
 Ejecución desde la raíz del proyecto (carpeta TFG/):
-    python src/main_dqn.py --version DQN-2 --seeds 42 1337 2024
+    python src/training/mains/main_dqn.py --version DQN-2 --seeds 42 1337 2024
 """
 
 import os

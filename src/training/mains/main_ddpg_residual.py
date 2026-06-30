@@ -7,7 +7,7 @@ la regularización de SAC/TD3 (baja prioridad; soporta por descarte SAC).
 
 Registry-driven (DDPG-1..2). Reutiliza las factorías residuales compartidas.
 
-    python src/main_ddpg_residual.py --version DDPG-2 --seeds 42 1337 2024
+    python src/training/mains/main_ddpg_residual.py --version DDPG-2 --seeds 42 1337 2024
 """
 
 import os

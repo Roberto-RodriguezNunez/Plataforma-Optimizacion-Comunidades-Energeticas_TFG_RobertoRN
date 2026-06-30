@@ -187,7 +187,7 @@ El Residual SAC aprende correcciones ±15% sobre las decisiones del MPC. Se ejec
 
 ```bash
 source .venv/bin/activate
-nohup python src/main_residual_sac.py --version 80kwh --seeds 42 1337 2024 > logs/train_sac.log 2>&1 &
+nohup python src/training/mains/main_residual_sac.py --version 80kwh --seeds 42 1337 2024 > logs/train_sac.log 2>&1 &
 echo $! > logs/train_sac.pid
 ```
 
@@ -244,7 +244,7 @@ python src/eval_unificada.py \
 Para evaluar con varias semillas de ruido (recomendado para la memoria):
 
 ```bash
-python src/eval_escenarios.py   # próximamente
+python src/evaluation/scenarios.py   # próximamente
 ```
 
 ---

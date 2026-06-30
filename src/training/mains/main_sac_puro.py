@@ -7,7 +7,7 @@ Residual SAC, el valor lo aporta el residual, no SAC en sí.
 
 Registry-driven (familia sac_puro, versión F5).
 
-    python src/main_sac_puro.py --version F5 --seeds 42 1337 2024
+    python src/training/mains/main_sac_puro.py --version F5 --seeds 42 1337 2024
 """
 
 import os

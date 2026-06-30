@@ -9,7 +9,7 @@ continuo en sí.
 Registry-driven (PPO-C1..3). lr/ent admiten const o decay (como en main_ppo);
 action_std_init se traduce a log_std_init.
 
-    python src/main_ppo_continuo.py --version PPO-C1 --seeds 42 1337 2024
+    python src/training/mains/main_ppo_continuo.py --version PPO-C1 --seeds 42 1337 2024
 """
 
 import math

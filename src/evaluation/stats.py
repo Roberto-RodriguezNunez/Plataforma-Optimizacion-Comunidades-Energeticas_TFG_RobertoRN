@@ -2,7 +2,7 @@
 estadistica.py — Estadística para los resultados de la suite
 ============================================================
 IC95% por bootstrap de la media + test de Wilcoxon pareado frente a un baseline.
-Usado por src/eval_suite.py para cuantificar significancia (F1) y robustez.
+Usado por src/evaluation/suite.py para cuantificar significancia (F1) y robustez.
 """
 
 import numpy as np

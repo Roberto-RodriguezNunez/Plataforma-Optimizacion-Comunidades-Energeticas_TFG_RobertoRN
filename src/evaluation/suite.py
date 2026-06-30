@@ -8,9 +8,9 @@ media €/sem, std sobre semillas, IC95% (bootstrap) y Wilcoxon vs MPC realista,
 añade una fila a resultados/resultados.csv (+ JSON por versión).
 
 Uso:
-    python src/eval_suite.py --baselines                 # G1-G4 (una vez)
-    python src/eval_suite.py --familia dqn --version DQN-2
-    python src/eval_suite.py --todas                     # todas las versiones con artefacto
+    python src/evaluation/suite.py --baselines                 # G1-G4 (una vez)
+    python src/evaluation/suite.py --familia dqn --version DQN-2
+    python src/evaluation/suite.py --todas                     # todas las versiones con artefacto
 
 El CSV es la fuente que se vuelca a las tablas LaTeX (anexos F.1-F.6 + G).
 """

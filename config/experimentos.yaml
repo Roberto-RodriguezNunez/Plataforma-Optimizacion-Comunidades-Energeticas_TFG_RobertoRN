@@ -3,7 +3,7 @@
 # =============================================================================
 # FUENTE ÚNICA de los hiperparámetros de cada versión entrenable. La leen:
 #   - los mains de entreno (src/main_*.py) vía src/training/registro.py
-#   - el dispatcher de evaluación (src/eval_suite.py)
+#   - el dispatcher de evaluación (src/evaluation/suite.py)
 #
 # Estructura por familia:
 #   algo:        nombre interno del algoritmo (define el nombre de artefacto)
