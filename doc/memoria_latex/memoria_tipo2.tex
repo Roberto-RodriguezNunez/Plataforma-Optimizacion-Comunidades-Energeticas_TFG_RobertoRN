@@ -66,7 +66,8 @@
 \usepackage{booktabs, array, longtable, tabularx}
 \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 \newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
-\usepackage{graphicx, caption, subcaption, float}
+\usepackage[demo]{graphicx}
+\usepackage{caption, subcaption, float}
 \usepackage{enumitem}
 \usepackage{tocloft}
 \renewcommand{\cftchapfont}{\bfseries}
@@ -257,6 +258,16 @@ autoconsumo colectivo plantea, por tanto, un problema distinto: un único activo
 debe gestionarse de forma centralizada para el balance agregado de todos los
 participantes, y queda infrautilizada sin una política de carga y descarga que
 explote la variabilidad horaria del precio de la energía en el mercado español.
+
+\textbf{Modalidad adoptada.} Este trabajo se acoge al marco de autoconsumo del
+RD~244/2019 y el RDL~7/2025, pero en la modalidad concreta de \textbf{cooperativa
+con un único punto de suministro (CUPS)}: las quince viviendas se presentan ante
+el sistema eléctrico a través de un solo contador frontera, por lo que la
+liquidación económica se realiza sobre el \textbf{balance horario agregado} de la
+comunidad (y no vivienda a vivienda mediante coeficientes de reparto). Ese balance
+neto hora a hora es, exactamente, la factura eléctrica que optimiza el controlador.
+La justificación de esta elección, sus condiciones de aplicabilidad y su encaje
+jurídico se detallan en la Sección~\ref{sec:marco_regulatorio}.
 
 La variabilidad del precio PVPC, que en 2022 alcanzó \num{0,50}\,€/kWh en horas
 pico y valores cercanos a cero en horas valle, ofrece un margen de arbitraje
@@ -746,6 +757,12 @@ regula automáticamente la exploración: cuando la política es determinista
 el agente explota el conocimiento actual. Esta propiedad proporciona una
 robustez notable a hiperparámetros, siendo SAC la elección preferida en
 aplicaciones de control continuo con restricciones físicas.
+
+Además, SAC emplea en su formulación estándar dos redes crítico
+(\textit{clipped double-Q}) y utiliza el mínimo de sus estimaciones para
+mitigar la sobrestimación del valor Q, técnica heredada de TD3
+\citep{Fujimoto2018}. Se adopta esta configuración canónica
+($n_{\text{critics}}=2$), sin tratarla como un hiperparámetro a ajustar.
 
 \subsection{Control Predictivo Basado en Modelos (MPC)}
 \label{sub:mpc_teoria}
@@ -1999,6 +2016,18 @@ con los datos que reciba, de modo que el sistema \textbf{degrada de forma contro
 ante una comunidad no vista, el peor caso es operar con el MPC realista mientras se
 reentrena el residual. Un ajuste fino por comunidad (\textit{transfer learning})
 queda como línea de trabajo futuro (Capítulo~\ref{chap:futuro}).
+
+\textbf{Alcance experimental y coste de cómputo.} El barrido de configuraciones y
+semillas no se amplió más allá de la suite presentada, por su coste computacional.
+El conjunto de entrenamientos y evaluaciones realizado equivale a unas 600 horas de
+cómputo en un ordenador de gama media, ya que las familias residuales resuelven un
+problema de programación lineal en cada paso de simulación. Ampliar la rejilla (más
+versiones, más semillas o ablaciones de componentes internos del algoritmo, como el
+número de redes crítico) habría multiplicado ese coste sin aportar información
+proporcional a la pregunta de investigación, centrada en el mérito de la corrección
+residual sobre el \acrshort{mpc}. Por ello el diseño experimental se dirigió a las
+hipótesis relevantes (modo y magnitud de la corrección, coeficiente de exploración y
+arranque guiado \textit{DAWN}) en lugar de a una exploración exhaustiva.
 
 \textbf{Modelo de degradación.} La degradación se modela como un coste en la
 función de recompensa que induce un uso conservador del almacenamiento, pero no

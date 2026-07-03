@@ -1,0 +1,105 @@
+@startuml secuencia_ciclo_residual
+!theme plain
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign center
+
+title Diagrama de Secuencia — Ciclo de Entrenamiento del Residual SAC (paso horario)
+
+participant "main_residual_sac.py\n(Orquestador)" as MAIN
+participant "Actor SAC\n(Stable Baselines3)" as SAC
+participant "ResidualEnv\n(wrapper sobre el continuo)" as RENV
+participant "LinearMPC\n(mpc.py · Supervisor LP)" as MPC
+participant "ComunidadSimulador\n(Motor Físico-Económico)" as SIM
+database   "dataset_final.csv" as DATA
+
+== Inicialización ==
+
+MAIN -> RENV : ResidualEnv(EnergyEnvContinuo, mpc=crear_mpc())
+activate RENV
+RENV -> SIM : ComunidadSimulador('data/processed/dataset_final.csv')
+activate SIM
+SIM -> DATA : pd.read_csv()
+DATA --> SIM : DataFrame (22.646 × 5)
+SIM --> RENV : instancia lista
+deactivate SIM
+RENV --> MAIN : entorno residual (+ VecNormalize)
+deactivate RENV
+
+MAIN -> SAC : SAC('MlpPolicy', env=train_env [VecNormalize])
+activate SAC
+SAC --> MAIN : agente configurado
+deactivate SAC
+
+== Arranque guiado DAWN — Data-Anchored Warmup (100k pasos) ==
+
+note over SAC, MPC
+  Antes de entrenar se generan 100.000 transiciones con la acción del MPC
+  (delta = 0) en un entorno aparte: pre-llenan el Replay Buffer y calibran
+  VecNormalize (obs_rms) con esas observaciones. Ancla el critic al
+  rendimiento del MPC antes de que el SAC explore correcciones.
+end note
+
+== Inicio de Episodio (reset) ==
+
+MAIN -> SAC : model.learn(total_timesteps)
+activate SAC
+SAC -> RENV : env.reset()
+activate RENV
+RENV -> SIM : current_step = semana_train aleatoria\nSoC inicial aleatorio en [0.15, 0.85]
+RENV -> RENV : fija coste inicial (se resta en t=0)\nobs_112 = obs_108 + 4 features MPC
+RENV --> SAC : obs_0 (112,), info={}
+deactivate RENV
+
+== Bucle de Pasos (loop 168 pasos = 1 semana) ==
+
+loop para cada hora t del episodio (168 h)
+
+    SAC -> SAC : muestrea política (exploración)\n→ delta (4D) en [-1, +1]
+    SAC -> RENV : env.step(delta)
+    activate RENV
+
+    RENV -> RENV : avanza ruido de pronóstico AR(1)
+    RENV -> MPC : solve(state, forecast 24 h)
+    activate MPC
+    MPC -> MPC : optimiza LP (Scipy linprog)\nhorizonte deslizante 24 h
+    MPC --> RENV : u_mpc(t) = (cs, cm, dc, dr)
+    deactivate MPC
+
+    RENV -> RENV : FUSIÓN multiplicativa\nu_final = max(0, u_mpc x (1 + delta * δmax) )
+    note over RENV : Garantía de suelo: si delta = 0 -> u_final = u_mpc\nδmax = 0,15 (campeón SAC-C; hiperparámetro por versión)
+
+    RENV -> SIM : aplica 4 flujos (cs, cm, dc, dr) -> balance físico
+    activate SIM
+    SIM -> SIM : actualiza SoC (soc_t -> soc_{t+1})
+    SIM -> SIM : degradación no lineal (I² x SoC⁴)
+    SIM -> SIM : reward = beneficio marginal vs IDLE\n(ingresos - gastos - degradación) - beneficio_IDLE
+    SIM --> RENV : {reward R_t, soc_{t+1}}
+    deactivate SIM
+    note over RENV, SIM : Términos de frontera: -coste inicial en t=0 · +valor terminal en t=168
+
+    RENV -> RENV : construye obs_{t+1} (112D)\n+ VecNormalize (norm_obs, externo)
+    RENV --> SAC : obs_{t+1}, reward, terminated, truncated, info
+    deactivate RENV
+
+    SAC -> SAC : almacena transición\n(obs_t, delta, reward, obs_{t+1}) en Replay Buffer
+    SAC -> SAC : actualiza redes off-policy cada train_freq\n(actor + dos críticos gemelos)
+
+    alt episodio terminado (t = 168)
+        SAC -> RENV : env.reset() → nueva semana train
+    end
+
+end
+
+SAC --> MAIN : modelo entrenado (mejor por evaluación)
+deactivate SAC
+
+== Nota: despliegue en producción ==
+
+note across
+  En producción este MISMO mecanismo (MPC -> obs -> delta -> fusión) lo ejecuta
+  ResidualSACController (o su versión ONNX) dentro de edge_loop, sobre datos
+  reales y SIN señal de recompensa ni actualización de redes.
+end note
+
+@enduml

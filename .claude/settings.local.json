@@ -103,7 +103,16 @@
       "Bash(grep -nA12 \"class ResidualSACController\" src/controllers/residual_sac_controller.py)",
       "Bash(grep -niA30 \"td3\" config/experimentos.yaml)",
       "Bash(grep -niA6 \"train_seeds\\\\|^comun\\\\|^common\\\\|comun:\" config/experimentos.yaml)",
-      "Bash(awk '{print $5\"\\\\t\"$9}')"
+      "Bash(awk '{print $5\"\\\\t\"$9}')",
+      "Bash(awk '{printf \"%.1f MB\\\\t%s\\\\n\", $1/1048576, $2}')",
+      "Bash(awk '{printf \"%.1f GB\\\\t%s\\\\n\", $1/1073741824, $0}')",
+      "Bash(xargs -0 du -ch)",
+      "Bash(grep -iE \"dataset_final.csv|requirements|pyproject|\\\\.zip$|memoria.*\\\\.\\(tex|pdf\\)|best_model|vecnorm|\\\\.onnx\")",
+      "Bash(awk '{print $5, $9}')",
+      "Bash(awk '{print $6, $7}')",
+      "Bash(awk '{print $1}')",
+      "Bash(grep -E \"modelos_entrenados_otrosPC|\\\\.log$|\\\\.aux$|\\\\.toc$|\\\\.acn$|texput|\\\\.bak$|pre_reeval\")",
+      "Bash(xargs -0 -I{} sh -c 'test -f \"{}\" && du -h \"{}\"')"
     ]
   }
 }

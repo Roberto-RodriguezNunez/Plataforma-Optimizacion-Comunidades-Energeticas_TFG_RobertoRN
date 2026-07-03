@@ -1,0 +1,85 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="arq-produccion" name="Parte 2: Edge y SaaS">
+    <mxGraphModel dx="1373" dy="748" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=28;fontStyle=1;fontFamily=Arial;" value="ARQUITECTURA PARTE 2: ENTORNO OPERATIVO EN PRODUCCIÓN (MLOps Edge &amp; SaaS Web)" vertex="1">
+          <mxGeometry height="50" width="1420" x="40" y="20" as="geometry" />
+        </mxCell>
+
+        <!-- CAJA ESPECIAL DE ENTRADA DESDE INVESTIGACIÓN -->
+        <mxCell id="IN_BOX" parent="1" style="rounded=1;html=1;fillColor=#D5F5E3;strokeColor=#196F3D;strokeWidth=3;fontStyle=1;fontSize=16;align=center;" value="&lt;b&gt;ENTRADA DESDE I+D (Diagrama 1)&lt;/b&gt;&lt;br/&gt;&lt;span style='font-weight:normal;font-size:14px;'&gt;Pesos: best_model.zip + norm.pkl (Capa 4/6) · Interfaz compartida: ResidualControllerBase / mpc.py (Capa 5)&lt;/span&gt;" vertex="1">
+          <mxGeometry height="65" width="820" x="340" y="130" as="geometry" />
+        </mxCell>
+
+        <!-- CAPA 7: PRODUCCIÓN EDGE -->
+        <mxCell id="L7" parent="1" style="swimlane;startSize=32;html=1;rounded=1;fillColor=#EAFAF1;strokeColor=#27AE60;fontStyle=1;fontSize=16;verticalAlign=top;" value="7 · CAPA DE PRODUCCIÓN EDGE COMPUTING (Despliegue Autónomo · Inferencia Ligera)" vertex="1">
+          <mxGeometry height="220" width="1420" x="40" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="l7_exp" parent="L7" style="rounded=0;html=1;fillColor=#A9DFBF;strokeColor=#27AE60;fontStyle=1;fontSize=15;" value="export_onnx.py (MLOps)&#xa;Fusión pesos + normalización (Sin PyTorch)" vertex="1">
+          <mxGeometry height="75" width="320" x="30" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="l7_onnx" parent="L7" style="shape=cylinder3;html=1;boundedLbl=1;backgroundOutline=1;size=8;fillColor=#A9DFBF;strokeColor=#196F3D;fontStyle=1;fontSize=15;" value="modelo_despliegue.onnx&#xa;Artefacto autónomo ultra-ligero" vertex="1">
+          <mxGeometry height="80" width="280" x="380" y="68" as="geometry" />
+        </mxCell>
+        <mxCell id="l7_rt" parent="L7" style="rounded=0;html=1;fillColor=#A9DFBF;strokeColor=#27AE60;fontStyle=1;fontSize=15;" value="onnx_inference.py (Hereda Capa 5)&#xa;ONNXRuntime + NumPy puro + u_mpc" vertex="1">
+          <mxGeometry height="75" width="340" x="690" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="l7_loop" parent="L7" style="rounded=0;html=1;fillColor=#A9DFBF;strokeColor=#196F3D;fontStyle=1;fontSize=15;strokeWidth=2;" value="edge_loop.py&#xa;Bucle horario · inferencia ligera → HTTP" vertex="1">
+          <mxGeometry height="75" width="340" x="1060" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e7_1" edge="1" parent="L7" source="l7_exp" target="l7_onnx" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7_2" edge="1" parent="L7" source="l7_onnx" target="l7_rt" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7_3" edge="1" parent="L7" source="l7_rt" target="l7_loop" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- CAPA 8: SAAS Y GESTIÓN -->
+        <mxCell id="L8" parent="1" style="swimlane;startSize=32;html=1;rounded=1;fillColor=#EBDEF0;strokeColor=#8E44AD;fontStyle=1;fontSize=16;verticalAlign=top;" value="8 · CAPA SAAS (Flask &amp; PostgreSQL) — GESTIÓN OPERATIVA Y CONTABLE DE LA COMUNIDAD" vertex="1">
+          <mxGeometry height="220" width="1420" x="40" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="l8_api" parent="L8" style="rounded=0;html=1;fillColor=#D7BDE2;strokeColor=#8E44AD;fontStyle=1;fontSize=15;" value="POST /api/edge/decision&#xa;Recepción horaria · Actualiza SoC" vertex="1">
+          <mxGeometry height="75" width="320" x="30" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="l8_db" parent="L8" style="shape=cylinder3;html=1;boundedLbl=1;backgroundOutline=1;size=8;fillColor=#D7BDE2;strokeColor=#6C3483;fontStyle=1;fontSize=15;" value="Base de Datos Histórica&#xa;Operacion · Bateria · Vivienda" vertex="1">
+          <mxGeometry height="80" width="280" x="380" y="68" as="geometry" />
+        </mxCell>
+        <mxCell id="l8_cierre" parent="L8" style="rounded=0;html=1;fillColor=#D7BDE2;strokeColor=#6C3483;fontStyle=1;fontSize=15;strokeWidth=2;" value="POST /generar-cierre&#xa;Cierre Mensual · Reparto por coef. βi" vertex="1">
+          <mxGeometry height="75" width="340" x="690" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="l8_front" parent="L8" style="rounded=0;html=1;fillColor=#D7BDE2;strokeColor=#8E44AD;fontStyle=1;fontSize=15;" value="Paneles Web por Rol&#xa;Admin · Gestor · Vivienda" vertex="1">
+          <mxGeometry height="75" width="340" x="1060" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e8_1" edge="1" parent="L8" source="l8_api" target="l8_db" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8_2" edge="1" parent="L8" source="l8_db" target="l8_cierre" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8_3" edge="1" parent="L8" source="l8_cierre" target="l8_front" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- CONECTORES ENTRE CAJAS -->
+        <mxCell id="e_in_exp" edge="1" parent="1" source="IN_BOX" target="l7_exp" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#196F3D;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_loop_api" edge="1" parent="1" source="l7_loop" target="l8_api" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#6C3483;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1400" y="460" />
+              <mxPoint x="220" y="460" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -19,3 +19,28 @@ logs/
 
 # Notas personales
 anotaciones_para_mi/
+doc/memoria_latex/memoria_tipo2.out
+doc/memoria_latex/memoria_tipo2.aux
+doc/memoria_latex/memoria_tipo2.bbl
+
+# LaTeX: artefactos de compilacion (se regeneran al compilar)
+doc/memoria_latex/*.aux
+doc/memoria_latex/*.log
+doc/memoria_latex/*.out
+doc/memoria_latex/*.toc
+doc/memoria_latex/*.lof
+doc/memoria_latex/*.lot
+doc/memoria_latex/*.bbl
+doc/memoria_latex/*.blg
+doc/memoria_latex/*.acn
+doc/memoria_latex/*.glo
+doc/memoria_latex/*.ist
+texput.log
+
+# Modelos importados de otros PC (fuente de extraccion, pesan cientos de MB)
+modelos_entrenados_otrosPC/
+
+# Backups temporales de resultados (de la sesion de consolidacion)
+resultados/*.bak
+resultados/*.pre_reeval*
+resultados/log_sac_puro
