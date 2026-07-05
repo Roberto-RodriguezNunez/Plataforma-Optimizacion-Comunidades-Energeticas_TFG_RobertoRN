@@ -1,9 +1,12 @@
 """
 test_delta_zero.py — Verifica que Δa=(0,0,0,0) via ResidualEnv
-reproduce el MPC standalone.
+reproduce el MPC standalone (propiedad de suelo, extremo a extremo).
 
-Test 1 (oráculo): sin ruido, ambos paths deben dar resultado IDÉNTICO.
-Test 2 (realista): con ruido y RNG unificado, deben dar resultado IDÉNTICO.
+Test 1 (oráculo): sin ruido, ambos paths deben coincidir (física pura).
+Test 2 (realista): con ruido y RNG unificado, ambos paths deben coincidir.
+
+También es ejecutable como script (`python tests/test_delta_zero.py`) para
+ver los números de ambos caminos.
 """
 
 import os
@@ -41,7 +44,7 @@ def crear_mpc():
     )
 
 
-def test_mpc_standalone(mode='realista'):
+def _mpc_standalone(mode):
     """MPC via eval_unificada path."""
     from src.evaluation.unified import evaluar_controlador
     mpc = crear_mpc()
@@ -49,7 +52,7 @@ def test_mpc_standalone(mode='realista'):
     return res['bens_marg']
 
 
-def test_residual_delta_zero(forecast_noise=True):
+def _residual_delta_zero(forecast_noise):
     """
     ResidualEnv con delta=(0,0,0,0) sobre 50 semanas eval.
     Fuerza SoC=0.50 al inicio de cada episodio (igual que eval_unificada).
@@ -98,6 +101,28 @@ def test_residual_delta_zero(forecast_noise=True):
     return np.array(bens_marg)
 
 
+def test_delta_zero_oraculo():
+    """Sin ruido, Δ=0 vía ResidualEnv reproduce el MPC oráculo (física pura)."""
+    mpc_orac = _mpc_standalone(mode='oraculo')
+    res_orac = _residual_delta_zero(forecast_noise=False)
+    diff = abs(mpc_orac.mean() - res_orac.mean())
+    assert diff <= 0.1, (
+        f"física difiere: MPC {mpc_orac.mean():+.2f} vs ResidualEnv "
+        f"{res_orac.mean():+.2f} EUR/sem (diff {diff:.4f} > 0.1)")
+
+
+def test_residual_delta_zero():
+    """Salida nula del actor (Δ=0) preserva la acción del MPC: con ruido y RNG
+    unificado, el beneficio marginal de Δ=0 vía ResidualEnv coincide con el del
+    MPC realista sobre las 50 semanas de evaluación."""
+    mpc_real = _mpc_standalone(mode='realista')
+    res_real = _residual_delta_zero(forecast_noise=True)
+    diff = abs(mpc_real.mean() - res_real.mean())
+    assert diff <= 0.05, (
+        f"RNG/física difieren: MPC {mpc_real.mean():+.2f} vs ResidualEnv "
+        f"{res_real.mean():+.2f} EUR/sem (diff {diff:.4f} > 0.05)")
+
+
 if __name__ == '__main__':
     print("=" * 60)
     print("VERIFICACION: Delta=0 via ResidualEnv vs MPC standalone")
@@ -108,11 +133,11 @@ if __name__ == '__main__':
     print("  " + "-" * 56)
 
     print("    MPC oráculo (eval_unificada)...")
-    mpc_orac = test_mpc_standalone(mode='oraculo')
+    mpc_orac = _mpc_standalone(mode='oraculo')
     print(f"    MPC:         {mpc_orac.mean():+.2f} +/- {mpc_orac.std():.2f} EUR/sem")
 
     print("    ResidualEnv delta=0 (sin ruido)...")
-    res_orac = test_residual_delta_zero(forecast_noise=False)
+    res_orac = _residual_delta_zero(forecast_noise=False)
     print(f"    ResidualEnv: {res_orac.mean():+.2f} +/- {res_orac.std():.2f} EUR/sem")
 
     diff_orac = abs(mpc_orac.mean() - res_orac.mean())
@@ -127,11 +152,11 @@ if __name__ == '__main__':
     print("  " + "-" * 56)
 
     print("    MPC realista (eval_unificada)...")
-    mpc_real = test_mpc_standalone(mode='realista')
+    mpc_real = _mpc_standalone(mode='realista')
     print(f"    MPC:         {mpc_real.mean():+.2f} +/- {mpc_real.std():.2f} EUR/sem")
 
     print("    ResidualEnv delta=0 (con ruido)...")
-    res_real = test_residual_delta_zero(forecast_noise=True)
+    res_real = _residual_delta_zero(forecast_noise=True)
     print(f"    ResidualEnv: {res_real.mean():+.2f} +/- {res_real.std():.2f} EUR/sem")
 
     diff_real = abs(mpc_real.mean() - res_real.mean())

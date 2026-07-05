@@ -8,8 +8,6 @@ Ejecutar desde la raíz del proyecto (carpeta TFG/):
 import os
 import sys
 import json
-import subprocess
-import tempfile
 
 import numpy as np
 import pandas as pd

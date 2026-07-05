@@ -35,7 +35,15 @@ doc/memoria_latex/*.blg
 doc/memoria_latex/*.acn
 doc/memoria_latex/*.glo
 doc/memoria_latex/*.ist
+doc/memoria_latex/*.acr
+doc/memoria_latex/*.alg
+doc/memoria_latex/*.gls
+doc/memoria_latex/*.glg
 texput.log
+
+# Cobertura de tests (pytest-cov)
+.coverage
+**/.coverage
 
 # Modelos importados de otros PC (fuente de extraccion, pesan cientos de MB)
 modelos_entrenados_otrosPC/
@@ -43,4 +51,5 @@ modelos_entrenados_otrosPC/
 # Backups temporales de resultados (de la sesion de consolidacion)
 resultados/*.bak
 resultados/*.pre_reeval*
+resultados/*.pre_paso*
 resultados/log_sac_puro

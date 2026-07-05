@@ -16,7 +16,7 @@ sys.path.insert(0, ROOT)
 
 from src.core.simulator import ComunidadSimulador
 from src.controllers.mpc import (
-    LinearMPC, simular_hora_mpc, simular_semana_idle,
+    LinearMPC, simular_hora_mpc,
     DATASET_PATH, EPISODE_LENGTH, HORIZON, SOC_INICIAL,
 )
 
