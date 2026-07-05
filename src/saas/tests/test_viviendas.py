@@ -168,21 +168,29 @@ class TestDetalleVivienda:
 
 
 class TestEditarVivienda:
-    def test_editar_potencia_recalcula(self, client, superadmin, comunidad, vivienda, srp):
+    def test_editar_paneles_recalcula(self, client, superadmin, comunidad, vivienda, srp):
         login_superadmin(client, superadmin)
-        # Crear segunda vivienda
+        # Crear segunda vivienda con paneles
         safe_com = oid_to_safe(comunidad.__oid__)
         client.post(f'/viviendas/comunidad/{safe_com}/nueva', data={
             'identificador': 'Piso 2',
             'potencia_contratada_kw': '3.45',
             'fecha_alta': '2024-01-01',
+            'tiene_paneles': 'y',
+            'potencia_pico_paneles_kwp': '2.4',
+            'numero_paneles': '6',
+            'orientacion_paneles': 'sur',
         })
-        # Editar primera cambiando potencia
+        # Editar primera añadiendo paneles → recalcula coeficientes por kWp
         safe = oid_to_safe(vivienda.__oid__)
         client.post(f'/viviendas/{safe}/editar', data={
             'identificador': 'Piso 1A',
             'potencia_contratada_kw': '6.9',
             'fecha_alta': '2024-01-01',
+            'tiene_paneles': 'y',
+            'potencia_pico_paneles_kwp': '2.4',
+            'numero_paneles': '6',
+            'orientacion_paneles': 'sur',
         }, follow_redirects=True)
         com_str = str(comunidad.__oid__)
         vivs = [v for v in srp.load_all(Vivienda) if str(v.comunidad_oid) == com_str]
@@ -195,12 +203,16 @@ class TestEliminarVivienda:
         """Al eliminar una vivienda los coeficientes restantes deben sumar 1."""
         login_superadmin(client, superadmin)
         safe_com = oid_to_safe(comunidad.__oid__)
-        # Crear 3 viviendas
+        # Crear 3 viviendas con paneles (el coeficiente va por kWp aportado)
         for i in range(3):
             client.post(f'/viviendas/comunidad/{safe_com}/nueva', data={
                 'identificador': f'V{i}',
                 'potencia_contratada_kw': '3.0',
                 'fecha_alta': '2024-01-01',
+                'tiene_paneles': 'y',
+                'potencia_pico_paneles_kwp': '2.0',
+                'numero_paneles': '5',
+                'orientacion_paneles': 'sur',
             })
         com_str = str(comunidad.__oid__)
         vivs = [v for v in srp.load_all(Vivienda) if str(v.comunidad_oid) == com_str]

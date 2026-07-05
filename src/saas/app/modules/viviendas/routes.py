@@ -144,32 +144,28 @@ def detalle(safe_oid):
     ).order_by(CierreMensual.mes).all()
 
     # ----------------------------------------------------------------
-    # Gráfica 1: Ahorro de "comunidad completa" vs 3 escenarios — 3 líneas
+    # Gráfica 1: Ahorro con comunidad vs los 2 baselines — 2 líneas
     # ----------------------------------------------------------------
     grafica = cierres[-12:]
     serie_sin = [round(max(0.0, c.factura_sin_paneles_eur - c.factura_escenario_real_eur), 2) for c in grafica]
     serie_solo = [round(max(0.0, c.factura_escenario_base_eur - c.factura_escenario_real_eur), 2) for c in grafica]
-    serie_com = [round(max(0.0, c.factura_paneles_comunidad_eur - c.factura_escenario_real_eur), 2) for c in grafica]
     chart_ahorro = json.dumps({
         'labels': [c.mes for c in grafica],
         'vs_sin_paneles': serie_sin,
         'vs_solo_paneles': serie_solo,
-        'vs_paneles_com': serie_com,
     })
     ahorros_totales = {
         'vs_sin_paneles':  round(sum(serie_sin), 2),
         'vs_solo_paneles': round(sum(serie_solo), 2),
-        'vs_paneles_com':  round(sum(serie_com), 2),
     }
 
     # ----------------------------------------------------------------
-    # Gráfica 2: Comparativa de 4 escenarios — barras agrupadas
+    # Gráfica 2: Comparativa de 3 escenarios — barras agrupadas
     # ----------------------------------------------------------------
     chart_compare = json.dumps({
         'labels':             [c.mes for c in grafica],
         'sin_paneles':        [round(c.factura_sin_paneles_eur, 2) for c in grafica],
         'solo_paneles':       [round(c.factura_escenario_base_eur, 2) for c in grafica],
-        'paneles_comunidad':  [round(c.factura_paneles_comunidad_eur, 2) for c in grafica],
         'comunidad_completa': [round(c.factura_escenario_real_eur, 2) for c in grafica],
     })
 
@@ -266,7 +262,9 @@ def editar(safe_oid):
             return render_template('viviendas/form.html', form=form,
                                    titulo='Editar vivienda', com=com,
                                    safe_oid=safe_oid, comunidad_safe_oid=comunidad_safe_oid)
-        potencia_cambio = viv.potencia_contratada_kw != form.potencia_contratada_kw.data
+        kwp_antes = viv.potencia_pico_paneles_kwp or 0.0
+        kwp_nuevo = (form.potencia_pico_paneles_kwp.data or 0.0) if form.tiene_paneles.data else 0.0
+        paneles_cambio = kwp_antes != kwp_nuevo
         viv.identificador = form.identificador.data
         viv.direccion_completa = form.direccion_completa.data or ''
         viv.cups = form.cups.data or ''
@@ -284,7 +282,7 @@ def editar(safe_oid):
             viv.fecha_instalacion_paneles = None
             viv.orientacion_paneles = None
         db.session.commit()
-        if potencia_cambio:
+        if paneles_cambio:
             recalcular_coeficientes(com_oid)
         flash_exito(f'Vivienda "{viv.identificador}" actualizada.')
         return redirect(url_for('viviendas.detalle', safe_oid=safe_oid))

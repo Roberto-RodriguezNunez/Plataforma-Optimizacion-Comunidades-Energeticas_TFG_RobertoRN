@@ -69,10 +69,15 @@ def usuario_tiene_acceso(usuario_oid, vivienda_oid) -> bool:
 # ---------------------------------------------------------------------------
 
 def recalcular_coeficientes(comunidad_oid):
-    """Recalcula los coeficientes de reparto de todas las viviendas de una
-    comunidad, proporcionales a su potencia contratada.
+    """Recalcula los coeficientes de reducción de gasto de todas las viviendas
+    de una comunidad, proporcionales a la producción solar estimada que aporta
+    cada una (potencia pico instalada).
 
-    coef_i = potencia_i / suma_potencias
+    coef_i = kwp_i / suma_kwp
+
+    El coeficiente reparte el AHORRO económico de la comunidad (neteo horario
+    del CUPS único + batería), no energía: una vivienda sin paneles tiene
+    coef 0 y paga su factura individual sin descuento.
     """
     from app.models.vivienda import Vivienda
     from app.models.acceso import AccesoVivienda
@@ -81,12 +86,12 @@ def recalcular_coeficientes(comunidad_oid):
     viviendas = Vivienda.query.filter_by(comunidad_oid=com_id).all()
     if not viviendas:
         return
-    suma = sum(v.potencia_contratada_kw for v in viviendas)
+    suma = sum(v.potencia_pico_paneles_kwp or 0.0 for v in viviendas)
     if suma <= 0:
         return
 
     for v in viviendas:
-        nuevo = round(v.potencia_contratada_kw / suma, 6)
+        nuevo = round((v.potencia_pico_paneles_kwp or 0.0) / suma, 6)
         cambio = v.coeficiente_reparto != nuevo
         v.coeficiente_reparto = nuevo
 
@@ -97,7 +102,7 @@ def recalcular_coeficientes(comunidad_oid):
                 crear_notificacion(
                     usr_oid, 'cambio_coeficiente',
                     f'Coeficiente actualizado — {v.identificador}',
-                    f'Tu coeficiente de reparto en {v.identificador} ha cambiado a {nuevo:.4f}.',
+                    f'Tu coeficiente de reducción de gasto en {v.identificador} ha cambiado a {nuevo:.4f}.',
                 )
     db.session.commit()
 

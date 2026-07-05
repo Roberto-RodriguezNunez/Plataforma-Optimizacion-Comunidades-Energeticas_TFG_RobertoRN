@@ -187,56 +187,74 @@ ACCESOS_SANTIAGO = [
 ]
 
 
-def coef_suma(viviendas_data):
-    """Verifica que los coeficientes sumen aproximadamente 1.0."""
-    total = sum(v[4] for v in viviendas_data)
-    return round(total, 4)
+def coefs_kwp(viviendas_data):
+    """Coeficientes de reducción de gasto: kWp aportado / kWp total de la comunidad.
+
+    Las viviendas sin paneles tienen coef 0 (no aportan producción, no reciben
+    parte del ahorro común). La suma es exactamente 1.0 sobre las que aportan.
+    """
+    total = sum((v[6] or 0.0) for v in viviendas_data if v[5])
+    return [round((v[6] or 0.0) / total, 6) if v[5] else 0.0 for v in viviendas_data]
 
 
-def cierre_para_vivienda(viv_oid, mes, coef, idx):
-    """Genera datos de cierre históricos coherentes (todas las viviendas tienen paneles)."""
-    # Base de consumo varía por mes (más en invierno gallego)
-    base_consumo = [310.0, 290.0, 275.0][MESES.index(mes)]
-    variacion = ((idx * 17) % 60) - 30  # -30..+30, determinista
-    consumo = round(base_consumo + variacion, 1)
+def cierres_para_comunidad(viv_oids, viviendas_data, coefs, mes, idx_offset=0):
+    """Genera los cierres de un mes para toda la comunidad (modelo cooperativa).
 
-    # Generación solar (oct > nov > dic por irradiación)
-    factor_solar = [0.28, 0.22, 0.18][MESES.index(mes)]
-    autoconsumo = round(consumo * factor_solar, 1)
-    bateria = round(consumo * 0.14, 1)
-    vertido = round(autoconsumo * 0.15, 1)
+    La producción se netea a nivel comunidad y el AHORRO total (frente a que
+    cada casa fuera sola con sus paneles, sin batería) se resta a la factura
+    de cada vecino según su coeficiente (kWp aportado). La suma de cuotas
+    reproduce la factura común neteada.
+    """
+    m = MESES.index(mes)
+    base_consumo = [310.0, 290.0, 275.0][m]   # más consumo en invierno gallego
+    factor_solar = [0.28, 0.22, 0.18][m]      # oct > nov > dic por irradiación
 
-    kwh_de_red = max(0.0, consumo - autoconsumo - bateria)
-    factura_sin_paneles = round(consumo * 0.22, 2)
-    # Base: solo paneles propios (sin batería ni reparto comunitario)
-    kwh_red_solo_paneles = max(0.0, consumo - autoconsumo)
-    surplus_solo_paneles = max(0.0, autoconsumo - consumo)
-    factura_base = round(max(0.0, kwh_red_solo_paneles * 0.22 - surplus_solo_paneles * 0.065), 2)
-    factura_real = round(kwh_de_red * 0.18 + (autoconsumo + bateria) * 0.05, 2)
-    ahorro = round(max(0.0, factura_base - factura_real), 2)
-    if ahorro == 0.0:
-        factura_real = factura_base
+    filas = []
+    for idx, (viv_oid, vd, coef) in enumerate(zip(viv_oids, viviendas_data, coefs)):
+        tiene_paneles = vd[5]
+        variacion = (((idx + idx_offset) * 17) % 60) - 30  # -30..+30, determinista
+        consumo = round(base_consumo + variacion, 1)
+        autoconsumo = round(consumo * factor_solar, 1) if tiene_paneles else 0.0
+        vertido = round(autoconsumo * 0.15, 1)
 
-    # Paneles + comunidad (sin batería): el reparto colectivo apenas mejora al
-    # autoconsumo individual; el grueso del ahorro lo aporta la batería (real).
-    # Se sitúa entre solo-paneles y comunidad-completa, nunca en 0.
-    factura_paneles_com = round(max(factura_real, factura_base * 0.97), 2)
+        factura_sin_paneles = round(consumo * 0.22, 2)
+        # Sin comunidad: solo paneles propios, sin batería ni reparto
+        kwh_red_solo = max(0.0, consumo - autoconsumo)
+        surplus_solo = max(0.0, autoconsumo - consumo)
+        factura_base = round(max(0.0, kwh_red_solo * 0.22 - surplus_solo * 0.065), 2)
 
-    return CierreMensual(
-        vivienda_oid=viv_oid,
-        mes=mes,
-        consumo_total_kwh=consumo,
-        autoconsumo_directo_kwh=autoconsumo,
-        energia_de_bateria_kwh=bateria,
-        vertido_a_red_kwh=vertido,
-        ahorro_eur=ahorro,
-        factura_sin_paneles_eur=factura_sin_paneles,
-        factura_escenario_base_eur=factura_base,
-        factura_paneles_comunidad_eur=factura_paneles_com,
-        factura_escenario_real_eur=factura_real,
-        porcentaje_ahorro_global=round(coef * 100, 1),
-        coeficiente_reparto_aplicado=coef
-    )
+        filas.append(dict(viv_oid=viv_oid, coef=coef, consumo=consumo,
+                          autoconsumo=autoconsumo, vertido=vertido,
+                          sin_paneles=factura_sin_paneles, base=factura_base))
+
+    # Factura común neteada con batería: la batería comunitaria desplaza parte
+    # del consumo de red a horas valle y aprovecha el excedente conjunto.
+    bateria_total = round(sum(f['consumo'] for f in filas) * 0.14, 1)
+    factura_real_com = 0.0
+    for f in filas:
+        bat_i = f['coef'] * bateria_total
+        kwh_red = max(0.0, f['consumo'] - f['autoconsumo'] - bat_i)
+        factura_real_com += kwh_red * 0.18 + (f['autoconsumo'] + bat_i) * 0.05
+    ahorro_total = max(0.0, sum(f['base'] for f in filas) - factura_real_com)
+
+    cierres = []
+    for f in filas:
+        ahorro = round(f['coef'] * ahorro_total, 2)
+        cierres.append(CierreMensual(
+            vivienda_oid=f['viv_oid'],
+            mes=mes,
+            consumo_total_kwh=f['consumo'],
+            autoconsumo_directo_kwh=f['autoconsumo'],
+            energia_de_bateria_kwh=round(f['coef'] * bateria_total, 1),
+            vertido_a_red_kwh=f['vertido'],
+            ahorro_eur=ahorro,
+            factura_sin_paneles_eur=f['sin_paneles'],
+            factura_escenario_base_eur=f['base'],
+            factura_escenario_real_eur=round(f['base'] - ahorro, 2),
+            porcentaje_ahorro_global=round(f['coef'] * 100, 1),
+            coeficiente_reparto_aplicado=f['coef']
+        ))
+    return cierres
 
 
 def seed():
@@ -255,10 +273,12 @@ def seed():
 
         print("🌱 Iniciando seed...")
 
-        # Verificar coherencia de coeficientes
-        suma_vilarin = coef_suma(VIVIENDAS_VILARIN)
-        suma_branas  = coef_suma(VIVIENDAS_BRANAS)
-        print(f"   Coeficientes Vilarín: {suma_vilarin} | Brañas: {suma_branas}")
+        # Coeficientes de reducción de gasto: kWp aportado / kWp total
+        coefs_vilarin = coefs_kwp(VIVIENDAS_VILARIN)
+        coefs_branas  = coefs_kwp(VIVIENDAS_BRANAS)
+        suma_vilarin = round(sum(coefs_vilarin), 4)
+        suma_branas  = round(sum(coefs_branas), 4)
+        print(f"   Coeficientes (kWp) Vilarín: {suma_vilarin} | Brañas: {suma_branas}")
         assert abs(suma_vilarin - 1.0) < 0.01, f"Coef Vilarín no suman 1: {suma_vilarin}"
         assert abs(suma_branas  - 1.0) < 0.01, f"Coef Brañas no suman 1: {suma_branas}"
 
@@ -311,7 +331,7 @@ def seed():
                 direccion_completa=f'{dir_}, 27123 Vilarín (O Courel)',
                 cups=f'ES002700000000{cups_suf}F',
                 potencia_contratada_kw=pot,
-                coeficiente_reparto=coef,
+                coeficiente_reparto=coefs_vilarin[i],
                 fecha_alta='2022-04-01',
                 tiene_paneles=paneles,
                 potencia_pico_paneles_kwp=kwp,
@@ -334,7 +354,7 @@ def seed():
                 direccion_completa=f'{dir_}, 27200 Brañas de Ulla (Palas de Rei)',
                 cups=f'ES002700000001{cups_suf}F',
                 potencia_contratada_kw=pot,
-                coeficiente_reparto=coef,
+                coeficiente_reparto=coefs_branas[i],
                 fecha_alta='2023-05-01',
                 tiene_paneles=paneles,
                 potencia_pico_paneles_kwp=kwp,
@@ -403,43 +423,13 @@ def seed():
         # ------------------------------------------------------------------
         print(f"\n📊 Creando cierres mensuales ({len(MESES)} meses × {len(VIVIENDAS_VILARIN)+len(VIVIENDAS_BRANAS)} viviendas)...")
         n_cierres = 0
-        for idx, (viv_data, viv_oid) in enumerate(zip(VIVIENDAS_VILARIN, vilarin_viv_oids)):
-            coef = viv_data[4]
-            for mes in MESES:
-                c = cierre_para_vivienda(viv_oid, mes, coef, idx)
+        for mes in MESES:
+            for c in cierres_para_comunidad(vilarin_viv_oids, VIVIENDAS_VILARIN,
+                                            coefs_vilarin, mes):
                 save(c)
                 n_cierres += 1
-
-        for idx, (viv_data, viv_oid) in enumerate(zip(VIVIENDAS_BRANAS, branas_viv_oids)):
-            coef = viv_data[4]
-            tiene_paneles = viv_data[5]
-            for mes in MESES:
-                # Santiago: cierre con/sin paneles según configuración de cada vivienda
-                if tiene_paneles:
-                    c = cierre_para_vivienda(viv_oid, mes, coef, idx + 20)
-                else:
-                    from app.models.cierre import CierreMensual as CM
-                    base = [310.0, 290.0, 275.0][MESES.index(mes)]
-                    variacion = (((idx + 20) * 17) % 60) - 30
-                    consumo = round(base + variacion, 1)
-                    # Sin paneles: base = real sin comunidad = consumo completo
-                    factura_sin_paneles = round(consumo * 0.22, 2)
-                    factura_base = factura_sin_paneles  # sin paneles → base = sin paneles
-                    bateria = round(consumo * 0.13, 1)
-                    kwh_red = max(0.0, consumo - bateria)
-                    factura_real = round(kwh_red * 0.20 + bateria * 0.05, 2)
-                    ahorro = round(max(0.0, factura_base - factura_real), 2)
-                    c = CierreMensual(
-                        vivienda_oid=viv_oid, mes=mes,
-                        consumo_total_kwh=consumo, autoconsumo_directo_kwh=0.0,
-                        energia_de_bateria_kwh=bateria, vertido_a_red_kwh=0.0,
-                        ahorro_eur=ahorro,
-                        factura_sin_paneles_eur=factura_sin_paneles,
-                        factura_escenario_base_eur=factura_base,
-                        factura_escenario_real_eur=factura_real if ahorro > 0 else factura_base,
-                        porcentaje_ahorro_global=round(coef * 100, 1),
-                        coeficiente_reparto_aplicado=coef
-                    )
+            for c in cierres_para_comunidad(branas_viv_oids, VIVIENDAS_BRANAS,
+                                            coefs_branas, mes, idx_offset=20):
                 save(c)
                 n_cierres += 1
 

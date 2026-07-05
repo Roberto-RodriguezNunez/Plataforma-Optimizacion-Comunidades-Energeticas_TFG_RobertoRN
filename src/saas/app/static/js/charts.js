@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ---------------------------------------------------------------
   const renderers = {
 
-    /** Línea — ahorro de "comunidad completa" vs 3 escenarios base */
+    /** Línea — ahorro con comunidad vs los 2 escenarios base */
     'line-ahorro': (canvas, datos) => {
       new Chart(canvas, {
         type: 'line',
@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
               pointHoverRadius: 5,
             },
             {
-              label: 'vs Solo paneles',
+              label: 'vs Sin comunidad',
               data: datos.vs_solo_paneles,
               borderColor: C.amber,
               backgroundColor: C.amberBg,
@@ -106,18 +106,6 @@ document.addEventListener('DOMContentLoaded', () => {
               tension: 0.35,
               fill: false,
               pointBackgroundColor: C.amber,
-              pointRadius: 3,
-              pointHoverRadius: 5,
-            },
-            {
-              label: 'vs Paneles+comunidad',
-              data: datos.vs_paneles_com,
-              borderColor: C.blue,
-              backgroundColor: C.blueBg,
-              borderWidth: 2,
-              tension: 0.35,
-              fill: false,
-              pointBackgroundColor: C.blue,
               pointRadius: 3,
               pointHoverRadius: 5,
             },
@@ -137,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     },
 
-    /** Barras agrupadas — 4 escenarios */
+    /** Barras agrupadas — 3 escenarios */
     'bar-compare': (canvas, datos) => {
       new Chart(canvas, {
         type: 'bar',
@@ -153,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
               borderRadius: 4,
             },
             {
-              label: 'Solo paneles',
+              label: 'Sin comunidad',
               data: datos.solo_paneles,
               backgroundColor: C.amberBg,
               borderColor: C.amber,
@@ -161,15 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
               borderRadius: 4,
             },
             {
-              label: 'Paneles+comunidad',
-              data: datos.paneles_comunidad,
-              backgroundColor: C.blueBg,
-              borderColor: C.blue,
-              borderWidth: 1,
-              borderRadius: 4,
-            },
-            {
-              label: 'Comunidad completa',
+              label: 'Con comunidad',
               data: datos.comunidad_completa,
               backgroundColor: C.greenBg,
               borderColor: C.green,

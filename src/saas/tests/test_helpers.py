@@ -28,7 +28,9 @@ class TestOidConversion:
 
 class TestRecalcularCoeficientes:
     def test_una_vivienda(self, app, srp, comunidad):
-        v = Vivienda(comunidad.__oid__, 'V1', potencia_contratada_kw=5.0, coeficiente_reparto=0.0)
+        v = Vivienda(comunidad.__oid__, 'V1', potencia_contratada_kw=5.0,
+                     coeficiente_reparto=0.0, tiene_paneles=True,
+                     potencia_pico_paneles_kwp=4.0)
         srp.save(v)
         recalcular_coeficientes(comunidad.__oid__)
         v = list(srp.load_all(Vivienda))[0]
@@ -37,24 +39,41 @@ class TestRecalcularCoeficientes:
     def test_varias_viviendas_iguales(self, app, srp, comunidad):
         for i in range(4):
             srp.save(Vivienda(comunidad.__oid__, f'V{i}',
-                              potencia_contratada_kw=3.0, coeficiente_reparto=0.0))
+                              potencia_contratada_kw=3.0, coeficiente_reparto=0.0,
+                              tiene_paneles=True, potencia_pico_paneles_kwp=2.4))
         recalcular_coeficientes(comunidad.__oid__)
         vivs = list(srp.load_all(Vivienda))
         for v in vivs:
             assert abs(v.coeficiente_reparto - 0.25) < 0.001
         assert abs(sum(v.coeficiente_reparto for v in vivs) - 1.0) < 0.001
 
-    def test_viviendas_distintas_potencias(self, app, srp, comunidad):
+    def test_viviendas_distintos_kwp(self, app, srp, comunidad):
         srp.save(Vivienda(comunidad.__oid__, 'Grande',
-                          potencia_contratada_kw=6.0, coeficiente_reparto=0.0))
+                          potencia_contratada_kw=3.0, coeficiente_reparto=0.0,
+                          tiene_paneles=True, potencia_pico_paneles_kwp=6.0))
         srp.save(Vivienda(comunidad.__oid__, 'Pequeña',
-                          potencia_contratada_kw=2.0, coeficiente_reparto=0.0))
+                          potencia_contratada_kw=6.0, coeficiente_reparto=0.0,
+                          tiene_paneles=True, potencia_pico_paneles_kwp=2.0))
         recalcular_coeficientes(comunidad.__oid__)
         vivs = list(srp.load_all(Vivienda))
         total = sum(v.coeficiente_reparto for v in vivs)
         assert abs(total - 1.0) < 0.001
+        # El coeficiente va por kWp aportado, no por potencia contratada
         grande = [v for v in vivs if v.identificador == 'Grande'][0]
         assert abs(grande.coeficiente_reparto - 0.75) < 0.001
+
+    def test_vivienda_sin_paneles_coef_cero(self, app, srp, comunidad):
+        srp.save(Vivienda(comunidad.__oid__, 'ConPaneles',
+                          potencia_contratada_kw=3.0, coeficiente_reparto=0.0,
+                          tiene_paneles=True, potencia_pico_paneles_kwp=4.0))
+        srp.save(Vivienda(comunidad.__oid__, 'SinPaneles',
+                          potencia_contratada_kw=6.0, coeficiente_reparto=0.5))
+        recalcular_coeficientes(comunidad.__oid__)
+        vivs = list(srp.load_all(Vivienda))
+        sin = [v for v in vivs if v.identificador == 'SinPaneles'][0]
+        con = [v for v in vivs if v.identificador == 'ConPaneles'][0]
+        assert sin.coeficiente_reparto == 0.0
+        assert abs(con.coeficiente_reparto - 1.0) < 0.001
 
     def test_comunidad_vacia(self, app, srp, comunidad):
         """No debe fallar con comunidad sin viviendas."""

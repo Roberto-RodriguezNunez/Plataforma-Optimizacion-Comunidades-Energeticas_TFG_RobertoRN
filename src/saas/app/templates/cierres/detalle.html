@@ -28,9 +28,11 @@
 <div style="background:rgba(59,130,246,.05);border:1px solid rgba(59,130,246,.2);
             border-radius:10px;padding:.8rem 1rem;margin-bottom:1.5rem;
             font-size:.8rem;color:var(--text-muted);line-height:1.5;">
-  {{ zap(13) }} La comunidad opera como suministro único: hay <strong>una sola factura
-  oficial</strong> (el agregado). Los importes de esta vivienda son su
-  <strong>cuota interna</strong> de reparto del gasto común, no una factura regulada.
+  {{ zap(13) }} La comunidad opera como suministro único: la producción se netea hora a
+  hora sobre el balance agregado y hay <strong>una sola factura oficial</strong>. El
+  <strong>ahorro total</strong> de la comunidad se resta a la factura de cada vecino según
+  su coeficiente (proporcional a los paneles que aporta); esta es tu
+  <strong>cuota interna</strong>, no una factura regulada.
 </div>
 
 {# KPIs de ahorro #}
@@ -41,12 +43,12 @@
     <div class="kpi-icon">{{ trending_up(22) }}</div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">Solo paneles</div>
+    <div class="kpi-label">Sin comunidad</div>
     <div class="kpi-value" style="color:var(--red);">{{ "%.2f"|format(cierre.factura_escenario_base_eur) }} <span style="font-size:1rem;font-weight:500;">€</span></div>
     <div class="kpi-icon">{{ bar_chart(22) }}</div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">Tu cuota (com. completa)</div>
+    <div class="kpi-label">Tu cuota (con comunidad)</div>
     <div class="kpi-value">{{ "%.2f"|format(cierre.factura_escenario_real_eur) }} <span style="font-size:1rem;font-weight:500;">€</span></div>
     <div class="kpi-icon">{{ check(22) }}</div>
   </div>
@@ -101,17 +103,12 @@
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;
                     padding:.5rem 0;border-bottom:1px solid var(--border);">
-          <span style="font-size:.88rem;color:var(--text-muted);">Solo paneles</span>
+          <span style="font-size:.88rem;color:var(--text-muted);">Sin comunidad (solo paneles)</span>
           <code style="color:var(--red);">{{ "%.2f"|format(cierre.factura_escenario_base_eur) }} €</code>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;
                     padding:.5rem 0;border-bottom:1px solid var(--border);">
-          <span style="font-size:.88rem;color:var(--text-muted);">Paneles + comunidad</span>
-          <code style="color:#3B82F6;">{{ "%.2f"|format(cierre.factura_paneles_comunidad_eur) }} €</code>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;
-                    padding:.5rem 0;border-bottom:1px solid var(--border);">
-          <span style="font-size:.88rem;color:var(--text-muted);">Comunidad completa</span>
+          <span style="font-size:.88rem;color:var(--text-muted);">Con comunidad</span>
           <code>{{ "%.2f"|format(cierre.factura_escenario_real_eur) }} €</code>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;
