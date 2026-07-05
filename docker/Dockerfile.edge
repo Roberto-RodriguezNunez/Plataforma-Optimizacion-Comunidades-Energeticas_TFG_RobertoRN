@@ -14,16 +14,14 @@ WORKDIR /app
 COPY docker/requirements.edge.txt .
 RUN pip install --no-cache-dir -r requirements.edge.txt
 
-# Código fuente — solo módulos necesarios en el edge
+# Código fuente — solo módulos necesarios en el edge (cierre de imports de
+# src.production.edge_loop; todos libres de torch/SB3/gymnasium).
 COPY src/production/                       src/production/
-COPY src/api/                              src/api/
 COPY src/controllers/base.py               src/controllers/base.py
 COPY src/controllers/__init__.py           src/controllers/__init__.py
-COPY src/benchmarks/mpc_benchmark.py       src/benchmarks/mpc_benchmark.py
-COPY src/benchmarks/__init__.py            src/benchmarks/__init__.py
+COPY src/controllers/mpc.py                src/controllers/mpc.py
+COPY src/controllers/residual_base.py      src/controllers/residual_base.py
 COPY src/core/                             src/core/
-COPY src/utils/generador_datos.py          src/utils/generador_datos.py
-COPY src/utils/__init__.py                 src/utils/__init__.py
 COPY config/                               config/
 
 # Artefactos de producción (generados por src/production/export_onnx.py)
