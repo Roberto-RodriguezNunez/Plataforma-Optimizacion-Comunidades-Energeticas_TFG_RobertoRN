@@ -52,7 +52,7 @@
         <mxCell id="l2_fc" parent="L2" style="rounded=0;html=1;fillColor=#FFF9C4;strokeColor=#FBC02D;fontStyle=1;fontSize=16;" value="forecast.py&#xa;Pronóstico 24h AR(1) · Precios 3 capas" vertex="1">
           <mxGeometry height="75" width="320" x="720" y="100" as="geometry" />
         </mxCell>
-        <mxCell id="l2_obs" parent="L2" style="rounded=0;html=1;fillColor=#FAD7A0;strokeColor=#B7950B;fontStyle=1;fontSize=16;strokeWidth=2;" value="observation.py&#xa;Vector de Estado (108 var físicas/temp)" vertex="1">
+        <mxCell id="l2_obs" parent="L2" style="rounded=0;html=1;fillColor=#FAD7A0;strokeColor=#B7950B;fontStyle=1;fontSize=16;strokeWidth=2;" value="observation.py&#xa;Vector de Estado (108 var; +4 MPC en residual = 112) físicas/temp)" vertex="1">
           <mxGeometry height="75" width="320" x="1080" y="80" as="geometry" />
         </mxCell>
         <mxCell id="e2_1" edge="1" parent="L2" source="l2_split" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;fontSize=16;" target="l2_sim">
@@ -210,7 +210,7 @@
         <mxCell id="l6_stats" parent="L6" style="rounded=0;html=1;fillColor=#F9E79F;strokeColor=#D4AC0D;fontStyle=1;fontSize=16;" value="Análisis Estadístico Riguroso&#xa;Intervalos IC95 · Test Wilcoxon p &amp;lt; 0.05" vertex="1">
           <mxGeometry height="75" width="380" x="500" y="60" as="geometry" />
         </mxCell>
-        <mxCell id="l6_champ" parent="L6" style="rounded=1;html=1;fillColor=#D4EFDF;strokeColor=#1E8449;fontStyle=1;fontSize=16;strokeWidth=3;" value="SELECCIÓN DEL CAMPEÓN: Residual SAC&#xa;Ganador en rentabilidad y robustez" vertex="1">
+        <mxCell id="l6_champ" parent="L6" style="rounded=1;html=1;fillColor=#D4EFDF;strokeColor=#1E8449;fontStyle=1;fontSize=16;strokeWidth=3;" value="CONTROLADOR SELECCIONADO: Residual SAC&#xa;Supera al MPC con significancia; elegido por robustez" vertex="1">
           <mxGeometry height="75" width="420" x="960" y="60" as="geometry" />
         </mxCell>
         <mxCell id="e6_1" edge="1" parent="L6" source="l6_suite" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;fontSize=16;" target="l6_stats">

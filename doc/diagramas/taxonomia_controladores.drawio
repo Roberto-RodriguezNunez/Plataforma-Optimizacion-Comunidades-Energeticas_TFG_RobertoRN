@@ -1,12 +1,9 @@
 <mxfile host="app.diagrams.net">
   <diagram id="taxonomia_ctrl" name="Taxonomía de Controladores">
-    <mxGraphModel dx="1585" dy="863" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1420" pageHeight="850" math="0" shadow="0">
+    <mxGraphModel dx="2943" dy="1603" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1420" pageHeight="850" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=26;fontStyle=1;fontFamily=Arial;fontColor=#1A252C;" value="TAXONOMÍA Y JERARQUÍA DE CONTROLADORES DEL SISTEMA (src/controllers/)" vertex="1">
-          <mxGeometry height="50" width="1340" x="30" y="70" as="geometry" />
-        </mxCell>
         <mxCell id="base_ctrl" parent="1" style="rounded=1;html=1;fillColor=#2C3E50;strokeColor=#1A252F;fontColor=#FFFFFF;fontStyle=1;fontSize=18;strokeWidth=3;align=center;" value="base.py (BaseController)&#xa;Interfaz Raíz del Ecosistema · Contrato Estándar: solve(state, forecast) &amp;#8594; action" vertex="1">
           <mxGeometry height="80" width="700" x="345" y="120" as="geometry" />
         </mxCell>
@@ -28,13 +25,13 @@
         <mxCell id="disc" parent="grp_rl" style="rounded=1;html=1;fillColor=#FCE883;strokeColor=#B7950B;fontStyle=1;fontSize=15;fontColor=#7D6608;" value="discrete.py&#xa;Controladores RL Acción Discreta&#xa;DQN · PPO Disc (9 combinaciones discretas)" vertex="1">
           <mxGeometry height="100" width="370" x="30" y="180" as="geometry" />
         </mxCell>
-        <mxCell id="grp_res" parent="1" style="swimlane;startSize=36;html=1;rounded=1;fillColor=#F3E5F5;strokeColor=#8E24AA;fontStyle=1;fontSize=16;fontColor=#4A235A;align=center;" value="FAMILIA 3 · CONTROL HÍBRIDO RESIDUAL (CAMPEÓN)" vertex="1">
+        <mxCell id="grp_res" parent="1" style="swimlane;startSize=36;html=1;rounded=1;fillColor=#F3E5F5;strokeColor=#8E24AA;fontStyle=1;fontSize=16;fontColor=#4A235A;align=center;" value="FAMILIA 3 · CONTROL HÍBRIDO RESIDUAL&amp;nbsp;" vertex="1">
           <mxGeometry height="320" width="430" x="910" y="260" as="geometry" />
         </mxCell>
         <mxCell id="res_base" parent="grp_res" style="rounded=1;html=1;fillColor=#E1BEE7;strokeColor=#8E24AA;fontStyle=1;fontSize=15;fontColor=#4A235A;" value="residual_base.py&#xa;Clase Base para Arquitecturas Residuales&#xa;Encapsula lógica de corrección sobre supervisor" vertex="1">
           <mxGeometry height="85" width="390" x="30" y="60" as="geometry" />
         </mxCell>
-        <mxCell id="res_sac" parent="grp_res" style="rounded=1;html=1;fillColor=#D2B4DE;strokeColor=#6C3483;fontStyle=1;fontSize=16;fontColor=#4A235A;strokeWidth=3;" value="residual_sac_controller.py&lt;br&gt;Agente Campeón (Hereda residual_base.py)&lt;div&gt;residual: SAC, TDR, DDPG&lt;br&gt;Fusión multiplicativa: u = u_mpc · (1 + δ),  |δ| ≤ 15%&lt;/div&gt;" vertex="1">
+        <mxCell id="res_sac" parent="grp_res" style="rounded=1;html=1;fillColor=#D2B4DE;strokeColor=#6C3483;fontStyle=1;fontSize=16;fontColor=#4A235A;strokeWidth=3;" value="residual_sac_controller.py&lt;br&gt;(Hereda residual_base.py)&lt;div&gt;residual: SAC, TD3, DDPG&lt;br&gt;Fusión multiplicativa: u = u_mpc · (1 + δ),  |δ| ≤ 15%&lt;/div&gt;" vertex="1">
           <mxGeometry height="105" width="390" x="30" y="180" as="geometry" />
         </mxCell>
         <mxCell id="e_base_clas" edge="1" parent="1" source="base_ctrl" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#1ABC9C;" target="grp_clas">
@@ -56,7 +53,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e_mpc_res" edge="1" parent="1" source="mpc" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeDasharray=6 6;strokeColor=#E67E22;fontSize=15;fontStyle=1;" target="res_sac" value="&lt;b style=&#39;background-color:#FFF;padding:4px;color:#D35400;&#39;&gt;Suministra política base u_mpc(t) en tiempo real&lt;/b&gt;">
+        <mxCell id="e_mpc_res" edge="1" parent="1" source="mpc" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeDasharray=6 6;strokeColor=#E67E22;fontSize=15;fontStyle=1;" target="res_sac" value="&lt;b style=&quot;background-color: rgb(255, 255, 255); padding: 4px; color: rgb(211, 84, 0);&quot;&gt;Suministra política base u_mpc(t)&lt;/b&gt;">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="245" y="630" />

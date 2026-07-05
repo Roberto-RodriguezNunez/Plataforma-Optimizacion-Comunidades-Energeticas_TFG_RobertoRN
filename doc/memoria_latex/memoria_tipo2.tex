@@ -66,7 +66,7 @@
 \usepackage{booktabs, array, longtable, tabularx}
 \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 \newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
-\usepackage[demo]{graphicx}
+\usepackage{graphicx}
 \usepackage{caption, subcaption, float}
 \usepackage{enumitem}
 \usepackage{tocloft}
@@ -175,12 +175,16 @@ aporta su controlador frente a una referencia bien calibrada.
 Este trabajo investiga, diseña e implementa un motor de decisión inteligente
 basado en aprendizaje por refuerzo para la optimización económica de la batería
 comunitaria en una comunidad energética de autoconsumo fotovoltaico colectivo.
-Tras un proceso documentado de experimentación con los algoritmos \acrshort{dqn}
-y \acrshort{ppo}, se diseña e implementa el controlador Residual \acrshort{sac}
-sobre un \acrshort{mpc} base, arquitectura híbrida que resuelve los problemas de
-arranque en frío y cuantización que impidieron a los candidatos anteriores
-superar el \textit{baseline} competitivo, que en la configuración final se
-sitúa en $+47{,}64$\,€/semana.
+Tras un proceso documentado de exploración con las familias \acrshort{dqn},
+\acrshort{ppo}, \acrshort{td3}, DDPG y \acrshort{sac}, se diseña e implementa el
+controlador Residual \acrshort{sac} sobre un \acrshort{mpc} base, arquitectura
+híbrida que resuelve los problemas de arranque en frío y cuantización que
+impidieron a los candidatos anteriores superar el \textit{baseline} competitivo
+(\acrshort{mpc} con pronóstico realista, $+43{,}39$\,€/semana). En la suite de
+validación final (tres semillas de entrenamiento, diez semillas de ruido y 50
+semanas de evaluación no vistas), el controlador alcanza $+44{,}05$\,€/semana,
+una mejora de $+0{,}66$\,€/semana estadísticamente significativa (test de
+Wilcoxon pareado, $p<0{,}001$) sobre el \acrshort{mpc} realista.
 
 El motor se integra en una plataforma software de tipo \acrshort{saas} con
 gemelo digital de la instalación, módulo de ingeniería de datos con fuentes
@@ -207,11 +211,15 @@ the installation's most valuable asset: the community battery.
 This work investigates, designs and implements an intelligent decision engine
 based on reinforcement learning for the economic optimisation of the community
 battery in a collective photovoltaic self-consumption energy community. After
-a documented experimentation process with DQN and PPO, the Residual SAC
-controller over an MPC base is designed and implemented, a hybrid architecture
-that resolves the cold-start and quantisation problems that prevented previous
-candidates from surpassing the competitive baseline of
-$+47.64$\,€/week.
+a documented exploration process with the DQN, PPO, TD3, DDPG and SAC
+families, the Residual SAC controller over an MPC base is designed and
+implemented, a hybrid architecture that resolves the cold-start and
+quantisation problems that prevented previous candidates from surpassing the
+competitive baseline (realistic-forecast MPC, $+43.39$\,€/week). In the final
+validation suite (three training seeds, ten evaluation-noise seeds and 50
+held-out weeks), the controller reaches $+44.05$\,€/week, a statistically
+significant improvement of $+0.66$\,€/week (paired Wilcoxon test, $p<0.001$)
+over the realistic MPC.
 
 \textbf{Keywords:} energy communities, collective self-consumption,
 reinforcement learning, Soft Actor-Critic, model predictive control,
@@ -269,9 +277,11 @@ neto hora a hora es, exactamente, la factura eléctrica que optimiza el controla
 La justificación de esta elección, sus condiciones de aplicabilidad y su encaje
 jurídico se detallan en la Sección~\ref{sec:marco_regulatorio}.
 
-La variabilidad del precio PVPC, que en 2022 alcanzó \num{0,50}\,€/kWh en horas
-pico y valores cercanos a cero en horas valle, ofrece un margen de arbitraje
-que solo un motor de decisión con capacidad predictiva puede explotar. El
+La variabilidad del precio PVPC, que en el periodo analizado (2021--2023)
+alcanzó un máximo horario de \num{0,95}\,€/kWh (marzo de 2022, crisis
+energética) frente a valores cercanos a cero en horas valle, ofrece un margen
+de arbitraje que solo un motor de decisión con capacidad predictiva puede
+explotar. El
 presente trabajo aborda este problema desde una perspectiva dual: investigadora,
 al desarrollar y comparar algoritmos de aprendizaje por refuerzo aplicados a
 este dominio; e ingenieril, al integrar el motor resultante en una plataforma
@@ -394,7 +404,8 @@ constituyen extensiones naturales en el trabajo futuro.
 \label{sec:marco_regulatorio}
 
 El autoconsumo colectivo en España, en transposición de la normativa europea
-sobre energías renovables y mercado interior de la electricidad, se regula
+sobre energías renovables y mercado interior de la
+electricidad~\citep{Dir2018_2001, Dir2019_944}, se regula
 mediante el \textbf{Real Decreto 244/2019}~\citep{RD244_2019}, que establece las condiciones
 administrativas, técnicas y económicas del autoconsumo e introduce el mecanismo
 de \textbf{compensación simplificada de excedentes}, posteriormente reforzado
@@ -435,7 +446,8 @@ simplificación, sino como una \textbf{correspondencia físicamente exacta}: el
 balance agregado sobre el que decide el controlador \emph{es} la factura que se
 optimiza. El reparto de ese coste único entre las viviendas es una operación
 \textbf{interna} de la cooperativa —repercusión de gasto común medido por
-subcontadores privados, sin reventa de energía conforme a la Ley 24/2013—, no una
+subcontadores privados, sin reventa de energía conforme a la Ley 24/2013 del
+Sector Eléctrico \citep{Ley24_2013}—, no una
 facturación regulada vivienda a vivienda; el coeficiente de reparto es, por tanto,
 una \textbf{clave interna} que distribuye coste y ahorro entre los socios, no el
 coeficiente reglamentario del autoconsumo colectivo.
@@ -461,19 +473,21 @@ colindantes sin vía de dominio público interpuesta —por la que no es legal t
 cableado privado—, titularidad única del suministro por la cooperativa y renuncia
 de los vecinos al contrato individual con comercializadora. Conviene precisar que
 este modelo \emph{no} es una figura regulada llave en mano: las Redes de
-Distribución Cerradas (Real Decreto 1183/2020 y Real Decreto 314/2023) están
-reservadas a entornos industriales —solo admiten consumo residencial como
-excepción marginal y ligada a la industria, manteniendo además cada consumidor su
-comercializadora—, por lo que el escenario aquí adoptado se sostiene jurídicamente
-como \emph{red interior de un único consumidor} (la cooperativa), no como red de
-distribución cerrada. Su viabilidad económica se apoya en los programas de
-incentivos a comunidades energéticas con almacenamiento (Programa CE~IMPLEMENTA,
-Orden TED/764/2024, IDAE), que exigen sistema de almacenamiento de forma
-obligatoria.
+Distribución Cerradas, cuyo procedimiento de autorización desarrolla el Real
+Decreto 314/2023 \citep{RD314_2023}, están reservadas a zonas industriales,
+comerciales o de servicios compartidos (solo admiten consumo residencial como
+excepción marginal y ligada a la industria, manteniendo además cada consumidor
+su comercializadora), por lo que el escenario aquí adoptado se sostiene
+jurídicamente como \emph{red interior de un único consumidor} (la cooperativa),
+no como red de distribución cerrada. Su viabilidad económica se apoya en los
+programas de incentivos a comunidades energéticas con almacenamiento (Programa
+CE~IMPLEMENTA del IDAE, Orden TED/764/2024 \citep{TED764_2024}), que exigen
+sistema de almacenamiento de forma obligatoria.
 
 La característica que condiciona el diseño del motor de decisión es la asimetría
 de precios: el precio de venta de excedentes (mayorista, indicador 1739 de
-ESIOS) es sistemáticamente inferior al de compra (PVPC, indicador 1001), que
+ESIOS~\citep{ESIOS}) es sistemáticamente inferior al de compra (PVPC,
+indicador 1001), que
 incluye peajes y cargos del sistema. Por ello, maximizar el autoconsumo interno
 es siempre más rentable que maximizar la venta de excedentes.
 
@@ -562,14 +576,16 @@ motiva el interés por las arquitecturas híbridas, que es el enfoque adoptado e
 este trabajo.
 
 La comparativa honesta del RL con controladores \acrshort{mpc} bien calibrados
-muestra un panorama matizado. En el contexto regulatorio español del PVPC, un
-MPC determinista correctamente sintonizado captura ya en torno al 90\,\% del
-valor económico disponible mediante arbitraje diario y emparejamiento de picos
-de precio. La literatura sobre arquitecturas residuales en dominios afines
-(microrredes, sistemas HVAC) documenta que el margen de mejora realista que un
-esquema híbrido puede aportar sobre ese MPC se sitúa típicamente entre el 4\,\%
-y el 12\,\%, reduciéndose a valores más modestos cuando el MPC ya está bien
-calibrado. Este margen acotado, lejos de invalidar el enfoque, define con
+muestra un panorama matizado: la literatura encuentra que el MPC mantiene un
+rendimiento ligeramente superior y se transfiere con más suavidad entre
+escenarios \citep{Zhan2023}. En este dominio, un MPC determinista
+correctamente sintonizado captura ya la mayor parte del valor económico
+disponible mediante arbitraje diario y emparejamiento de picos de precio, y el
+margen restante queda acotado por el coste de la incertidumbre del pronóstico.
+En este trabajo ese margen se cuantifica de forma explícita para el caso de
+estudio (la brecha entre el MPC con previsión perfecta y con previsión
+realista resulta ser del 15{,}7\,\%; Sección~\ref{sub:mpc}), y la expectativa
+realista para un esquema híbrido es recuperar solo una fracción de él. Este margen acotado, lejos de invalidar el enfoque, define con
 precisión el espacio en el que el motor de IA debe demostrar su valor.
 
 La arquitectura híbrida MPC+RL responde a esta realidad combinando la
@@ -641,9 +657,12 @@ rol, con persistencia de los perfiles e histórico de la comunidad.
 
 \begin{figure}[H]
   \centering
-  \figpend{[Figura: Arquitectura de 5 capas de la plataforma EnergyComm]\\
-    \textit{Exportar arquitectura\_capas.drawio $\rightarrow$ img/arquitectura\_capas.png}}
-  \caption{Arquitectura de la plataforma EnergyComm organizada en cinco capas.}
+  \includegraphics[width=0.95\textwidth]{img/arquitectura_investigacion.png}
+  \caption{Arquitectura de la plataforma, parte 1: capas de investigación y
+  \textit{benchmarking} (datos, simulación, entornos, entrenamiento
+  multisemilla, controladores y evaluación comparativa). La parte de
+  producción (\textit{edge} y SaaS) se muestra en la
+  Figura~\ref{fig:arquitectura_prod}.}
   \label{fig:arquitectura}
 \end{figure}
 
@@ -696,7 +715,8 @@ producción (Sección~\ref{sec:onnx}) y la plataforma SaaS que lo integra
 \subsection{Proceso de Decisión de Markov}
 
 El problema de gestión de la batería comunitaria se formula como un
-Proceso de Decisión de Markov (\acrshort{mdp}) definido por la tupla $(\mathcal{S}, \mathcal{A}, P, R, \gamma)$.
+Proceso de Decisión de Markov (\acrshort{mdp}) definido por la tupla
+$(\mathcal{S}, \mathcal{A}, P, R, \gamma)$~\citep{Sutton2018}.
 El espacio de estados $\mathcal{S}$ recoge las variables observables en cada
 paso temporal $h$: el estado de carga $\text{SoC}_h \in [0{,}10, 0{,}90]$, el
 precio de compra $p_c^h$, el precio de venta $p_v^h$, el excedente solar
@@ -821,14 +841,14 @@ Datos & Pandas / NumPy & Pipeline ETL y simulación \\
 Fuente precios & ESIOS API (REE) & Indicadores 1001 y 1739 \\
 Fuente consumo & ESIOS API (REE) & Indicador 1006 (perfil 2.0TD) \\
 Fuente generación & PVGIS API (JRC-EU) & Producción FV histórica \\
-Fuente previsión & Open-Meteo API & Irradiancia solar horaria \\
+Fuente previsión & Open-Meteo API & Irradiancia (conector de producción; emulado en el prototipo) \\
 Runtime edge & ONNX Runtime & Inferencia sin SB3 ni Gymnasium \\
 Base de datos & PostgreSQL & Perfiles, histórico, coeficientes \\
 Frontend web & Flask + SQLAlchemy & Dashboards Superadmin y Usuario \\
 Despliegue & Docker Compose & Reproducibilidad del entorno \\
 Configuración & YAML (\texttt{yaml.safe\_load}) & Hiperparámetros externalizados \\
 Tracking ML & TensorBoard & Curvas de entrenamiento \\
-Testing & pytest & 47 tests automatizados \\
+Testing & pytest & 76 tests automatizados \\
 Control versiones & Git & Reproducibilidad de experimentos \\
 \bottomrule
 \end{tabularx}
@@ -836,9 +856,10 @@ Control versiones & Git & Reproducibilidad de experimentos \\
 
 La selección de \acrshort{sb3}~\citep{Raffin2021} frente a RLlib se justifica
 por sus
-implementaciones auditadas con verificación estática de tipos y soporte nativo
-para \texttt{VecNormalize} y buffers de demostración, requisitos del protocolo
-de inicialización con demostraciones del MPC. HiGHS garantiza optimalidad global
+implementaciones auditadas con verificación estática de tipos, soporte nativo
+para \texttt{VecNormalize} y acceso programático al \textit{replay buffer},
+que es lo que permite implementar el protocolo de inicialización con
+demostraciones del MPC (DAWN) sobre los algoritmos \textit{off-policy}. HiGHS garantiza optimalidad global
 en el LP del MPC y detección explícita de infactibilidad, verificada sobre 1.000
 escenarios aleatorios. La arquitectura de exportación a ONNX permite desplegar
 el modelo entrenado en hardware de borde sin el stack completo de entrenamiento.
@@ -852,7 +873,7 @@ el modelo entrenado en hardware de borde sin el stack completo de entrenamiento.
 
 El dataset de simulación integra cuatro ficheros procedentes de tres fuentes
 oficiales. El \textbf{perfil de consumo 2.0TD} (\texttt{consumo\_esios\_2021\_2023.csv})
-se obtiene del indicador 1006 de ESIOS, que publica coeficientes
+se obtiene del indicador 1006 de ESIOS~\citep{ESIOS}, que publica coeficientes
 horarios normalizados del consumo residencial elaborados a partir de medidas
 reales de contadores inteligentes de la red española. Se escala a
 $15 \times \num{3500}\,kWh/año = \num{52500}\,kWh/año$.
@@ -905,14 +926,27 @@ El resultado es \texttt{dataset\_final.csv}, con 22.646 horas (junio 2021 --
 diciembre 2023) y cinco columnas: fecha, consumo\_total, generacion\_total,
 precio\_kwh y precio\_excedente. Un fichero \texttt{metadata.json} lo acompaña
 con el hash SHA-256 de cada fuente y del dataset, la semilla y los parámetros
-del ruido, garantizando la trazabilidad.
+del ruido, garantizando la trazabilidad. La Figura~\ref{fig:pipeline_etl}
+resume el recorrido completo del dato, desde las fuentes oficiales hasta la
+entrada normalizada de la red del agente.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{img/pipeline_etl.png}
+  \caption{Pipeline de datos: fuentes crudas oficiales (ESIOS 1006/1001/1739 y
+  PVGIS), proceso ETL y escalado comunitario, construcción de la observación en
+  el entorno de simulación y normalización VecNormalize previa a la red del
+  agente.}
+  \label{fig:pipeline_etl}
+\end{figure}
 
 \subsection{Justificación del Dimensionado de la Instalación}
 \label{sub:dimensionado}
 
 La instalación fotovoltaica se dimensionó en \SI{42}{kWp} para equilibrar
 generación y consumo a nivel anual. Con un consumo medio de \num{3500}\,kWh/año
-por vivienda (coherente con la media del hogar español según el IDAE) y quince
+por vivienda (coherente con la media eléctrica del hogar español según los
+estudios SPAHOUSEC del IDAE \citep{IDAE_SPAHOUSEC}) y quince
 viviendas, el consumo agregado asciende a \num{52500}\,kWh/año. Aplicando las
 1250 horas equivalentes de irradiancia anual en Galicia, la potencia necesaria es:
 \begin{equation}
@@ -938,19 +972,35 @@ formato armario es un producto estándar disponible en el mercado.
 \subsection{Partición Train/Evaluación por Muestreo Estratificado}
 
 El dataset cubre dos regímenes de mercado radicalmente diferentes: la crisis
-energética de 2022 (precios PVPC hasta \num{0,50}\,€/kWh) y el periodo
+energética de 2022 (precios PVPC horarios de hasta \num{0,95}\,€/kWh) y el periodo
 post-crisis de 2023. Un split temporal convencional genera distribuciones de
 entrenamiento y evaluación heterogéneas (diferencia del 24\,\% en el
 rendimiento del MPC entre ambos periodos).
 
-La solución adoptada es el muestreo aleatorio estratificado por semanas
-completas. Las 134 semanas de 168 horas del dataset se distribuyen
-aleatoriamente (semilla 42) en 50 semanas de evaluación y 84 de entrenamiento,
-garantizando que ambos pools cubren todo el rango temporal. El test
+La solución adoptada es el muestreo aleatorio por semanas completas. Las 134
+semanas de 168 horas del dataset se distribuyen aleatoriamente sin reemplazo
+(semilla fija 42) en 50 semanas de evaluación y 84 de entrenamiento, de modo
+que ambos pools quedan repartidos a lo largo de todo el rango temporal y las
+dos distribuciones resultan homogéneas. El test
 \texttt{test\_split\_no\_solapado} verifica la ausencia de \textit{data leakage}.
 
 \subsection{Simulador Físico-Económico: Gemelo Digital}
 \label{sub:simulador}
+
+La Figura~\ref{fig:topologia} muestra la topología física que el simulador
+reproduce: los cuatro flujos de la batería que decide el agente (cs, cm, dc,
+dr) y los flujos automáticos del balance (autoconsumo directo, compra de
+déficit y vertido de excedente), que no pasan por la batería.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{img/topologia_4flujos.png}
+  \caption{Topología física de la comunidad y de los cuatro flujos de la
+  batería. En cada hora la batería o carga (cs, cm) o descarga (dc, dr); los
+  flujos grises son consecuencia automática del balance horario y no pasan por
+  la batería.}
+  \label{fig:topologia}
+\end{figure}
 
 \subsubsection{Modelo Electroquímico}
 
@@ -982,7 +1032,7 @@ $f_P$ penaliza cuadráticamente los ciclos a alta corriente (efecto Joule).
 $f_{\text{SoC}}$ penaliza cuárticamente la operación en los extremos del rango,
 reproduciendo el comportamiento real de baterías LFP donde la operación
 prolongada próxima al 0\,\% o 100\,\% de SoC acelera los mecanismos de
-degradación electroquímica \citep{Xu2016}.
+degradación electroquímica \citep{Vetter2005, Xu2016}.
 
 Esta no linealidad es intencional y tiene una consecuencia metodológica crucial:
 el MPC, que linealiza la degradación como $K = 0{,}005$\,€/kWh fijo, introduce
@@ -1006,8 +1056,11 @@ bidireccional} (carga más descarga, $E_{\text{movida}}$). Con un coste neto de
 celdas LFP de $c_{\text{celda}}\!\approx\!90\text{--}100$\,€/kWh —tras la
 subvención al almacenamiento del Real Decreto~477/2021 \citep{RD477_2021} y la
 caída sostenida del precio de celda \citep{BNEF2024,Schmidt2019}— y una vida útil
-$N_{\text{ciclos}}\!\approx\!8\,000$ ciclos completos hasta el 80\,\% de SoH, propia
-de celdas LFP de aplicación estacionaria, la ecuación~\eqref{eq:calibracion}
+$N_{\text{ciclos}}\!\approx\!8\,000$ ciclos completos hasta el 80\,\% de SoH,
+valor típico de las hojas de características de fabricantes de celdas LFP de
+aplicación estacionaria (batería fija de edificio o instalación, cuyo ciclado
+es más suave que el de un vehículo eléctrico), la
+ecuación~\eqref{eq:calibracion}
 arroja $c_{\text{amort}}\!\approx\!0{,}006$\,€/kWh. La cifra es \emph{independiente
 de la capacidad nominal}, lo que justifica fijarla como parámetro constante en
 €/kWh.
@@ -1140,8 +1193,13 @@ donde $K = 0{,}005$\,€/kWh es la penalización linealizada de degradación.
 Ningún controlador desplegable puede superar sistemáticamente al MPC oráculo
 porque hacerlo requeriría predecir el futuro con exactitud.
 
-\textbf{Resultado:} $+56{,}64$\,€/semana sobre el pool de
-evaluación (50 semanas, SoC inicial 50\,\%, semilla 42).
+\textbf{Resultado:} $+51{,}45$\,€/semana (IC95 $[44{,}07;\,60{,}29]$) bajo el
+protocolo unificado de evaluación (50 semanas \textit{held-out}, SoC inicial
+50\,\%, intervalo de confianza por \textit{bootstrap};
+Sección~\ref{sub:seleccion}). El intervalo es ancho porque refleja la
+variabilidad estacional entre las semanas del año, no incertidumbre del
+controlador (con previsión perfecta el resultado de cada semana es
+determinista).
 
 \textbf{Alcance de la optimalidad.} El MPC se formula como un programa lineal, lo
 que garantiza el \emph{óptimo global de su función objetivo} y un tiempo de
@@ -1174,10 +1232,11 @@ sin publicar, se estima con mayor incertidumbre ($\sigma=15\,\%$, $\rho=0{,}7$,
 capa 3). Es el mismo modelo de precios que ve el MPC interno del Residual SAC,
 lo que garantiza una comparación justa entre ambos.
 
-\textbf{Resultado:} $+47{,}64$\,€/semana.
+\textbf{Resultado:} $+43{,}39$\,€/semana (IC95 $[41{,}24;\,45{,}57]$, media
+sobre diez semillas de ruido).
 
 El coste agregado de la incertidumbre del pronóstico es
-$56{,}64 - 47{,}64 = 9{,}00$\,€/semana (15{,}9\,\%), englobando las tres
+$51{,}45 - 43{,}39 = 8{,}06$\,€/semana (15{,}7\,\%), englobando las tres
 fuentes de ruido (generación, consumo y precios). Este valor establece el
 límite teórico de mejora alcanzable mediante un pronóstico más preciso y define
 el margen en el que opera el Residual SAC.
@@ -1312,6 +1371,15 @@ arquitectura híbrida en la que el RL no compite contra el MPC, sino que aprende
 a corregirlo. La justificación detallada se presenta en la
 Sección~\ref{sub:justificacion}.
 
+De esta exploración nace además el registro de experimentos
+(\texttt{config/experimentos.yaml}) que define las versiones de la suite de
+validación de la Sección~\ref{sub:suite}: cada familia y cada versión validada
+responde a una hipótesis generada en esta fase (el n-step y el $\gamma$ de DQN,
+el decaimiento de entropía de PPO, la forma y el rango de la corrección
+residual), de modo que la suite no es un barrido ciego de hiperparámetros sino
+la confirmación estadística, sobre el dimensionado definitivo, de lo aprendido
+durante la exploración.
+
 \subsection{Justificación del Motor de IA sobre MPC Puro}
 \label{sub:justificacion}
 
@@ -1328,7 +1396,8 @@ infrapenaliza.
 
 \textbf{Argumento 2 — Adaptabilidad al envejecimiento de la batería.} Los
 parámetros físicos del MPC ($\eta_c$, $\eta_d$, $E_{\max}$, $\delta_{\text{AD}}$)
-se degradan a lo largo de la vida útil de la batería (10--15 años para LFP). Un
+se degradan a lo largo de la vida útil de la batería (15 a 20 años para una
+LFP estacionaria, es decir, fija en la instalación). Un
 MPC con parámetros desactualizados toma decisiones sistemáticamente subóptimas
 sin mecanismo de detección. El Residual SAC puede reentrenarse periódicamente
 incorporando los parámetros actualizados, mientras el MPC base garantiza el
@@ -1336,9 +1405,14 @@ rendimiento mínimo durante la adaptación.
 
 \textbf{Argumento 3 — Garantía de suelo de rendimiento.} Con $\Delta = \mathbf{0}$,
 el Residual SAC multiplicativo es matemáticamente equivalente al MPC realista,
-ya que $\text{flow} \times (1 + 0) = \text{flow}$. El peor caso del Residual SAC
-es exactamente el MPC realista. Ningún algoritmo de RL puro ofrece esta
-garantía.
+ya que $\text{flow} \times (1 + 0) = \text{flow}$: el punto de partida del
+aprendizaje y el modo de respaldo del sistema son exactamente el MPC. Para el
+agente ya entrenado la garantía es de \emph{acotación}, no de identidad: la
+corrección no puede exceder $\pm\delta_{\max}$ sobre cada flujo, lo que limita
+estructuralmente cuánto puede alejarse del MPC (en la suite de validación, la
+peor configuración residual observada queda $1{,}07$\,€/semana por debajo del
+MPC, un $2{,}5\,\%$, frente a los 4--16\,€/semana que pierden los agentes de
+RL puro). Ningún algoritmo de RL puro ofrece ninguna de las dos propiedades.
 
 \begin{table}[H]
 \centering
@@ -1358,6 +1432,20 @@ SAC puro & Continuo & Sí & Sí & Alta & Candidato \\
 \end{tabularx}
 \end{table}
 
+La Figura~\ref{fig:taxonomia} sitúa a todos los controladores del ecosistema
+bajo una misma interfaz raíz (\texttt{BaseController}), organizados en tres
+familias: clásicos y \textit{baselines}, RL puro y control híbrido residual.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{img/taxonomia_controladores.png}
+  \caption{Taxonomía de los controladores implementados. Todas las familias
+  comparten el contrato \texttt{solve(state, forecast)}, lo que permite
+  evaluarlas bajo el mismo protocolo; el MPC suministra la política base
+  u\_mpc(t) a la familia residual.}
+  \label{fig:taxonomia}
+\end{figure}
+
 \subsection{Diseño del Residual SAC: de Aditiva a Multiplicativa}
 \label{sub:residual_sac}
 
@@ -1365,7 +1453,17 @@ El controlador final es un agente \acrshort{sac} que aprende correcciones
 residuales sobre el MPC realista. El diseño atravesó tres iteraciones
 principales, cada una resolviendo una limitación de la anterior.
 
-\paragraph{SAC-A — Residual aditivo.}
+Nota de nomenclatura: las cifras de esta subsección corresponden a la
+\emph{fase de diseño} (dimensionado preliminar de 50\,kWp/100\,kWh, una
+semilla) y son indicativas; las iteraciones se citan como v2--v5 siguiendo el
+Anexo~\ref{app:historial}. En la \emph{suite de validación}
+(Sección~\ref{sub:suite}), los identificadores SAC-A, SAC-B y SAC-C designan
+los reentrenamientos confirmatorios de estas tres arquitecturas (aditiva,
+multiplicativa amplia y multiplicativa fina) sobre el dimensionado definitivo
+de 42\,kWp/80\,kWh, cuyos resultados con tres semillas y diez semillas de
+ruido se reportan en la Sección~\ref{sub:resultados}.
+
+\paragraph{Iteración 1 (v2/v3): residual aditivo.}
 La primera arquitectura aplica una corrección aditiva absoluta sobre cada flujo
 del MPC: $\text{flow} + \Delta \cdot \delta_{\max} \cdot P_{\max}$. Con
 $\delta_{\max} = 0{,}10$ (correcciones de hasta $\pm5$\,kW), el agente alcanzó
@@ -1378,7 +1476,7 @@ aplica la misma corrección absoluta independientemente de la magnitud del flujo
 del MPC: una corrección de $\pm5$\,kW es enorme cuando el MPC propone 2\,kW y
 despreciable cuando propone 40\,kW.
 
-\paragraph{SAC-B — Residual multiplicativo amplio.}
+\paragraph{Iteración 2 (v4): residual multiplicativo amplio.}
 La segunda arquitectura introduce la corrección multiplicativa:
 $\text{flow} \times (1 + \Delta \cdot \delta_{\max})$. Esta formulación escala
 proporcionalmente: si el MPC propone un flujo nulo, la corrección es nula (el
@@ -1390,14 +1488,16 @@ versiones aditivas pero se estancó en torno a $+43{,}3$\,€/semana desde los
 amplio ($\pm30\,\%$) permite al agente desviarse en exceso del MPC, perdiendo la
 ventaja de partir de una política ya optimizada.
 
-\paragraph{SAC-C — Residual multiplicativo fino (configuración final).}
+\paragraph{Iteración 3 (v5): residual multiplicativo fino (arquitectura final).}
 La configuración final reduce el rango de corrección a $\delta_{\max} = 0{,}15$
 ($\pm15\,\%$ sobre cada flujo del MPC) y aumenta el coeficiente de entropía a
 $0{,}01$, obligando a correcciones finas sobre un MPC ya optimizado mientras
 mantiene suficiente exploración dentro del rango reducido. Esta es la
-configuración que supera de forma consistente al \textit{baseline}, con un
-resultado de \textbf{$+48{,}35$\,€/semana} (agregado de 3 semillas), superando
-al MPC realista ($+47{,}64$) en $+0{,}71$\,€/semana.
+arquitectura que se consolida como controlador propuesto: su reentrenamiento
+confirmatorio sobre el dimensionado definitivo (versión SAC-C de la suite de
+validación) alcanza $+44{,}05$\,€/semana frente a los $+43{,}39$ del MPC
+realista, una mejora de $+0{,}66$\,€/semana estadísticamente significativa
+(Sección~\ref{sub:resultados}).
 
 \subsection{Formulación Final del Residual SAC}
 \label{sub:formulacion}
@@ -1421,12 +1521,11 @@ que avanza al siguiente estado.
 
 \begin{figure}[H]
   \centering
-  \figpend{[Diagrama de secuencia: inferencia Residual SAC $\leftrightarrow$ entorno simulado]\\
-    \textit{Actores: Entorno (Gymnasium) · MPC (LP) · Actor SAC · Simulador físico-económico.}\\
-    \textit{Mensajes por paso: obs $\rightarrow$ acción MPC $\rightarrow$ $\Delta$ SAC $\rightarrow$ acción final $\rightarrow$ \texttt{step()} $\rightarrow$ reward.}\\
-    \textit{Exportar secuencia\_inferencia.drawio $\rightarrow$ img/secuencia\_inferencia.png}}
+  \includegraphics[width=0.95\textwidth]{img/secuencia_inferencia.png}
   \caption{Diagrama de secuencia de la inferencia del Residual SAC sobre el
-  entorno simulado.}
+  entorno simulado: el MPC resuelve su LP y propone la acción base, el actor
+  calcula la corrección $\Delta$ (determinista, con normalización congelada) y
+  la fusión multiplicativa se aplica al simulador físico-económico.}
   \label{fig:secuencia_inferencia}
 \end{figure}
 
@@ -1453,8 +1552,9 @@ Intención MPC & $(c_s^{\text{MPC}}, c_m^{\text{MPC}}, d_c^{\text{MPC}}, d_r^{\t
 
 Los 108 valores de base (5 actuales + 96 pronóstico + 7 temporales) se amplían
 con los 4 flujos normalizados de la intención del MPC, permitiendo al agente
-conocer la acción base sobre la que propone su corrección, siguiendo el
-protocolo de \citet{Johannink2019}.
+conocer la acción base sobre la que propone su corrección; es una extensión
+natural del esquema residual de \citet{Johannink2019}, en la que el
+condicionamiento a la acción base se hace explícito en la observación.
 
 \subsection{Protocolo de Inicialización DAWN}
 \label{sub:dawn}
@@ -1486,14 +1586,14 @@ comparación justa.
 
 \begin{table}[H]
 \centering
-\caption{Hiperparámetros del Residual SAC (configuración final SAC-C / v6).}
+\caption{Hiperparámetros del Residual SAC (configuración final SAC-C).}
 \label{tab:hyperparams}
 \begin{tabularx}{\textwidth}{llX}
 \toprule
 \textbf{Parámetro} & \textbf{Valor} & \textbf{Justificación} \\
 \midrule
 Arquitectura residual & multiplicativa & Escala con la magnitud del flujo MPC \\
-\texttt{delta\_max} & 0{,}15 & $\pm15\,\%$; 0{,}30 inestable, 0{,}05 insuficiente \\
+\texttt{delta\_max} & 0{,}15 & $\pm15\,\%$; meseta 0{,}05--0{,}20, degradación en 0{,}30 (barrido F2) \\
 \texttt{ent\_coef} & 0{,}01 & Exploración dentro del rango reducido \\
 \texttt{learning\_rate} & $10^{-4}$ & Convergencia estable en espacio 4D \\
 \texttt{buffer\_size} & 100\,000 & Cubre la diversidad de episodios \\
@@ -1539,8 +1639,10 @@ del mejor de las tres semillas se realiza con la métrica interna de entrenamien
 (SoC inicial aleatorio y valor terminal), distinta de la que se publica en la
 evaluación unificada (SoC fijo y beneficio marginal puro), de modo que el modelo
 no se selecciona sobre la misma medida que se reporta. El optimismo de selección
-residual es, por tanto, despreciable —y nulo en la práctica para el Residual SAC,
-cuyas tres semillas rinden casi idéntico por la garantía de suelo—.
+residual es, por tanto, despreciable (y nulo en la práctica para el Residual SAC,
+cuyas tres semillas rinden casi idéntico por la garantía de suelo: métrica
+interna de $41{,}08$, $41{,}14$ y $41{,}11$\,€/semana para las semillas 42,
+1337 y 2024).
 
 \subsection{Diseño de la Suite de Validación}
 \label{sub:suite}
@@ -1578,97 +1680,285 @@ controlador final:
 \end{itemize}
 
 Cada candidato existe, por tanto, para confirmar o descartar una hipótesis derivada
-de la exploración. Los resultados agregados (3 semillas $\times$ 10 semillas de
-ruido) se reportan en la Sección~\ref{sub:resultados}: a fecha de redacción está
-validado el controlador propuesto (Residual SAC, SAC-C) y permanecen
-\textit{pendientes de cómputo} las ablaciones y las familias comparativas restantes,
-cuyos valores se incorporarán al completarse los entrenamientos.
+de la exploración. La suite se ha completado en su totalidad: 31 versiones
+entrenadas y evaluadas bajo el protocolo unificado (tres semillas de
+entrenamiento, diez semillas de ruido de evaluación, 50 semanas
+\textit{held-out}, intervalos de confianza al 95\,\% por \textit{bootstrap} y
+test de Wilcoxon pareado por semana y semilla de ruido frente al MPC realista). Los resultados
+agregados se presentan en la Sección~\ref{sub:resultados}; el detalle completo
+de cada versión (media, IC95, $p$ e hiperparámetros) se recoge en el
+Anexo~\ref{app:suite_completa}, y los entornos de entrenamiento y las
+condiciones de reproducibilidad en el Anexo~\ref{app:reproducibilidad}.
 
 \subsection{Resultados Experimentales}
 \label{sub:resultados}
 
-\begin{figure}[H]
-  \centering
-  \figpend[0.9\textwidth]{[Figura: Curvas de entrenamiento Residual SAC v6 (SAC-C)]\\
-    \textit{Eje X: pasos de entorno. Eje Y: €/semana.}\\
-    \textit{Línea discontinua: MPC realista. Línea punteada: MPC oráculo.}\\
-    \textit{Exportar desde TensorBoard}}
-  \caption{Curvas de entrenamiento del Residual SAC sobre el pool de evaluación.}
-  \label{fig:curvas_sac}
-\end{figure}
-
-El entrenamiento converge con rapidez —en torno a los 100.000 pasos— y se
-estabiliza después en una meseta sostenida hasta completar el millón de pasos,
-comportamiento coherente con el espacio de corrección acotado a $\pm15\,\%$; el
-mejor \textit{checkpoint} se selecciona en el paso 860.000. El
-Cuadro~\ref{tab:resultados} recoge los resultados finales de todos los
-controladores bajo el protocolo de evaluación unificado.
+El entrenamiento converge con rapidez según los registros de evaluación
+periódica (\texttt{evaluations.npz} de cada ejecución): la meseta se alcanza
+en torno a los 100.000 pasos y se mantiene estable hasta completar el millón,
+comportamiento coherente con el espacio de corrección acotado a $\pm15\,\%$,
+porque desde el primer punto de control el agente rinde ya cerca de su nivel
+final (la corrección acotada no puede alejarse del suelo del MPC). El mejor
+\textit{checkpoint} de la semilla desplegada (1337) se selecciona en el paso
+280.000. No se reproduce aquí la curva de entrenamiento: en el protocolo de
+este trabajo el objeto evaluado es el modelo final bajo la evaluación
+unificada, y la dinámica del entrenamiento (idéntica entre semillas por la
+garantía de suelo, Cuadro~\ref{tab:seeds}) no aporta información adicional
+sobre el rendimiento desplegado. El Cuadro~\ref{tab:resultados} recoge los resultados finales de los
+\textit{baselines} y de la mejor versión de cada familia bajo el protocolo de
+evaluación unificado; el detalle de las 31 versiones se encuentra en el
+Anexo~\ref{app:suite_completa}.
 
 \begin{table}[H]
 \centering
-\caption{Resultados comparativos finales (€/semana, beneficio marginal vs.\ IDLE).}
+\caption{Resultados de la suite de validación: \textit{baselines} y mejor
+versión de cada familia (€/semana, beneficio marginal frente a IDLE; 50 semanas
+\textit{held-out} $\times$ 10 semillas de ruido; IC95 por \textit{bootstrap};
+$p$ del test de Wilcoxon pareado por semana y semilla de ruido frente al MPC realista).}
 \label{tab:resultados}
-\begin{tabularx}{\textwidth}{llX}
+\small
+\begin{tabular}{lrrcc}
 \toprule
-\textbf{Controlador} & \textbf{€/semana} & \textbf{Rol} \\
+\textbf{Controlador} & \textbf{€/sem} & \textbf{$\Delta$ MPC} &
+\textbf{IC95} & \textbf{$p$} \\
 \midrule
-IDLE (sin batería) & $0{,}00$ & Referencia base \\
-DQN-C ($n{=}24$) & $+41{,}71$ & No convergió \\
-DQN-B ($n{=}8$, mejor DQN) & $+45{,}23$ & Mejor basado en valor \\
-PPO-B (mejor PPO) & $+45{,}69$ & Mejor policy-gradient \\
-MPC realista (AR(1)) & $+47{,}64$ & \textit{Baseline} competitivo \\
-\textbf{Residual SAC (SAC-C / v6)} & $\mathbf{+48{,}35}$ & \textbf{Controlador final} \\
-MPC oráculo & $+56{,}64$ & Cota teórica superior \\
+MPC oráculo (cota superior) & $51{,}45$ & $+8{,}06$ & $[44{,}07;\,60{,}29]$ & n/a \\
+TD3 residual (TD3-4) & $44{,}17$ & $+0{,}79$ & $[42{,}02;\,46{,}37]$ & $1{,}5\cdot10^{-37}$ \\
+\textbf{Residual SAC (SAC-C)} & $\mathbf{44{,}05}$ & $\mathbf{+0{,}66}$ &
+$\mathbf{[41{,}90;\,46{,}25]}$ & $\mathbf{1{,}5\cdot10^{-23}}$ \\
+DDPG residual (mejor: DDPG-1) & $43{,}44$ & $+0{,}05$ & $[41{,}32;\,45{,}60]$ & $0{,}95$ \\
+MPC realista (referencia) & $43{,}39$ & --- & $[41{,}24;\,45{,}57]$ & --- \\
+DQN (mejor: DQN-1, $n{=}1$) & $39{,}36$ & $-4{,}02$ & $[37{,}21;\,41{,}62]$ & $5{,}0\cdot10^{-67}$ \\
+PPO discreto (mejor: PPO-D4) & $39{,}35$ & $-4{,}04$ & $[37{,}09;\,41{,}70]$ & $2{,}4\cdot10^{-60}$ \\
+PPO continuo (mejor: PPO-C3) & $38{,}31$ & $-5{,}07$ & $[36{,}08;\,40{,}66]$ & $6{,}5\cdot10^{-45}$ \\
+Heurístico & $30{,}49$ & $-12{,}90$ & $[28{,}14;\,32{,}91]$ & $4{,}6\cdot10^{-75}$ \\
+SAC puro (F5) & $26{,}94$ & $-16{,}44$ & $[25{,}53;\,28{,}40]$ & $1{,}3\cdot10^{-83}$ \\
+IDLE (sin batería) & $0{,}00$ & $-43{,}39$ & --- & --- \\
 \bottomrule
-\multicolumn{3}{@{}p{\dimexpr\textwidth-2\tabcolsep}@{}}{\small Residual SAC y
-  MPC agregados sobre 3 semillas (150 semanas); resto: 50 semanas, semilla 42.
-  Dimensionado final 42\,kWp / 80\,kWh (SAC v6). DQN y PPO: fase de candidatos
-  (50/100).}
-\end{tabularx}
+\multicolumn{5}{@{}p{\dimexpr\textwidth-2\tabcolsep}@{}}{\small Dimensionado
+  definitivo 42\,kWp\,/\,80\,kWh en todas las filas. Cada agente se entrena con
+  tres semillas y se despliega la mejor (Sección~\ref{sub:seleccion}); las
+  ablaciones F2/F4/F6 del Anexo~\ref{app:suite_completa} usan una semilla.}
+\end{tabular}
 \end{table}
 
-El resultado central del trabajo es que el \textbf{Residual SAC
-($+48{,}35$\,€/semana) supera al MPC realista ($+47{,}64$\,€/semana)} en
-$+0{,}71$\,€/semana ($+1{,}5\,\%$), confirmando la hipótesis de que la
-arquitectura híbrida
-puede aprender a corregir los errores sistemáticos del MPC. La mejora es
-modesta en valor absoluto pero significativa metodológicamente: ningún
-controlador de RL puro (DQN, PPO) lo había conseguido.
+\subsubsection{Resultado central}
 
-El margen de mejora teórico disponible sobre el MPC realista es la diferencia
-hasta el MPC oráculo: $56{,}64 - 47{,}64 = 9{,}00$\,€/semana (15{,}9\,\%),
-correspondiente al coste del ruido de pronóstico. El Residual SAC recupera
-aproximadamente el 7{,}9\,\% de ese margen. El Cuadro~\ref{tab:seeds} detalla la
-consistencia del resultado a través de las tres semillas evaluadas.
+El resultado central del trabajo es que el \textbf{Residual SAC (SAC-C,
+$+44{,}05$\,€/semana) supera al MPC realista ($+43{,}39$\,€/semana)} en
+$+0{,}66$\,€/semana ($+1{,}5\,\%$), con IC95 $[41{,}90;\,46{,}25]$ y
+significancia estadística muy alta en el contraste pareado por semana y
+semilla de ruido (Wilcoxon, $p=1{,}45\cdot10^{-23}$): la mejora es pequeña en magnitud pero
+extraordinariamente consistente, porque se repite semana a semana en las 500
+evaluaciones realizadas (50 semanas $\times$ 10 semillas de ruido). Conviene
+leer el margen con honestidad: el MPC realista es un controlador muy fuerte, y
+el techo alcanzable es la brecha de pronóstico de $8{,}06$\,€/semana, de la que
+el residual recupera en torno al 8\,\%. El valor de la arquitectura no reside
+solo en esa mejora media, sino en su combinación con la garantía de suelo
+(Sección~\ref{sub:justificacion}) y con una aportación creciente cuando el
+pronóstico se degrada (ablación F6, más abajo). Ningún controlador de RL puro
+(DQN, PPO en sus dos variantes, SAC directo) consigue siquiera igualar al MPC.
+
+\subsubsection{Consistencia entre semillas de entrenamiento}
 
 \begin{table}[H]
 \centering
-\caption{Consistencia del Residual SAC (v6) por semilla (50 semanas cada una).}
+\caption{Consistencia inter-entrenamiento del Residual SAC (SAC-C): métrica
+interna de entrenamiento por semilla (€/semana).}
 \label{tab:seeds}
-\begin{tabular}{lccc}
+\begin{tabular}{lc}
 \toprule
-\textbf{Semilla} & \textbf{MPC realista} & \textbf{Residual SAC v6} &
-\textbf{$\Delta$} \\
+\textbf{Semilla de entrenamiento} & \textbf{Métrica interna} \\
 \midrule
-42 & $+47{,}69$ & $+48{,}27$ & $+0{,}58$ \\
-1337 & $+47{,}49$ & $+48{,}22$ & $+0{,}73$ \\
-2024 & $+47{,}74$ & $+48{,}56$ & $+0{,}82$ \\
+42   & $41{,}08$ \\
+1337 (desplegada) & $41{,}14$ \\
+2024 & $41{,}11$ \\
 \midrule
-\textbf{Agregado} & $\mathbf{+47{,}64}$ & $\mathbf{+48{,}35}$ &
-$\mathbf{+0{,}71}$ \\
+Rango & $0{,}06$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-El Residual SAC supera al MPC realista en las tres semillas evaluadas, lo que
-confirma que la mejora no es un artefacto de una configuración de evaluación
-concreta sino un resultado robusto del controlador. La desviación entre semillas
-es pequeña (MPC realista $\pm0{,}11$ y Residual SAC $\pm0{,}15$\,€/semana) y las
-tres diferencias son positivas (entre $+0{,}58$ y $+0{,}82$\,€/semana), de modo
-que la mejora media de $+0{,}71$\,€/semana es consistente y no atribuible a la
-varianza de la semilla. No obstante, con solo tres semillas la potencia
-estadística es limitada; un mayor número de réplicas reforzaría la significancia
-del resultado.
+Las tres semillas de entrenamiento difieren entre sí en solo
+$0{,}06$\,€/semana (un $0{,}15\,\%$), evidencia empírica de que la garantía de
+suelo elimina en la práctica la varianza inter-semilla característica del RL
+profundo: partir del MPC y corregirlo de forma acotada deja poco espacio para
+que la aleatoriedad del entrenamiento produzca modelos dispares. Se despliega
+la semilla 1337 (mejor métrica interna) y su rendimiento publicado
+($+44{,}05$) es la media agregada sobre las diez semillas de ruido de
+evaluación; la significancia del resultado queda establecida por el contraste
+pareado sobre los 500 pares semana-ruido (Wilcoxon, $p<0{,}001$).
+
+\subsubsection{Estudios del ganador}
+
+\paragraph{Forma del residual (SAC-A/B/C).} Los reentrenamientos
+confirmatorios de las tres arquitecturas de la fase de diseño reproducen su
+ordenación sobre el dimensionado definitivo: la aditiva SAC-A queda en
+$42{,}47$\,€/semana ($-0{,}91$ frente al MPC, $p=1{,}8\cdot10^{-28}$), la
+multiplicativa amplia SAC-B en $42{,}31$ ($-1{,}07$) y solo la multiplicativa
+fina SAC-C supera al MPC ($+0{,}66$). El dato confirma el diagnóstico de la
+fase de diseño: la forma multiplicativa con rango fino no es una opción entre
+varias equivalentes, sino la única de las tres que aporta valor positivo; las
+otras dos son significativamente peores que el propio MPC que corrigen.
+
+\paragraph{Barrido del rango de corrección (ablación F2).} El
+Cuadro~\ref{tab:f2} muestra el efecto de $\delta_{\max}$ manteniendo el resto
+de la configuración de SAC-C.
+
+\begin{table}[H]
+\centering
+\caption{Barrido del rango de corrección $\delta_{\max}$ (ablación F2).}
+\label{tab:f2}
+\begin{tabular}{lccccc}
+\toprule
+$\delta_{\max}$ & $0{,}05$ & $0{,}10$ & $0{,}15$ (SAC-C) & $0{,}20$ & $0{,}30$ \\
+\midrule
+€/semana & $43{,}79$ & $44{,}01$ & $\mathbf{44{,}05}$ & $43{,}78$ & $42{,}43$ \\
+$\Delta$ vs.\ MPC & $+0{,}41$ & $+0{,}63$ & $\mathbf{+0{,}66}$ & $+0{,}40$ & $-0{,}95$ \\
+\bottomrule
+\multicolumn{6}{@{}l@{}}{\small F2-d05/d10/d20/d30: una semilla de
+entrenamiento; SAC-C: tres semillas.}
+\end{tabular}
+\end{table}
+
+La ventaja sobre el MPC forma una meseta robusta en $\delta_{\max}\in[0{,}05;
+0{,}20]$ (todas las versiones lo superan) y se degrada con claridad en
+$0{,}30$, donde el agente puede desviarse demasiado de la política base. El
+resultado del trabajo no depende, por tanto, de un ajuste fino afortunado del
+rango de corrección.
+
+\paragraph{Arranque guiado DAWN (ablación F4).} La ablación F4 elimina el
+\textit{warmup} DAWN manteniendo el resto de la configuración de SAC-C: el
+resultado final es $+44{,}04$\,€/semana ($+0{,}65$ sobre el MPC),
+estadísticamente indistinguible del $+44{,}05$ de SAC-C. El dato obliga a
+matizar la tesis inicial: \textbf{DAWN no mejora el rendimiento final} del
+residual multiplicativo, porque la propia arquitectura (corrección acotada
+sobre una política ya optimizada) evita por sí sola la patología de arranque
+en frío: los registros de evaluación periódica del entrenamiento
+(\texttt{evaluations.npz} de cada ejecución) muestran que, incluso sin
+\textit{warmup}, el agente rinde desde el primer punto de control (paso
+20.000) cerca de su nivel final ($39{,}1$ frente a $39{,}9$ con DAWN, sobre
+una meseta final de $\approx41$ en la métrica interna). El valor de DAWN queda así acotado a lo
+operativo: arrancar con el \textit{replay buffer} poblado por la política del
+MPC y las estadísticas de normalización calibradas, algo relevante en un
+escenario de reentrenamiento en producción, donde el sistema debe seguir
+operando mientras aprende, pero no en la cifra final de laboratorio.
+
+\paragraph{Sensibilidad al error de pronóstico (ablación F6).} La ablación F6
+reentrena y evalúa la configuración de SAC-C bajo dos niveles alternativos de
+ruido de consumo; cada fila del Cuadro~\ref{tab:f6} compara al agente con el
+MPC realista \emph{que ve el mismo nivel de ruido}, de modo que la comparación
+es justa en los tres escenarios.
+
+\begin{table}[H]
+\centering
+\caption{Sensibilidad al error de pronóstico de consumo (ablación F6). La
+fila central corresponde a la configuración estándar (F6-s15 es exactamente
+SAC-C).}
+\label{tab:f6}
+\begin{tabular}{lcccc}
+\toprule
+$\sigma_{\text{consumo}}$ & \textbf{MPC realista} & \textbf{Residual SAC} &
+\textbf{$\Delta$} & \textbf{$p$} \\
+\midrule
+5\,\%  & $48{,}27$ & $47{,}48$ & $-0{,}79$ & $1{,}9\cdot10^{-68}$ \\
+15\,\% & $43{,}39$ & $44{,}05$ & $+0{,}66$ & $1{,}5\cdot10^{-23}$ \\
+25\,\% & $38{,}59$ & $40{,}02$ & $+1{,}42$ & $8{,}6\cdot10^{-61}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La aportación del residual crece de forma monótona con el error de pronóstico
+($-0{,}79 \rightarrow +0{,}66 \rightarrow +1{,}42$). Con un pronóstico casi
+perfecto el MPC es ya casi óptimo y el residual no encuentra error sistemático
+que corregir (de hecho, estorba); cuanto peor es el pronóstico, mayor es el
+margen sistemático aprendible. Este resultado confirma el mecanismo del
+Argumento~1 de la Sección~\ref{sub:justificacion} y delimita el dominio de
+utilidad del sistema: comunidades con pronósticos imperfectos, que es
+precisamente el caso realista.
+
+\subsubsection{Familias comparativas}
+
+\paragraph{DQN (DQN-1\,\ldots\,6).} La mejor versión validada es DQN-1
+($n$-step${}=1$) con $39{,}36$\,€/semana ($-4{,}02$ frente al MPC,
+$p=5{,}0\cdot10^{-67}$), seguida de cerca por DQN-6 ($n{=}4$, $39{,}27$).
+Estas versiones son reentrenamientos del registro de experimentos sobre el
+dimensionado definitivo, no las versiones DQN-A/B/C de la fase de exploración.
+La validación obliga a matizar una hipótesis de aquella fase: el
+$n$-step${}\approx 8$ que allí pareció óptimo no se reproduce (con $n{=}8$ se
+obtienen $37{,}24$ y $38{,}34$), y el horizonte largo $n{=}24$ es claramente el
+peor ($31{,}65$). La conclusión robusta no es el valor concreto de $n$-step,
+que resulta sensible al resto de la configuración, sino la estructural: toda
+la familia queda entre 4 y 12\,€/semana por debajo del MPC, con el error de
+cuantización del espacio de acciones discreto como causa de fondo.
+
+\paragraph{PPO discreto (PPO-D1\,\ldots\,5).} La validación confirma la
+hipótesis de la exploración sobre el colapso de entropía: las dos versiones
+con decaimiento conjunto de entropía y tasa de aprendizaje son las mejores de
+la familia (PPO-D4, $39{,}35$\,€/semana, y PPO-D3, $38{,}91$), mientras que
+las tres de entropía constante quedan por detrás ($37{,}14$ a $37{,}96$), con
+la de mayor entropía fija (PPO-D5, ent $0{,}01$) como la peor. Aun así, la
+mejor versión queda $4{,}04$\,€/semana por debajo del MPC
+($p=2{,}4\cdot10^{-60}$), prácticamente empatada con el mejor DQN ($39{,}36$):
+las dos familias discretas topan en el mismo techo, coherente con un error de
+cuantización estructural que ningún ajuste de hiperparámetros elimina.
+
+\paragraph{PPO continuo (PPO-C1\,\ldots\,3).} Las tres versiones quedan en
+$38{,}14$, $33{,}66$ y $38{,}31$\,€/semana: pasar a acción continua elimina el
+error de cuantización pero no basta para alcanzar al MPC (unos 5\,€/semana por
+debajo). Al ser \textit{on-policy}, PPO no puede aprovechar demostraciones del
+MPC, lo que aísla la conclusión: el mérito del controlador final no está en el
+espacio de acción continuo, sino en la arquitectura residual.
+
+\paragraph{SAC puro (F5).} El mismo algoritmo del controlador ganador,
+entrenado directamente sobre el entorno continuo sin MPC base ni DAWN, obtiene
+$26{,}94$\,€/semana ($-16{,}44$, $p=1{,}3\cdot10^{-83}$), el peor agente de
+toda la suite e inferior incluso al heurístico. Es la evidencia más nítida de
+que el mérito del resultado central corresponde a la \emph{arquitectura
+residual} y no al algoritmo SAC en sí.
+
+\paragraph{TD3 residual (TD3-1\,\ldots\,4).} La familia TD3 confirma que la
+arquitectura residual funciona con otros algoritmos \textit{off-policy}:
+TD3-1/2/3 ($\delta_{\max}=0{,}15$) resultan estadísticamente indistinguibles
+del MPC realista ($p=0{,}81$, $0{,}12$ y $0{,}07$), y TD3-4
+($\delta_{\max}=0{,}10$) alcanza $+44{,}17$\,€/semana ($+0{,}79$,
+$p=1{,}5\cdot10^{-37}$), la mejor media puntual de toda la suite, por encima
+incluso de SAC-C ($+44{,}05$). Se mantiene no obstante SAC-C como controlador
+desplegado, por tres razones: (a) la diferencia entre ambos no es
+estadísticamente significativa (IC95 $[42{,}02;\,46{,}37]$ frente a
+$[41{,}90;\,46{,}25]$, ampliamente solapados); (b) la familia SAC es más
+robusta al hiperparámetro, con cinco de sus diez versiones superando al MPC
+con significancia frente a una de cuatro en TD3, cuyo resultado depende
+críticamente del valor de $\delta_{\max}$; y (c) es la familia caracterizada
+en profundidad (todas las ablaciones F2--F6) y la ya integrada en la
+plataforma (exportación ONNX, Sección~\ref{sec:onnx}). TD3-4 queda documentado
+como alternativa de despliegue equivalente.
+
+\paragraph{DDPG residual (DDPG-1/2).} Las dos versiones quedan
+estadísticamente empatadas con el MPC realista: DDPG-1 (sin ruido de
+exploración explícito) obtiene $43{,}44$\,€/semana ($+0{,}05$, $p=0{,}95$) y
+DDPG-2 (ruido Ornstein-Uhlenbeck) $43{,}36$ ($-0{,}03$, $p=0{,}20$). Sin doble
+crítico ni regularización por entropía, DDPG no extrae valor positivo del
+margen de corrección, pero tampoco cae por debajo del MPC: la garantía de
+suelo de la arquitectura residual sostiene incluso al algoritmo más frágil de
+los tres \textit{off-policy} probados. El patrón agregado de la comparativa
+es nítido: la arquitectura residual mantiene a todos los algoritmos en el
+nivel del MPC o por encima, y solo los mejor regularizados (SAC, y TD3 con el
+rango adecuado) convierten ese suelo en mejora significativa.
+
+\subsubsection{Síntesis: hipótesis confirmadas y matizadas}
+
+La suite confirma las hipótesis centrales del trabajo: (i) ningún agente de RL
+puro (valor, \textit{policy-gradient} discreto o continuo, SAC directo) iguala
+al MPC bien calibrado; (ii) el residual multiplicativo fino lo supera con
+significancia estadística; (iii) el mérito es de la arquitectura residual y no
+del algoritmo (F5); y (iv) el resultado es robusto al rango de corrección
+(meseta de F2). Dos hipótesis intermedias quedan en cambio matizadas por los
+datos, y se reportan como tales: el $n$-step óptimo de DQN no es estable entre
+configuraciones, y DAWN no mejora el rendimiento final (su valor es operativo,
+no de resultado). Por último, la ablación F6 delimita el dominio de utilidad:
+la ventaja del residual existe cuando el pronóstico es imperfecto y crece con
+su error, el escenario realista de una comunidad energética rural.
 
 % ==============================================================
 \section{Despliegue en Producción: Exportación a ONNX}
@@ -1688,13 +1978,16 @@ dependencias de entrenamiento. El actor SAC se convierte mediante
 \texttt{torch.onnx.export} al fichero \texttt{residual\_sac\_actor.onnx}, que
 contiene únicamente la red de política necesaria para inferir la corrección
 residual; por separado, los parámetros de normalización de observaciones
-(\texttt{VecNormalize}) se exportan a \texttt{vec\_normalize\_v6.npz}, ya que la
+(\texttt{VecNormalize}) se exportan a un fichero \texttt{.npz} acompañante
+(\texttt{vec\_normalize\_*.npz}), ya que la
 red espera observaciones normalizadas con las mismas estadísticas vistas durante
 el entrenamiento.
 
 En producción, el runtime \texttt{onnxruntime} carga el modelo y ejecuta la
-inferencia en menos de \SI{5}{ms} por paso, sin necesidad de PyTorch ni
-Gymnasium. La acción final se reconstruye aplicando la corrección residual
+inferencia con una latencia del orden de milisegundos por paso (despreciable
+frente al paso de control horario), sin necesidad de PyTorch ni Gymnasium; la
+equivalencia numérica entre el actor PyTorch y el exportado a ONNX se verifica
+con los tests \texttt{test\_onnx\_equivalence}. La acción final se reconstruye aplicando la corrección residual
 multiplicativa sobre la decisión del MPC:
 \begin{equation}
   \text{flow}_{\text{final}} = \max\!\left(0,\;
@@ -1703,7 +1996,19 @@ multiplicativa sobre la decisión del MPC:
 \end{equation}
 donde $\delta$ es la salida del actor ONNX. Esta arquitectura permite desplegar
 el controlador en un dispositivo de bajo coste (por ejemplo, una Raspberry Pi)
-que ejecuta el MPC y aplica la corrección del modelo en tiempo real.
+que ejecuta el MPC y aplica la corrección del modelo en tiempo real. La
+Figura~\ref{fig:arquitectura_prod} completa la vista arquitectónica de la
+Figura~\ref{fig:arquitectura} con las dos capas de producción: el despliegue
+\textit{edge} y la plataforma SaaS que consume sus decisiones.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{img/arquitectura_produccion.png}
+  \caption{Arquitectura de la plataforma, parte 2: producción \textit{edge}
+  (exportación ONNX, inferencia ligera y bucle horario) y capa SaaS (recepción
+  de decisiones, histórico y cierres mensuales).}
+  \label{fig:arquitectura_prod}
+\end{figure}
 
 % ==============================================================
 \section{Plataforma SaaS}
@@ -1736,9 +2041,12 @@ con \texttt{docker-compose.yml}, un \texttt{Dockerfile} y un script
 verificar la disponibilidad del servicio mediante
 \texttt{depends\_on: service\_healthy}.
 
-\textbf{Modelo de datos.} El esquema se compone de siete entidades (ocho clases,
-al modelarse \texttt{AccesoVivienda} como entidad asociativa), recogidas en la
-Figura~\ref{fig:modelo_datos}. \texttt{Comunidad} agrupa sus \texttt{Vivienda}s
+\textbf{Modelo de datos.} El núcleo del esquema se compone de siete entidades
+de dominio (ocho clases, al modelarse \texttt{AccesoVivienda} como entidad
+asociativa), recogidas en la Figura~\ref{fig:modelo_datos}; a ellas se suma
+\texttt{OperacionHoraria}, el registro horario de las decisiones del
+controlador \textit{edge} (Sección~\ref{sub:api_edge_saas}), con lo que el
+modelo completo consta de nueve clases. \texttt{Comunidad} agrupa sus \texttt{Vivienda}s
 (1:N) y a lo sumo una \texttt{Bateria} (1:0..1); la relación entre
 \texttt{Usuario} y \texttt{Vivienda} es N:M y se materializa en
 \texttt{AccesoVivienda}, que almacena además el rol del usuario dentro de la
@@ -1759,6 +2067,7 @@ propias viviendas y cierres.
 \end{figure}
 
 \subsection{Integración con el Motor de Decisión: la API Edge}
+\label{sub:api_edge_saas}
 
 El nexo entre el modelo ONNX desplegado en el borde y la plataforma SaaS es la
 API edge. El dispositivo de borde, tras ejecutar el controlador, comunica sus
@@ -1779,14 +2088,21 @@ punto de suministro (autoconsumo individual, Capítulo~\ref{chap:antecedentes}) 
 balance agregado es la \textbf{única factura eléctrica oficial}. Por ello, el dato
 primario del sistema es el agregado, y el desglose por vivienda no es una
 facturación regulada, sino la \textbf{cuota interna} de reparto del gasto común
-que la cooperativa asigna a cada socio. Este reparto se efectúa de forma
-multiplicativa sobre el total horario: el consumo y la generación imputados a cada
-vivienda se obtienen ponderando el total de la comunidad por el peso de la
-vivienda (su potencia contratada para el consumo y su número de paneles para la
-generación), de modo que la suma de las cuotas reproduce exactamente el total de
-la factura común. Esta separación entre agregado (que ve el modelo) y desglose
-(que ve el usuario) garantiza que la capa de presentación nunca altera los datos
-sobre los que se entrenó y evaluó el controlador.
+que la cooperativa asigna a cada socio. En la implementación actual este
+reparto se efectúa de forma multiplicativa sobre el total horario mediante dos
+coeficientes energéticos: el \textbf{coeficiente de reparto interno} pondera
+el consumo imputado a cada vivienda, y su \textbf{potencia fotovoltaica
+instalada} pondera la generación, de modo que la suma de las cuotas reproduce
+exactamente el total de la factura común. La evolución prevista de la
+plataforma sustituye este reparto energético por \textbf{coeficientes de
+reducción de gasto}: la energía de toda la comunidad se netea horariamente
+como un único balance (coherente con el neteo del CUPS único sobre el que
+decide el controlador) y lo que se reparte entre los vecinos no es energía
+sino el \emph{ahorro económico} resultante, ponderado por el número de paneles
+solares aportado por cada vivienda. Esta separación entre agregado (que ve el
+modelo) y desglose (que ve el usuario) garantiza, en ambos esquemas, que la
+capa de presentación nunca altera los datos sobre los que se entrenó y evaluó
+el controlador.
 
 Esta elección de operar sobre el agregado no es solo una conveniencia de
 modelado, sino una consecuencia de la observabilidad real del sistema. El
@@ -1939,22 +2255,44 @@ pequeña escala sin conocimientos técnicos.
 
 El trabajo demuestra empíricamente que RL puro no supera al MPC realista de
 forma consistente en el dominio de la gestión de baterías comunitarias, resultado
-coherente con la literatura reciente \citep{Zhan2023}. DQN sufre un error de
-cuantización estructural irresolvible con el espacio discreto de 9 acciones,
-y PPO no puede aprovechar el protocolo de inicialización con demostraciones por
-su naturaleza \textit{on-policy}.
+coherente con la literatura reciente \citep{Zhan2023}. La suite de validación
+lo confirma para las cuatro variantes puras: DQN sufre un error de
+cuantización estructural irresolvible con el espacio discreto de 9 acciones;
+PPO, discreto o continuo, no puede aprovechar el protocolo de inicialización
+con demostraciones por su naturaleza \textit{on-policy}; y el SAC directo sin
+MPC base es el peor agente de toda la suite ($+26{,}94$\,€/semana).
 
 La arquitectura Residual SAC resuelve ambas limitaciones: opera en espacio
-continuo y se inicializa con demostraciones del MPC, eliminando la
-\textit{cold-start pathology}. La propiedad de garantía de suelo —que el
-sistema no puede rendir peor que el MPC realista— es la contribución técnica
-más valiosa de la arquitectura residual.
+continuo y corrige de forma acotada una política base ya optimizada. La
+propiedad de garantía de suelo es la contribución técnica más valiosa de la
+arquitectura, y conviene enunciarla con precisión: la identidad $\delta=0
+\Rightarrow$ MPC es exacta y está verificada por test; para el agente
+entrenado, la corrección acotada limita la desviación posible respecto al MPC.
+La suite lo respalda empíricamente en sus dos vertientes: las tres semillas de
+entrenamiento de SAC-C difieren entre sí en solo $0{,}06$\,€/semana, y de las
+16 configuraciones residuales evaluadas (SAC, TD3 y DDPG), las bien
+configuradas igualan o superan al MPC y la peor (SAC-B, con el rango de
+corrección deliberadamente amplio del barrido) queda solo $1{,}07$\,€/semana
+por debajo ($2{,}5\,\%$), frente a los 4 a 16\,€/semana que pierden los
+agentes de RL puro.
 
-El MPC realista alcanza $+47{,}64$\,€/semana respecto a IDLE,
-con un margen teórico de mejora de $9{,}00$\,€/semana (15{,}9\,\%) disponible
-para el Residual SAC. La cuantificación explícita de este margen permite
-contextualizar los resultados sin sobreestimar el potencial del RL en este
-dominio.
+El MPC realista alcanza $+43{,}39$\,€/semana respecto a IDLE, con un margen
+teórico de mejora de $8{,}06$\,€/semana (15{,}7\,\%) hasta el MPC oráculo. El
+Residual SAC recupera $+0{,}66$\,€/semana de ese margen, en torno al 8\,\%,
+una mejora modesta en magnitud pero estadísticamente robusta ($p<0{,}001$ en
+contraste pareado sobre 500 pares semana-ruido) y creciente cuando el
+pronóstico se degrada (ablación F6). La cuantificación explícita del margen, y
+de qué fracción es capturable, permite contextualizar los resultados sin
+sobreestimar el potencial del RL en este dominio.
+
+La suite deja además dos lecciones de honestidad experimental que este trabajo
+reporta como tales: el \textit{warmup} DAWN no mejora el rendimiento final del
+residual (su valor es operativo, no de resultado), y el horizonte $n$-step que
+la exploración señaló como óptimo para DQN no se reproduce en la validación
+(Sección~\ref{sub:resultados}). Ambas correcciones ilustran el valor del
+esquema exploración-validación adoptado: las hipótesis de la fase barata se
+confirman o se corrigen con estadística antes de incorporarse a las
+conclusiones.
 
 \section{Limitaciones y Decisiones de Diseño}
 \label{sec:limitaciones}
@@ -1985,8 +2323,8 @@ gasto común (Sección~\ref{sec:marco_regulatorio})—, pero no en un conjunto d
 viviendas independientes con CUPS propios y separadas por viario público, donde
 no es legal tender cableado privado y cada vecino conserva su comercializadora.
 Conviene además ser explícito en que esta configuración \emph{no} es una figura
-regulada estándar (las Redes de Distribución Cerradas del RD 1183/2020 y RD
-314/2023 se reservan a entornos industriales): se sostiene como red interior de un
+regulada estándar (las Redes de Distribución Cerradas del RD 314/2023 se
+reservan a entornos industriales): se sostiene como red interior de un
 único consumidor, lo que exige la renuncia de los vecinos al contrato individual.
 En el escenario alternativo —viviendas independientes— la comunidad operaría en
 \textbf{autoconsumo colectivo}, con factura individual por coeficientes; entonces
@@ -2029,6 +2367,20 @@ residual sobre el \acrshort{mpc}. Por ello el diseño experimental se dirigió a
 hipótesis relevantes (modo y magnitud de la corrección, coeficiente de exploración y
 arranque guiado \textit{DAWN}) en lugar de a una exploración exhaustiva.
 
+\textbf{Heterogeneidad de los entornos de entrenamiento.} Los 31 modelos de la
+suite se entrenaron en cuatro entornos de software distintos (combinaciones de
+sistema operativo, versión de Python y \textit{build} de PyTorch;
+Anexo~\ref{app:reproducibilidad}). La evaluación es determinista e idéntica
+para todos ellos (los \textit{baselines} reproducen exactamente los mismos
+valores en todas las máquinas), por lo que las cifras publicadas son
+directamente comparables; el entrenamiento de RL profundo es, sin embargo,
+sensible a la semilla y al entorno de ejecución \citep{Henderson2017}, y esa
+varianza se gestiona estadísticamente (tres semillas, IC95 por
+\textit{bootstrap} y test de Wilcoxon) en lugar de homogeneizando el hardware.
+Las comparaciones internas de la familia residual (barrido $\delta$,
+ablaciones DAWN y F6, formas aditiva y multiplicativa) comparten un mismo
+entorno de entrenamiento y no se ven afectadas por esta limitación.
+
 \textbf{Modelo de degradación.} La degradación se modela como un coste en la
 función de recompensa que induce un uso conservador del almacenamiento, pero no
 reduce la capacidad útil a lo largo del episodio; el efecto del envejecimiento
@@ -2059,7 +2411,7 @@ La principal lección del trabajo es que el rigor en la construcción del entorn
 de simulación es tan importante como la sofisticación del algoritmo de RL. Un
 simulador con invariantes violados —simultaneidad de carga y descarga, data
 leakage en el split, SoC fuera de rango— invalida cualquier resultado
-independientemente de la complejidad del agente. La suite de 47 tests
+independientemente de la complejidad del agente. La suite de 76 tests
 automatizados no es documentación, es parte del resultado.
 
 La segunda lección es el valor de documentar los experimentos fallidos. El
@@ -2074,11 +2426,13 @@ de diseño del algoritmo final.
 \label{chap:futuro}
 % ==============================================================
 
-El \textbf{aumento del número de semillas de evaluación} (de 3 a 10) es el
-refinamiento inmediato sobre los resultados ya obtenidos con la configuración
-final: estrecharía el intervalo de confianza de la mejora del Residual SAC sobre
-el MPC y permitiría un contraste de significancia formal (por ejemplo, un test
-de Wilcoxon emparejado por semana).
+El \textbf{aumento del número de semillas de entrenamiento} (de tres a diez o
+más) reforzaría la caracterización de la robustez inter-entrenamiento,
+complementando las diez semillas de ruido de evaluación y el contraste de
+Wilcoxon pareado que la suite de validación ya incorpora. Dada la mínima
+varianza observada entre las tres semillas de SAC-C (rango de
+$0{,}06$\,€/semana), el beneficio esperado es de confirmación más que de
+descubrimiento.
 
 La \textbf{activación de APIs en tiempo real} es la extensión natural: los
 conectores ESIOS, Open-Meteo y datadis se diseñan con la misma interfaz que el
@@ -2094,13 +2448,22 @@ balance de REE ampliaría la plataforma hacia una arquitectura de gestión
 energética multi-capa, cubriendo los horizontes sub-horarios de 15 minutos a
 2 horas.
 
-Los \textbf{coeficientes de reparto dinámicos} ($\beta_{i,h}$ variables hora
-a hora) son la extensión de mayor impacto económico, requiriendo modelado
-individual por vivienda y un módulo de liquidación más complejo.
+La \textbf{evolución del módulo de reparto} de la plataforma es la extensión
+de mayor impacto para el usuario final: el primer paso previsto es sustituir
+los coeficientes energéticos actuales por coeficientes de \emph{reducción de
+gasto} (reparto del ahorro económico según el número de paneles aportado, con
+neteo horario del conjunto de la comunidad, Sección~\ref{sub:panel}); a más
+largo plazo, unos \textbf{coeficientes dinámicos} ($\beta_{i,h}$ variables
+hora a hora) requerirían modelado individual por vivienda y un módulo de
+liquidación más complejo.
 
 La \textbf{previsión con modelos LSTM} para irradiancia y consumo podría
-reducir el coste del ruido de pronóstico ($9{,}00$\,€/semana) y ampliar el
-margen disponible para el Residual SAC.
+reducir el coste del ruido de pronóstico ($8{,}06$\,€/semana) y elevar el
+rendimiento absoluto del sistema. Conviene señalar el matiz que aporta la
+ablación F6: un pronóstico mejor beneficia sobre todo al MPC base y reduce la
+aportación relativa del residual, de modo que esta línea desplaza valor desde
+el componente aprendido hacia el componente de optimización clásica sin restar
+rendimiento al conjunto.
 
 % ── REFERENCIAS ───────────────────────────────────────────────
 \bibliography{referencias}
@@ -2156,15 +2519,44 @@ todos los hiperparámetros del sistema.]
 [Espacio reservado para el árbol completo de directorios con descripción de
 cada módulo.]
 
+La Figura~\ref{fig:flujo_dependencias} complementa el árbol de directorios con
+el mapa completo de componentes y dependencias del pipeline del Residual SAC,
+en seis fases: datos/ETL, entrenamiento, evaluación, exportación ONNX,
+producción \textit{edge} y SaaS. Cada caja es un módulo real del repositorio y
+las flechas distinguen el flujo de la acción, las dependencias de código y los
+artefactos que pasan de una fase a la siguiente.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{img/flujo_dependencias.png}
+  \caption{Componentes y dependencias del pipeline completo del Residual SAC
+  (seis fases, de los datos crudos al SaaS). Los artefactos que cruzan fases
+  (\texttt{dataset\_final.csv}, \texttt{best\_model.zip},
+  \texttt{residual\_sac\_actor.onnx}) aparecen resaltados.}
+  \label{fig:flujo_dependencias}
+\end{figure}
+
 \chapter{Suite de Tests Automatizados}
 \label{app:tests}
 
-Los 47 tests automatizados ejecutables con \texttt{pytest} se distribuyen en
-cinco módulos: \texttt{test\_dataset.py} (12 tests del pipeline ETL),
+Los 76 tests automatizados ejecutables con \texttt{pytest} se distribuyen en
+once módulos: \texttt{test\_dataset.py} (12 tests del pipeline ETL),
 \texttt{test\_energy\_env\_continuo.py} (16 tests del entorno y el simulador),
-\texttt{test\_mpc.py} (7 tests del controlador MPC),
-\texttt{test\_residual\_env.py} (10 tests de la arquitectura residual) y
-\texttt{test\_delta\_zero.py} (2 tests de la propiedad de suelo). El
+\texttt{test\_mpc.py} (7 tests del controlador MPC, incluida la factibilidad
+del LP sobre 1.000 escenarios aleatorios),
+\texttt{test\_heuristic.py} (8 tests de los invariantes del \textit{baseline}
+heurístico: respeto de los límites de SoC y las eficiencias, y ausencia de
+arbitraje con la red),
+\texttt{test\_residual\_env.py} (10 tests de la arquitectura residual),
+\texttt{test\_delta\_zero.py} (2 tests de la propiedad de suelo),
+\texttt{regresion/test\_golden.py} (14 tests de regresión \textit{golden
+master} que fijan el comportamiento del simulador y los entornos frente a
+refactorizaciones), \texttt{test\_fisica\_4flujos.py} y
+\texttt{test\_decode\_equivalencia.py} (equivalencia de la física de 4 flujos
+y del decodificador discreto como fuente única),
+\texttt{test\_onnx\_equivalence.py} (2 tests de equivalencia numérica entre el
+actor PyTorch y el exportado a ONNX) y \texttt{test\_edge\_loop\_saas.py}
+(3 tests de integración del bucle \textit{edge} con la API del SaaS). El
 Cuadro~\ref{tab:tests} recoge una selección de los invariantes críticos
 verificados:
 
@@ -2203,14 +2595,15 @@ aproximadamente 20.000\,€.
 
 El beneficio económico que sustenta este análisis es el beneficio marginal
 validado del controlador frente al escenario sin batería (IDLE):
-$+48{,}35$\,€/semana sobre el conjunto de evaluación
-(Sección~\ref{sub:resultados}), equivalente a unos 2.500\,€/año para el
-conjunto de la comunidad. Representa el valor marginal real de la batería —el
-desplazamiento temporal de energía que el controlador optimiza—, independiente
-del autoconsumo solar directo, que es atribuible a los paneles y no al
-almacenamiento. Conviene matizar que esta cifra refleja el régimen de precios del
-periodo 2021--2023, que incluye la crisis energética de 2022; en un escenario de
-precios más moderados el beneficio anual sería menor.
+$+44{,}05$\,€/semana sobre el conjunto de evaluación (IC95
+$[41{,}90;\,46{,}25]$, suite de validación, Sección~\ref{sub:resultados}),
+equivalente a unos 2.300\,€/año para el conjunto de la comunidad (horquilla
+del IC95: 2.185 a 2.412\,€/año). Representa el valor marginal real de la
+batería (el desplazamiento temporal de energía que el controlador optimiza),
+independiente del autoconsumo solar directo, que es atribuible a los paneles y
+no al almacenamiento. Conviene matizar que esta cifra refleja el régimen de
+precios del periodo 2021--2023, que incluye la crisis energética de 2022; en
+un escenario de precios más moderados el beneficio anual sería menor.
 
 Conviene subrayar esta distinción, recurrente en el análisis del sistema: el
 grueso del ahorro de una instalación de autoconsumo procede de consumir la
@@ -2220,7 +2613,7 @@ desplazamiento lo que el controlador optimiza y la simulación cuantifica.
 
 \begin{center}
 \fbox{\parbox{0.95\textwidth}{\small \textbf{Nota.} Este análisis parte del
-beneficio marginal validado del controlador ($+48{,}35$\,€/semana,
+beneficio marginal validado del controlador ($+44{,}05$\,€/semana,
 Sección~\ref{sub:resultados}) y constituye una estimación de orden de magnitud.
 No debe confundirse con los valores por vivienda en €/año que ilustra el panel de
 la plataforma (Sección~\ref{sub:panel}), procedentes de una simulación de
@@ -2228,30 +2621,35 @@ facturación de extremo a extremo con un propósito distinto.}}
 \end{center}
 
 Con una inversión de referencia de 20.000\,€ (250\,€/kWh
-$\times$ \SI{80}{kWh}) y un beneficio anual del orden de 2.500\,€, el periodo
-de retorno simple sin ayudas se sitúa en torno a los ocho años, frente a una vida
-útil de la batería LFP de 15 a 20 años. Es, por tanto, una inversión de retorno
-positivo aunque ajustado en ausencia de ayudas públicas.
+$\times$ \SI{80}{kWh}) y un beneficio anual del orden de 2.300\,€, el periodo
+de retorno simple sin ayudas se sitúa en torno a los nueve años (8,3 a 9,2
+años según la horquilla del IC95), frente a una vida útil de la batería LFP de
+15 a 20 años. Es, por tanto, una inversión de retorno positivo aunque ajustado
+en ausencia de ayudas públicas.
 
 \section{El Papel de las Subvenciones}
 
 El marco de ayudas vigente en España modifica sustancialmente esta conclusión.
-La segunda convocatoria del Programa de Energías Renovables Innovadoras del IDAE
-incluye un programa específico de autoconsumo colectivo con almacenamiento,
-dotado con 368,5 millones de euros, en el que las comunidades de propietarios
-son elegibles, con una intensidad de ayuda del 40\,\% a fondo perdido. A esto se
-suma la deducción en el IRPF por reformas de mejora de la eficiencia energética
-(RD-ley 19/2021, prorrogado) y bonificaciones municipales en el IBI.
+Los programas de incentivos a comunidades energéticas del IDAE (Programa
+CE~IMPLEMENTA, Orden TED/764/2024 \citep{TED764_2024}) contemplan proyectos de
+autoconsumo colectivo con almacenamiento, en los que las comunidades de
+propietarios son elegibles, con intensidades de ayuda a fondo perdido de hasta
+el 60\,\% para la generación renovable y el 30\,\% para el almacenamiento, lo
+que en un proyecto mixto de autoconsumo con batería supone en torno al
+40\,\% de la inversión total. A esto se suma la
+deducción en el IRPF por obras de mejora de la eficiencia energética
+(RD-ley 19/2021 \citep{RDL19_2021}, prorrogado) y bonificaciones municipales
+en el IBI.
 
 Aplicando una subvención del 40\,\%, la inversión neta desciende a unos
-12.000\,€, lo que reduce el periodo de retorno a aproximadamente cinco años,
+12.000\,€, lo que reduce el periodo de retorno a algo más de cinco años,
 holgadamente dentro de la vida útil del sistema.
 
 \section{Conclusión}
 
 El análisis arroja una conclusión honesta y matizada: el beneficio del
 almacenamiento gestionado hace de la batería una inversión de retorno positivo
-aunque ajustado sin ayudas públicas (en torno a ocho años), que el marco de
+aunque ajustado sin ayudas públicas (en torno a nueve años), que el marco de
 subvención actualmente vigente y dotado convierte en claramente rentable. Esta
 dependencia de las ayudas no es una particularidad del proyecto, sino la
 realidad de prácticamente todas las comunidades energéticas en España. En este
@@ -2260,6 +2658,219 @@ retorno disponible sea cual sea el escenario de ayudas, extrayendo el mayor
 beneficio posible de la batería instalada. El dimensionamiento óptimo conjunto
 de generación y almacenamiento, así como una política generalizable a distintas
 capacidades, constituyen líneas de trabajo futuro.
+
+\chapter{Resultados Completos de la Suite de Validación}
+\label{app:suite_completa}
+
+Este anexo recoge las 31 versiones de la suite de validación y los cuatro
+\textit{baselines}, evaluados bajo el protocolo unificado (50 semanas
+\textit{held-out} $\times$ 10 semillas de ruido; IC95 por \textit{bootstrap};
+$p$ del test de Wilcoxon pareado por semana y semilla de ruido frente al MPC realista;
+dimensionado 42\,kWp\,/\,80\,kWh). Fuente: \texttt{resultados/resultados.csv},
+generado por \texttt{src/evaluation/suite.py} a partir del registro
+\texttt{config/experimentos.yaml}. Las versiones con una sola semilla de
+entrenamiento son confirmaciones puntuales de ablación; el resto usa tres
+semillas y despliega la mejor (Sección~\ref{sub:seleccion}).
+
+\section{Baselines (sin aprendizaje)}
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{lrcc}
+\toprule
+\textbf{Controlador} & \textbf{€/sem} & \textbf{IC95} & \textbf{$p$} \\
+\midrule
+G1 MPC oráculo & $51{,}45$ & $[44{,}07;\,60{,}29]$ & n/a \\
+G2 MPC realista (referencia) & $43{,}39$ & $[41{,}24;\,45{,}57]$ & --- \\
+G3 Heurístico & $30{,}49$ & $[28{,}14;\,32{,}91]$ & $4{,}6\cdot10^{-75}$ \\
+G4 IDLE (sin batería) & $0{,}00$ & --- & n/a \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Familia DQN (valor, discreta; 3 semillas)}
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{llrcrc}
+\toprule
+\textbf{Versión} & \textbf{Config.\ clave} & \textbf{€/sem} & \textbf{IC95} &
+\textbf{$\Delta$} & \textbf{$p$} \\
+\midrule
+DQN-1 & $n{=}1$, $\gamma{=}0{,}995$ & $39{,}36$ & $[37{,}21;\,41{,}62]$ & $-4{,}02$ & $5{,}0\cdot10^{-67}$ \\
+DQN-2 & $n{=}8$, $\gamma{=}0{,}995$ & $37{,}24$ & $[35{,}02;\,39{,}57]$ & $-6{,}15$ & $5{,}0\cdot10^{-72}$ \\
+DQN-3 & $n{=}8$, $\gamma{=}0{,}99$ & $38{,}34$ & $[36{,}17;\,40{,}62]$ & $-5{,}05$ & $1{,}0\cdot10^{-71}$ \\
+DQN-4 & $n{=}24$ & $31{,}65$ & $[29{,}98;\,33{,}38]$ & $-11{,}74$ & $1{,}3\cdot10^{-83}$ \\
+DQN-5 & $n{=}8$, lr $5\cdot10^{-4}$ & $37{,}16$ & $[35{,}06;\,39{,}33]$ & $-6{,}23$ & $5{,}5\cdot10^{-78}$ \\
+DQN-6 & $n{=}4$ & $39{,}27$ & $[36{,}99;\,41{,}64]$ & $-4{,}11$ & $2{,}4\cdot10^{-66}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Familia PPO discreto (on-policy, discreta; 3 semillas)}
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{llrcrc}
+\toprule
+\textbf{Versión} & \textbf{Config.\ clave} & \textbf{€/sem} & \textbf{IC95} &
+\textbf{$\Delta$} & \textbf{$p$} \\
+\midrule
+PPO-D1 & rollout 2048, ent 0{,}01 const. & $37{,}49$ & $[35{,}30;\,39{,}78]$ & $-5{,}89$ & $5{,}5\cdot10^{-73}$ \\
+PPO-D2 & rollout 4096, ent 0{,}003 const. & $37{,}96$ & $[35{,}72;\,40{,}29]$ & $-5{,}43$ & $3{,}9\cdot10^{-69}$ \\
+PPO-D3 & rollout 8192, ent con decaimiento & $38{,}91$ & $[36{,}66;\,41{,}22]$ & $-4{,}47$ & $4{,}2\cdot10^{-67}$ \\
+PPO-D4 & rollout 8192, ent y lr con decaimiento & $39{,}35$ & $[37{,}09;\,41{,}70]$ & $-4{,}04$ & $2{,}4\cdot10^{-60}$ \\
+PPO-D5 & rollout 8192, ent 0{,}01 const. & $37{,}14$ & $[34{,}96;\,39{,}40]$ & $-6{,}24$ & $5{,}2\cdot10^{-75}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Familia PPO continuo (on-policy, continua; 3 semillas)}
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{llrcrc}
+\toprule
+\textbf{Versión} & \textbf{Config.\ clave} & \textbf{€/sem} & \textbf{IC95} &
+\textbf{$\Delta$} & \textbf{$p$} \\
+\midrule
+PPO-C1 & std$_0$ 0{,}5; ent y lr con decaimiento & $38{,}14$ & $[35{,}84;\,40{,}56]$ & $-5{,}24$ & $4{,}2\cdot10^{-41}$ \\
+PPO-C2 & std$_0$ 0{,}3; ent y lr con decaimiento & $33{,}66$ & $[31{,}53;\,35{,}88]$ & $-9{,}73$ & $1{,}5\cdot10^{-80}$ \\
+PPO-C3 & rollout 4096; ent y lr constantes & $38{,}31$ & $[36{,}08;\,40{,}66]$ & $-5{,}07$ & $6{,}5\cdot10^{-45}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{SAC puro (continua, sin MPC; 3 semillas)}
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{llrcrc}
+\toprule
+\textbf{Versión} & \textbf{Config.\ clave} & \textbf{€/sem} & \textbf{IC95} &
+\textbf{$\Delta$} & \textbf{$p$} \\
+\midrule
+F5 & SAC directo, sin MPC ni DAWN & $26{,}94$ & $[25{,}53;\,28{,}40]$ & $-16{,}44$ & $1{,}3\cdot10^{-83}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Familia Residual SAC (controlador propuesto)}
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{llcrcrc}
+\toprule
+\textbf{Versión} & \textbf{Config.\ clave} & \textbf{Sem.} & \textbf{€/sem} &
+\textbf{IC95} & \textbf{$\Delta$} & \textbf{$p$} \\
+\midrule
+SAC-A & aditiva, $\delta{=}0{,}05$, ent 0{,}005 & 3 & $42{,}47$ & $[40{,}28;\,44{,}73]$ & $-0{,}91$ & $1{,}8\cdot10^{-28}$ \\
+SAC-B & mult., $\delta{=}0{,}30$, ent 0{,}002 & 3 & $42{,}31$ & $[40{,}20;\,44{,}48]$ & $-1{,}07$ & $7{,}4\cdot10^{-40}$ \\
+\textbf{SAC-C} & mult., $\delta{=}0{,}15$, ent 0{,}01 & 3 & $\mathbf{44{,}05}$ & $[41{,}90;\,46{,}25]$ & $\mathbf{+0{,}66}$ & $1{,}5\cdot10^{-23}$ \\
+F2-d05 & $\delta{=}0{,}05$ & 1 & $43{,}79$ & $[41{,}64;\,45{,}99]$ & $+0{,}41$ & $6{,}6\cdot10^{-55}$ \\
+F2-d10 & $\delta{=}0{,}10$ & 1 & $44{,}01$ & $[41{,}86;\,46{,}22]$ & $+0{,}63$ & $2{,}8\cdot10^{-37}$ \\
+F2-d20 & $\delta{=}0{,}20$ & 1 & $43{,}78$ & $[41{,}65;\,45{,}97]$ & $+0{,}40$ & $5{,}9\cdot10^{-9}$ \\
+F2-d30 & $\delta{=}0{,}30$ & 1 & $42{,}43$ & $[40{,}35;\,44{,}57]$ & $-0{,}95$ & $1{,}7\cdot10^{-27}$ \\
+F4-nodawn & sin \textit{warmup} DAWN & 1 & $44{,}04$ & $[41{,}90;\,46{,}23]$ & $+0{,}65$ & $3{,}1\cdot10^{-24}$ \\
+F6-s05 & $\sigma_{\text{cons}}{=}5\,\%$ & 1 & $47{,}48$ & $[45{,}11;\,49{,}92]$ & $-0{,}79^{*}$ & $1{,}9\cdot10^{-68}$ \\
+F6-s25 & $\sigma_{\text{cons}}{=}25\,\%$ & 1 & $40{,}02$ & $[38{,}11;\,41{,}99]$ & $+1{,}42^{*}$ & $8{,}6\cdot10^{-61}$ \\
+\bottomrule
+\multicolumn{7}{@{}p{\dimexpr\textwidth-2\tabcolsep}@{}}{\small Las versiones
+F2/F4/F6 parten de la configuración de SAC-C y modifican solo el parámetro
+indicado. No existe fila F6-s15: es exactamente SAC-C
+($\sigma_{\text{cons}}{=}15\,\%$ es el valor estándar). $^{*}$En F6 la
+$\Delta$ se calcula frente al MPC realista evaluado con el mismo nivel de
+ruido que el agente.}
+\end{tabular}
+\end{table}
+
+\section{Familia TD3 residual (3 semillas)}
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{llrcrc}
+\toprule
+\textbf{Versión} & \textbf{Config.\ clave} & \textbf{€/sem} & \textbf{IC95} &
+\textbf{$\Delta$} & \textbf{$p$} \\
+\midrule
+TD3-1 & $\delta{=}0{,}15$, delay 2, ruido 0{,}2 & $43{,}44$ & $[41{,}33;\,45{,}60]$ & $+0{,}06$ & $0{,}81$ \\
+TD3-2 & $\delta{=}0{,}15$, ruido 0{,}1 & $43{,}34$ & $[41{,}24;\,45{,}50]$ & $-0{,}04$ & $0{,}12$ \\
+TD3-3 & $\delta{=}0{,}15$, delay 3, lr $3\cdot10^{-4}$ & $43{,}57$ & $[41{,}45;\,45{,}72]$ & $+0{,}19$ & $0{,}07$ \\
+TD3-4 & $\delta{=}0{,}10$, delay 2, ruido 0{,}2 & $44{,}17$ & $[42{,}02;\,46{,}37]$ & $+0{,}79$ & $1{,}5\cdot10^{-37}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Familia DDPG residual (3 semillas)}
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{llrcrc}
+\toprule
+\textbf{Versión} & \textbf{Config.\ clave} & \textbf{€/sem} & \textbf{IC95} &
+\textbf{$\Delta$} & \textbf{$p$} \\
+\midrule
+DDPG-1 & $\delta{=}0{,}15$, sin ruido de exploración & $43{,}44$ & $[41{,}32;\,45{,}60]$ & $+0{,}05$ & $0{,}95$ \\
+DDPG-2 & $\delta{=}0{,}15$, ruido OU $\sigma{=}0{,}15$ & $43{,}36$ & $[41{,}24;\,45{,}52]$ & $-0{,}03$ & $0{,}20$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\chapter{Reproducibilidad y Entornos de Entrenamiento}
+\label{app:reproducibilidad}
+
+Los 31 modelos de la suite se entrenaron distribuyendo las familias entre
+cuatro máquinas, con entornos de software distintos. Este anexo documenta esos
+entornos (extraídos del \texttt{system\_info.txt} que Stable-Baselines3
+almacena dentro de cada artefacto \texttt{.zip}) y las condiciones bajo las
+que los resultados son comparables.
+
+\begin{table}[H]
+\centering\small
+\caption{Entornos de entrenamiento por familia.}
+\label{tab:entornos}
+\begin{tabular}{llll}
+\toprule
+\textbf{Familias} & \textbf{SO} & \textbf{Python} & \textbf{PyTorch} \\
+\midrule
+residual\_sac (10), sac\_puro, ppo\_continuo (3) & Windows 10 & 3.14.6 & 2.12.1+cpu \\
+ppo discreto (5), ddpg\_residual (2) & Windows 10 & 3.12.7 & 2.12.1+cpu \\
+dqn (6) & Linux (WSL2) & 3.14.4 & 2.12.1+cu130 \\
+td3\_residual (4) & Linux (WSL2) & 3.12.3 & 2.12.1+cpu \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Evaluación determinista y comparabilidad.} El protocolo de evaluación
+es determinista: dado un modelo y una semilla de ruido, produce siempre el
+mismo resultado, y los \textit{baselines} sin aprendizaje (MPC, heurístico,
+IDLE) reproducen exactamente los mismos valores en todas las máquinas. Todas
+las cifras publicadas se obtuvieron con el mismo protocolo y son, por tanto,
+directamente comparables con independencia de dónde se entrenó cada modelo.
+
+\textbf{Gestión de la varianza de entrenamiento.} El entrenamiento de RL
+profundo no es reproducible bit a bit entre entornos distintos: el
+\textit{build} de PyTorch, la versión de las librerías de álgebra y el número
+de hilos alteran el orden de las operaciones en coma flotante, y el bucle de
+aprendizaje amplifica esas diferencias microscópicas hasta producir modelos
+distintos, un fenómeno documentado en la literatura \citep{Henderson2017}. En
+la práctica el entorno actúa como una semilla adicional: introduce varianza,
+no sesgo (ningún entorno favorece sistemáticamente a un algoritmo). Esa
+varianza se gestiona en este trabajo igual que la de la semilla: tres semillas
+de entrenamiento por versión, intervalos de confianza al 95\,\% por
+\textit{bootstrap} y contraste de Wilcoxon pareado, de modo que ninguna
+conclusión se apoya en una ejecución individual.
+
+\textbf{Comparabilidad interna de la familia residual.} Todas las
+comparaciones internas del controlador propuesto (formas aditiva y
+multiplicativa, barrido $\delta$ de F2, ablación DAWN de F4 y sensibilidad al
+pronóstico de F6) se entrenaron en un mismo entorno, por lo que no se ven
+afectadas por esta heterogeneidad. La única comparación ajustada entre
+entornos distintos es SAC-C frente a TD3-4, y se trata como tal en la
+Sección~\ref{sub:resultados}: la diferencia entre ambos no es
+estadísticamente significativa y la elección del controlador desplegado se
+justifica por robustez y profundidad de caracterización, no por la media
+puntual.
 
 \chapter{Historial Completo de Experimentos}
 \label{app:historial}
@@ -2364,7 +2975,9 @@ resuelve el problema de la corrección de magnitud fija, y el ajuste del rango
 de corrección de $\delta_{\max} = 0{,}30$ (v4) a $0{,}15$ (v5) consigue el
 equilibrio entre capacidad de corrección y respeto a la política base del MPC.
 La configuración v5 es la seleccionada y, una vez fijado el dimensionado
-definitivo, se reentrenó sobre \SI{42}{kWp}/\SI{80}{kWh} (versión v6), cuyos
-resultados son los reportados en la Sección~\ref{sub:resultados}.
+definitivo, su arquitectura se reentrenó y validó sobre
+\SI{42}{kWp}/\SI{80}{kWh} dentro de la suite de validación bajo el
+identificador SAC-C, cuyos resultados se reportan en la
+Sección~\ref{sub:resultados} y en el Anexo~\ref{app:suite_completa}.
 
 \end{document}

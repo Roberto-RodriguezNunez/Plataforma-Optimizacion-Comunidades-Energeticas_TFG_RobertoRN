@@ -1,0 +1,52 @@
+@startuml secuencia_inferencia
+!theme plain
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam sequenceMessageAlign center
+
+title Diagrama de Secuencia — Ciclo de Inferencia del Residual SAC (paso horario)
+
+participant "Entorno\n(ResidualEnv · Gymnasium)" as RENV
+participant "LinearMPC\n(mpc.py · Supervisor LP)" as MPC
+participant "Actor SAC\n(política entrenada)" as SAC
+participant "ComunidadSimulador\n(Motor Físico-Económico)" as SIM
+
+== Un paso de control (hora t) ==
+
+loop para cada hora t del episodio (168 h)
+
+    RENV -> MPC : solve(state, forecast 24 h con ruido AR(1))
+    activate MPC
+    MPC -> MPC : optimiza LP (Scipy linprog)\nhorizonte deslizante 24 h
+    MPC --> RENV : u_mpc(t) = (cs, cm, dc, dr)
+    deactivate MPC
+
+    RENV -> RENV : construye obs_t (112D)\n= 108 físicas/temporales + 4 features u_mpc
+    note right of RENV : Normalización con estadísticas\nVecNormalize CONGELADAS del entreno
+
+    RENV -> SAC : obs_t normalizada
+    activate SAC
+    SAC --> RENV : delta (4D) en [-1, +1]\n(acción determinista, sin exploración)
+    deactivate SAC
+
+    RENV -> RENV : FUSIÓN multiplicativa\nu_final = max(0, u_mpc x (1 + delta * 0,15))
+    note over RENV : Garantía de suelo: si delta = 0 -> u_final = u_mpc
+
+    RENV -> SIM : aplica 4 flujos (cs, cm, dc, dr) -> balance físico
+    activate SIM
+    SIM -> SIM : actualiza SoC · degradación I² x SoC⁴
+    SIM -> SIM : beneficio marginal vs IDLE
+    SIM --> RENV : {beneficio, soc_t+1}
+    deactivate SIM
+
+end
+
+== Nota: mismo mecanismo en producción ==
+
+note across
+  En el despliegue edge este MISMO ciclo (MPC -> obs -> delta -> fusión) lo ejecuta
+  OnnxResidualController dentro de edge_loop.py, sobre datos reales, sin señal de
+  recompensa ni actualización de redes.
+end note
+
+@enduml

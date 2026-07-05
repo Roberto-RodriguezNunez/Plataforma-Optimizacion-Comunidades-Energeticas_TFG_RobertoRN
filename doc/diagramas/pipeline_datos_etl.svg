@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2088" height="886" viewBox="-24 -24 2088 886">
+<rect x="-24" y="-24" width="2088" height="886" fill="white"/>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>
+<rect x="34.225352112676056" y="20.0" width="440.98591549295776" height="817.7450980392157" rx="8" fill="#EAEAEA" stroke="#707070" stroke-width="2.6"/>
+<line x1="34.225352112676056" y1="56.0" x2="475.2112676056338" y2="56.0" stroke="#707070" stroke-width="1.6"/>
+<text x="254.71830985915494" y="44.646153846153844" font-family="Helvetica" font-size="18.5" fill="#3C3C3C" text-anchor="middle" font-weight="bold">1 · FUENTES CRUDAS OFICIALES</text>
+<rect x="503.661971830986" y="20.0" width="469.4366197183099" height="817.7450980392157" rx="8" fill="#EAEAEA" stroke="#707070" stroke-width="2.6"/>
+<line x1="503.661971830986" y1="56.0" x2="973.0985915492959" y2="56.0" stroke="#707070" stroke-width="1.6"/>
+<text x="738.3802816901409" y="44.646153846153844" font-family="Helvetica" font-size="18.5" fill="#3C3C3C" text-anchor="middle" font-weight="bold">2 · PROCESO ETL Y ESCALADO</text>
+<rect x="1001.5492957746479" y="20.0" width="497.887323943662" height="817.7450980392157" rx="8" fill="#EAEAEA" stroke="#707070" stroke-width="2.6"/>
+<line x1="1001.5492957746479" y1="68.0" x2="1499.4366197183099" y2="68.0" stroke="#707070" stroke-width="1.6"/>
+<text x="1250.4929577464789" y="40.676923076923075" font-family="Helvetica" font-size="13.8" fill="#3C3C3C" text-anchor="middle" font-weight="bold">3 · ENTORNO DE SIMULACIÓN (Gymnasium)</text>
+<text x="1250.4929577464789" y="57.29230769230769" font-family="Helvetica" font-size="13.8" fill="#3C3C3C" text-anchor="middle" font-weight="bold">genera la observación en cada paso</text>
+<rect x="1527.887323943662" y="20.0" width="512.112676056338" height="817.7450980392157" rx="8" fill="#EAEAEA" stroke="#707070" stroke-width="2.6"/>
+<line x1="1527.887323943662" y1="68.0" x2="2040.0" y2="68.0" stroke="#707070" stroke-width="1.6"/>
+<text x="1783.943661971831" y="40.676923076923075" font-family="Helvetica" font-size="13.8" fill="#3C3C3C" text-anchor="middle" font-weight="bold">4 · NORMALIZACIÓN Y RED</text>
+<text x="1783.943661971831" y="57.29230769230769" font-family="Helvetica" font-size="13.8" fill="#3C3C3C" text-anchor="middle" font-weight="bold">entreno y producción</text>
+<rect x="62.676056338028175" y="138.35784313725492" width="384.08450704225356" height="139.87745098039215" rx="8" fill="#F5F5F5" stroke="#707070" stroke-width="2"/>
+<text x="254.71830985915494" y="196.200568627451" font-family="Helvetica" font-size="18.9" fill="#3C3C3C" text-anchor="middle" font-weight="bold">ESIOS 1006: Consumo 2.0TD</text>
+<text x="254.71830985915494" y="220.392568627451" font-family="Helvetica" font-size="17.8" fill="#3C3C3C" text-anchor="middle" font-weight="normal">Curvas reales de demanda horaria</text>
+<rect x="62.676056338028175" y="310.5147058823529" width="384.08450704225356" height="139.87745098039215" rx="8" fill="#F5F5F5" stroke="#707070" stroke-width="2"/>
+<text x="254.71830985915494" y="368.357431372549" font-family="Helvetica" font-size="18.9" fill="#3C3C3C" text-anchor="middle" font-weight="bold">PVGIS: Radiación Solar</text>
+<text x="254.71830985915494" y="392.549431372549" font-family="Helvetica" font-size="17.8" fill="#3C3C3C" text-anchor="middle" font-weight="normal">Curva de producción fotovoltaica</text>
+<rect x="62.676056338028175" y="482.67156862745094" width="384.08450704225356" height="139.87745098039215" rx="8" fill="#F5F5F5" stroke="#707070" stroke-width="2"/>
+<text x="254.71830985915494" y="540.5142941176471" font-family="Helvetica" font-size="18.9" fill="#3C3C3C" text-anchor="middle" font-weight="bold">ESIOS 1001: Precio Compra</text>
+<text x="254.71830985915494" y="564.7062941176471" font-family="Helvetica" font-size="17.8" fill="#3C3C3C" text-anchor="middle" font-weight="normal">Tarifa PVPC horaria (€/kWh)</text>
+<rect x="62.676056338028175" y="654.828431372549" width="384.08450704225356" height="139.87745098039215" rx="8" fill="#F5F5F5" stroke="#707070" stroke-width="2"/>
+<text x="254.71830985915494" y="712.671156862745" font-family="Helvetica" font-size="18.9" fill="#3C3C3C" text-anchor="middle" font-weight="bold">ESIOS 1739: Precio Excedentes</text>
+<text x="254.71830985915494" y="736.863156862745" font-family="Helvetica" font-size="17.8" fill="#3C3C3C" text-anchor="middle" font-weight="normal">Remuneración por vertido a red</text>
+<rect x="532.112676056338" y="170.63725490196077" width="412.5352112676057" height="290.5147058823529" rx="8" fill="#F5F5F5" stroke="#707070" stroke-width="2"/>
+<text x="738.3802816901409" y="264.0546078431372" font-family="Helvetica" font-size="20.2" fill="#3C3C3C" text-anchor="middle" font-weight="bold">experimentos/build_dataset.py</text>
+<text x="738.3802816901409" y="289.9746078431372" font-family="Helvetica" font-size="19.0" fill="#3C3C3C" text-anchor="middle" font-weight="normal">Escalado Comunitario:</text>
+<text x="738.3802816901409" y="315.89460784313724" font-family="Helvetica" font-size="19.0" fill="#3C3C3C" text-anchor="middle" font-weight="normal">• 15 Viviendas (Consumo agregado)</text>
+<text x="738.3802816901409" y="341.8146078431372" font-family="Helvetica" font-size="19.0" fill="#3C3C3C" text-anchor="middle" font-weight="normal">• Planta Solar 42 kWp</text>
+<text x="738.3802816901409" y="367.7346078431372" font-family="Helvetica" font-size="19.0" fill="#3C3C3C" text-anchor="middle" font-weight="normal">• Limpieza de NAs y alineación UTC</text>
+<path d="M532.112676056338,561.2303921568628 A206.26760563380284,14 0 0 1 944.6478873239437,561.2303921568628 L944.6478873239437,737.6666666666667 A206.26760563380284,14 0 0 1 532.112676056338,737.6666666666667 Z" fill="#D6D6D6" stroke="#3C3C3C" stroke-width="2.2"/>
+<path d="M532.112676056338,561.2303921568628 A206.26760563380284,14 0 0 0 944.6478873239437,561.2303921568628" fill="none" stroke="#3C3C3C" stroke-width="2.2"/>
+<text x="738.3802816901409" y="643.0565294117647" font-family="Helvetica" font-size="21.6" fill="#1A1A1A" text-anchor="middle" font-weight="bold">dataset_final.csv</text>
+<text x="738.3802816901409" y="669.8405294117647" font-family="Helvetica" font-size="21.6" fill="#1A1A1A" text-anchor="middle" font-weight="bold">(22.646 horas continuas)</text>
+<rect x="1030.0" y="170.63725490196077" width="412.5352112676057" height="215.19607843137254" rx="8" fill="#F5F5F5" stroke="#707070" stroke-width="2"/>
+<text x="1236.2676056338028" y="239.35529411764708" font-family="Helvetica" font-size="20.2" fill="#3C3C3C" text-anchor="middle" font-weight="bold">Constructor de Observación</text>
+<text x="1236.2676056338028" y="265.2752941176471" font-family="Helvetica" font-size="19.0" fill="#3C3C3C" text-anchor="middle" font-weight="normal">Pronóstico AR(1) a 24h vista</text>
+<text x="1236.2676056338028" y="291.1952941176471" font-family="Helvetica" font-size="19.0" fill="#3C3C3C" text-anchor="middle" font-weight="normal">Inyección de ruido realista para</text>
+<text x="1236.2676056338028" y="317.11529411764707" font-family="Helvetica" font-size="19.0" fill="#3C3C3C" text-anchor="middle" font-weight="normal">robustez en generalización</text>
+<rect x="1030.0" y="514.9509803921569" width="412.5352112676057" height="236.7156862745098" rx="8" fill="#D6D6D6" stroke="#3C3C3C" stroke-width="2"/>
+<text x="1236.2676056338028" y="594.4288235294118" font-family="Helvetica" font-size="20.2" fill="#1A1A1A" text-anchor="middle" font-weight="bold">Vector Bruto de Estado (S_t)</text>
+<text x="1236.2676056338028" y="620.3488235294118" font-family="Helvetica" font-size="19.0" fill="#1A1A1A" text-anchor="middle" font-weight="normal">108D (base) · 112D (residual)</text>
+<text x="1236.2676056338028" y="646.2688235294119" font-family="Helvetica" font-size="19.0" fill="#1A1A1A" text-anchor="middle" font-weight="normal">SoC, precios h..h+24, excedente;</text>
+<text x="1236.2676056338028" y="672.1888235294118" font-family="Helvetica" font-size="19.0" fill="#1A1A1A" text-anchor="middle" font-weight="normal">+4 features u_mpc (solo residual)</text>
+<rect x="1556.3380281690143" y="159.87745098039215" width="455.21126760563385" height="236.7156862745098" rx="8" fill="#F5F5F5" stroke="#707070" stroke-width="2"/>
+<text x="1783.9436619718313" y="226.39529411764707" font-family="Helvetica" font-size="20.2" fill="#3C3C3C" text-anchor="middle" font-weight="bold">VecNormalize (SB3)</text>
+<text x="1783.9436619718313" y="252.31529411764706" font-family="Helvetica" font-size="19.0" fill="#3C3C3C" text-anchor="middle" font-weight="normal">Normalización Estadística en Línea</text>
+<text x="1783.9436619718313" y="278.2352941176471" font-family="Helvetica" font-size="19.0" fill="#3C3C3C" text-anchor="middle" font-weight="normal">x_norm = (x - μ) / (σ + ε)</text>
+<text x="1783.9436619718313" y="304.1552941176471" font-family="Helvetica" font-size="19.0" fill="#3C3C3C" text-anchor="middle" font-weight="normal">Entreno: aprende μ, σ Eval/Producción:</text>
+<text x="1783.9436619718313" y="330.0752941176471" font-family="Helvetica" font-size="19.0" fill="#3C3C3C" text-anchor="middle" font-weight="normal">congelados (pkl → ONNX)</text>
+<rect x="1556.3380281690143" y="514.9509803921569" width="455.21126760563385" height="236.7156862745098" rx="8" fill="#3C3C3C" stroke="#1A1A1A" stroke-width="2"/>
+<text x="1783.9436619718313" y="591.8368235294118" font-family="Helvetica" font-size="21.6" fill="#FFFFFF" text-anchor="middle" font-weight="bold">Entrada a la Red del Agente RL</text>
+<text x="1783.9436619718313" y="619.4848235294119" font-family="Helvetica" font-size="20.3" fill="#FFFFFF" text-anchor="middle" font-weight="normal">DQN · PPO · SAC · TD3 · DDPG</text>
+<text x="1783.9436619718313" y="647.1328235294119" font-family="Helvetica" font-size="20.3" fill="#FFFFFF" text-anchor="middle" font-weight="normal">Decide en espacio normalizado</text>
+<text x="1783.9436619718313" y="674.7808235294119" font-family="Helvetica" font-size="20.3" fill="#FFFFFF" text-anchor="middle" font-weight="normal">(media ~0, desv ~1)</text>
+<path d="M738,461 L738,547" fill="none" stroke="#707070" stroke-width="3.0" marker-end="url(#arr)"/>
+<path d="M738,461 L738,547" fill="none" stroke="#666666" stroke-width="1.6" marker-end="url(#arr)"/>
+<path d="M1236,386 L1236,515" fill="none" stroke="#666666" stroke-width="1.6" marker-end="url(#arr)"/>
+<path d="M1236,386 L1236,515" fill="none" stroke="#707070" stroke-width="3.0" marker-end="url(#arr)"/>
+<path d="M1784,397 L1784,515" fill="none" stroke="#666666" stroke-width="1.6" marker-end="url(#arr)"/>
+<path d="M1784,397 L1784,515" fill="none" stroke="#707070" stroke-width="3.0" marker-end="url(#arr)"/>
+<path d="M475,429 L489,429 L489,317 L532,317" fill="none" stroke="#707070" stroke-width="3.0" marker-end="url(#arr)"/>
+<path d="M945,649 L987,648 L987,278 L1030,278" fill="none" stroke="#707070" stroke-width="3.0" marker-end="url(#arr)"/>
+<path d="M1443,633 L1514,633 L1514,278 L1556,278" fill="none" stroke="#707070" stroke-width="3.0" marker-end="url(#arr)"/>
+</svg>
