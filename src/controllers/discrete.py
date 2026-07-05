@@ -55,13 +55,21 @@ class DiscreteRLController(BaseController):
         self._EFF_C = sim.EFICIENCIA_CARGA
         self._EFF_D = sim.EFICIENCIA_DESCARGA
 
-        # Cargar modelo SB3
+        # Cargar modelo SB3. custom_objects sustituye los schedules pickled
+        # (lr/clip/exploration), que son EXCLUSIVOS del entreno: evita el fallo
+        # al cargar modelos entrenados con otra version de Python (los closures
+        # pickled no son portables entre versiones) sin alterar la inferencia.
+        _train_only = {'lr_schedule': (lambda _: 0.0), 'learning_rate': 0.0}
         if self._algo == 'DQN':
             from stable_baselines3 import DQN
-            self._model = DQN.load(model_path, device='cpu')
+            self._model = DQN.load(model_path, device='cpu',
+                                   custom_objects={**_train_only,
+                                                   'exploration_schedule': (lambda _: 0.0)})
         else:
             from stable_baselines3 import PPO
-            self._model = PPO.load(model_path, device='cpu')
+            self._model = PPO.load(model_path, device='cpu',
+                                   custom_objects={**_train_only,
+                                                   'clip_range': (lambda _: 0.2)})
 
         # Cargar stats de normalización
         self._obs_rms = None
