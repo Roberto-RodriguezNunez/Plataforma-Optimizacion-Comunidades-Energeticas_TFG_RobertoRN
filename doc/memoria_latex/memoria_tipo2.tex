@@ -23,6 +23,7 @@
 \usepackage{lmodern}        % glifo de € y mejor cobertura T1
 \usepackage{textcomp}
 \usepackage[spanish]{babel}
+\usepackage{csquotes} % comillas conforme al idioma; requerido por biblatex+babel
 % babel-spanish redefine \% con un pegamento que rompe el modo matemático
 % (\,\% dentro de $...$). Restauramos un \% neutro en ambos modos.
 \AtBeginDocument{\def\%{\char37\relax}}
@@ -98,11 +99,23 @@
 \newcommand{\figpend}[2][0.92\textwidth]{%
   \fbox{\parbox{#1}{\centering\vspace{2.6cm}\textit{#2}\vspace{2.6cm}}}}
 
+% Diagrama de Gantt (planificado vs. real)
+\usepackage{pgfgantt}
+\definecolor{ganttreal}{RGB}{31,119,180}
+\definecolor{ganttplan}{RGB}{200,200,200}
+
 \usepackage[hidelinks, breaklinks=true]{hyperref}
 \usepackage{pdfpages}
 \usepackage{cleveref}
-\usepackage{natbib}
-\bibliographystyle{plainnat}
+% Bibliografía en APA 7 (biblatex-apa + biber), con localización española.
+% natbib=true mantiene los \citep/\citet existentes en el cuerpo.
+\usepackage[backend=biber, style=apa, natbib=true]{biblatex}
+\DeclareLanguageMapping{spanish}{spanish-apa}
+\addbibresource{referencias.bib}
+% Permitir cortes de línea dentro de las URLs de la bibliografía
+\setcounter{biburlnumpenalty}{9000}
+\setcounter{biburlucpenalty}{9000}
+\setcounter{biburllcpenalty}{9000}
 
 \usepackage[acronym, toc, nonumberlist]{glossaries}
 \makeglossaries
@@ -146,17 +159,6 @@
 \pagenumbering{roman}
 \setcounter{page}{1}
 
-\chapter*{Dedicatoria}
-\addcontentsline{toc}{chapter}{Dedicatoria}
-\thispagestyle{plain}
-\vspace*{4cm}
-\begin{flushright}\textit{[Espacio reservado]}\end{flushright}
-
-\chapter*{Agradecimientos}
-\addcontentsline{toc}{chapter}{Agradecimientos}
-\thispagestyle{plain}
-[Espacio reservado para agradecimientos]
-
 % ── Resumen ───────────────────────────────────────────────────
 \chapter*{Resumen}
 \addcontentsline{toc}{chapter}{Resumen}
@@ -194,37 +196,6 @@ planificación horaria (Nivel~3) del control jerárquico estándar para sistemas
 de almacenamiento, replicando la lógica de despacho horario utilizada por
 los agregadores energéticos en el mercado diario de OMIE.
 
-\textbf{Palabras clave:} comunidades energéticas, autoconsumo colectivo,
-aprendizaje por refuerzo, Soft Actor-Critic, control predictivo basado en
-modelos, RD 244/2019, optimización energética.
-
-\chapter*{Abstract}
-\addcontentsline{toc}{chapter}{Abstract}
-\thispagestyle{plain}
-
-Spain's regulatory framework for collective self-consumption, established by
-Royal Decree 244/2019, has created an opportunity for small-scale communities
-to autonomously manage their photovoltaic energy. However, the lack of
-accessible tools forces reliance on static sharing models that underutilise
-the installation's most valuable asset: the community battery.
-
-This work investigates, designs and implements an intelligent decision engine
-based on reinforcement learning for the economic optimisation of the community
-battery in a collective photovoltaic self-consumption energy community. After
-a documented exploration process with the DQN, PPO, TD3, DDPG and SAC
-families, the Residual SAC controller over an MPC base is designed and
-implemented, a hybrid architecture that resolves the cold-start and
-quantisation problems that prevented previous candidates from surpassing the
-competitive baseline (realistic-forecast MPC, $+43.39$\,€/week). In the final
-validation suite (three training seeds, ten evaluation-noise seeds and 50
-held-out weeks), the controller reaches $+44.05$\,€/week, a statistically
-significant improvement of $+0.66$\,€/week (paired Wilcoxon test, $p<0.001$)
-over the realistic MPC.
-
-\textbf{Keywords:} energy communities, collective self-consumption,
-reinforcement learning, Soft Actor-Critic, model predictive control,
-RD 244/2019.
-
 \tableofcontents
 \listoffigures
 \addcontentsline{toc}{chapter}{Índice de figuras}
@@ -255,10 +226,12 @@ justo y autónomo, especialmente en el entorno rural.
 Sin embargo, la puesta en práctica de este potencial choca con una realidad
 técnica. Existen soluciones comerciales de gestión energética e incluso
 productos que abordan el almacenamiento compartido, pero la mayoría son cerradas
-y propietarias —difíciles de auditar y de adaptar— y están diseñadas para el
+y propietarias (difíciles de auditar y de adaptar) y están diseñadas para el
 almacenamiento individual o industrial, donde la batería responde a un único
 punto de consumo. Las que sí contemplan el caso comunitario rara vez se ajustan
-al modelo de liquidación agregada que impone el RD 244/2019 ni resultan
+al caso español (el marco de autoconsumo del RD 244/2019 o, como en este
+trabajo, la cooperativa con un único punto de suministro cuya factura es el
+balance horario agregado) ni resultan
 asequibles para una comunidad rural de pequeña escala, y casi nunca documentan
 de forma transparente cuánto beneficio económico aporta realmente su controlador
 frente a una referencia bien calibrada. La batería de una comunidad de
@@ -300,7 +273,7 @@ BMS) queda como trabajo futuro para el despliegue en instalaciones reales.
 Desde la perspectiva del mercado eléctrico, la arquitectura replica la capa de
 despacho horario utilizada por los agregadores energéticos en el mercado diario
 español (OMIE). La participación en mercados intradiarios de OMIE y en servicios
-de balance de REE —que operan en horizontes sub-horarios— queda como extensión
+de balance de REE (que operan en horizontes sub-horarios) queda como extensión
 natural hacia una arquitectura de gestión energética multi-capa completa.
 
 \section{Estructura del Documento}
@@ -328,8 +301,8 @@ Este trabajo se articula en torno a una \textbf{pregunta de investigación}:
 
 \begin{quote}
 \itshape ¿Puede un controlador basado en aprendizaje por refuerzo superar a los
-controladores convencionales —desde las reglas heurísticas hasta el control
-predictivo basado en modelos— en la optimización económica de la batería de una
+controladores convencionales (desde las reglas heurísticas hasta el control
+predictivo basado en modelos) en la optimización económica de la batería de una
 comunidad energética de autoconsumo fotovoltaico colectivo bajo el RD 244/2019?
 \end{quote}
 
@@ -338,8 +311,8 @@ buscará contrastar: un agente de \acrshort{rl} que opera de forma autónoma
 iguala, pero no supera de forma consistente, a un \acrshort{mpc} bien calibrado;
 en cambio, una arquitectura híbrida que aprende correcciones residuales sobre
 ese MPC sí logra superarlo, conservando como garantía de suelo el rendimiento
-del propio MPC. Aceptar o rechazar esta hipótesis —y cuantificar el margen de
-mejora— es el hilo conductor de la fase experimental (Sección~\ref{sec:motor}).
+del propio MPC. Aceptar o rechazar esta hipótesis (y cuantificar el margen de
+mejora) es el hilo conductor de la fase experimental (Sección~\ref{sec:motor}).
 
 El objetivo central del presente trabajo es el diseño, implementación y
 validación experimental de un motor de decisión basado en aprendizaje por
@@ -381,7 +354,10 @@ accesible orientada a comunidades rurales de pequeña escala.
     candidatos, documentando su rendimiento y sus limitaciones estructurales.
   \item Diseñar e implementar el controlador Residual \acrshort{sac} con
     protocolo de inicialización con demostraciones del MPC, y validar
-    experimentalmente que supera al \textit{baseline} competitivo.
+    experimentalmente que supera al \textit{baseline} competitivo mediante una
+    suite estadística multisemilla que lo contrasta con las familias
+    alternativas (DQN, PPO discreto y continuo, SAC puro, y TD3 y DDPG
+    residuales).
   \item Desarrollar una suite de tests automatizados que garantice los
     invariantes físicos y económicos del simulador y la reproducibilidad
     de los experimentos.
@@ -433,8 +409,8 @@ la red con normalidad en ambas direcciones; el mecanismo de compensación es
 de titularidad privada}, organizada como \textbf{cooperativa} que actúa como
 titular único del suministro eléctrico. La interconexión entre la generación
 distribuida de cada parcela y la batería comunitaria se realiza mediante una
-\textbf{red interior privada} —cableado propio bajo servidumbre de paso entre
-fincas colindantes—, de modo que la energía fluye internamente \emph{sin
+\textbf{red interior privada} (cableado propio bajo servidumbre de paso entre
+fincas colindantes), de modo que la energía fluye internamente \emph{sin
 atravesar la red de distribución pública}, y la comunidad se presenta ante el
 sistema eléctrico a través de un \textbf{único contador frontera}.
 
@@ -445,9 +421,9 @@ que el simulador modele la comunidad como \textbf{nodo agregado} no como una
 simplificación, sino como una \textbf{correspondencia físicamente exacta}: el
 balance agregado sobre el que decide el controlador \emph{es} la factura que se
 optimiza. El reparto de ese coste único entre las viviendas es una operación
-\textbf{interna} de la cooperativa —repercusión de gasto común medido por
+\textbf{interna} de la cooperativa (repercusión de gasto común medido por
 subcontadores privados, sin reventa de energía conforme a la Ley 24/2013 del
-Sector Eléctrico \citep{Ley24_2013}—, no una
+Sector Eléctrico \citep{Ley24_2013}), no una
 facturación regulada vivienda a vivienda; el coeficiente de reparto es, por tanto,
 una \textbf{clave interna} que distribuye coste y ahorro entre los socios, no el
 coeficiente reglamentario del autoconsumo colectivo.
@@ -455,8 +431,8 @@ coeficiente reglamentario del autoconsumo colectivo.
 \textbf{Por qué no el autoconsumo colectivo estándar.} La alternativa
 reglamentaria directa, el \textbf{autoconsumo colectivo a través de red} del
 RD 244/2019, \emph{no} produce un nodo agregado real: no existe conexión física
-entre viviendas, sino que la distribuidora reparte la generación —y la descarga
-de la batería— entre los distintos CUPS mediante \textbf{coeficientes fijos}
+entre viviendas, sino que la distribuidora reparte la generación (y la descarga
+de la batería) entre los distintos CUPS mediante \textbf{coeficientes fijos}
 ($\text{ENG}_{h,i}=\beta_{h,i}\cdot\text{ENG}_h$) y netea \emph{cada vivienda por
 separado}. Esto introduce dos ineficiencias que el modelo agregado evita:
 (i) el excedente de un vecino se vierte a la red a precio mayorista mientras otro
@@ -469,8 +445,8 @@ asigne cada flujo a quien lo necesita.
 \textbf{Condiciones de aplicabilidad y encuadre regulatorio.} Esta
 correspondencia exacta exige condiciones concretas, que se asumen explícitamente
 y se discuten como limitación (Sección~\ref{sec:limitaciones}): parcelas
-colindantes sin vía de dominio público interpuesta —por la que no es legal tender
-cableado privado—, titularidad única del suministro por la cooperativa y renuncia
+colindantes sin vía de dominio público interpuesta (por la que no es legal tender
+cableado privado), titularidad única del suministro por la cooperativa y renuncia
 de los vecinos al contrato individual con comercializadora. Conviene precisar que
 este modelo \emph{no} es una figura regulada llave en mano: las Redes de
 Distribución Cerradas, cuyo procedimiento de autorización desarrolla el Real
@@ -615,8 +591,12 @@ Ahora bien, la mayoría de estas soluciones presentan tres limitaciones para el
 escenario de este trabajo. En primer lugar, son de carácter cerrado y
 propietario, lo que dificulta auditarlas y adaptarlas a contextos para los que
 no fueron diseñadas. En segundo lugar, están orientadas mayoritariamente al
-almacenamiento individual o industrial —donde la batería responde a un único
-punto de consumo— y no al nodo agregado que impone el RD 244/2019. En tercer
+almacenamiento individual o industrial (donde la batería responde a un único
+punto de consumo) y no a la batería compartida de una comunidad, en la que un
+único activo debe operarse para el balance conjunto de todos los participantes
+(balance que, en el modelo de cooperativa con un único punto de suministro
+aquí adoptado, constituye además la factura eléctrica oficial;
+Sección~\ref{sec:marco_regulatorio}). En tercer
 lugar, rara vez documentan de forma reproducible y transparente la mejora
 económica que su controlador aporta frente a una referencia bien calibrada, de
 modo que resulta difícil saber cuánto valor añade realmente la inteligencia
@@ -640,7 +620,7 @@ frente a un control de referencia bien calibrado.
 
 \section{Descripción General}
 
-La solución propuesta es la plataforma EnergyComm, organizada en cinco capas
+La solución propuesta es la plataforma LeaLink, organizada en cinco capas
 funcionales. La comunidad modelada comprende quince viviendas con perfil de
 consumo residencial 2.0TD, una instalación fotovoltaica compartida de
 \SI{42}{kWp} y una batería comunitaria de tecnología \acrshort{lfp} con capacidad
@@ -682,11 +662,16 @@ entrenados y de las estadísticas de normalización (\texttt{vec\_normalize.pkl}
 y trazabilidad de curvas de entrenamiento mediante TensorBoard.
 
 El proceso de selección del algoritmo final siguió un protocolo de
-experimentación estructurado: establecimiento de cotas de rendimiento mediante
-MPC, experimentación con candidatos (DQN, PPO) con análisis de limitaciones, y
-diseño del controlador final (Residual SAC) que resuelve esas limitaciones. Este
-protocolo garantiza que la selección del algoritmo está basada en evidencia
-experimental y no en preferencias a priori.
+experimentación estructurado en dos fases: una fase de \textbf{exploración}
+(establecimiento de cotas de rendimiento mediante MPC, experimentación con
+candidatos (DQN, PPO) con análisis de limitaciones, y diseño del controlador
+final (Residual SAC) que resuelve esas limitaciones) y una fase de
+\textbf{validación} estadística, en la que el controlador propuesto se
+confirma con tres semillas de entrenamiento y contraste de significancia
+frente a las familias alternativas completas: DQN, PPO discreto, PPO continuo,
+SAC puro y las variantes residuales con TD3 y DDPG
+(Sección~\ref{sub:suite}). Este protocolo garantiza que la selección del
+algoritmo está basada en evidencia experimental y no en preferencias a priori.
 
 % ==============================================================
 \chapter{Marco Práctico y Herramientas Empleadas}
@@ -702,8 +687,8 @@ Este capítulo constituye el núcleo técnico del trabajo. Se estructura en cinc
 bloques: los fundamentos teóricos y el \textit{stack} tecnológico
 (Sección~\ref{sec:fundamentos}), la ingeniería de datos y el gemelo digital
 físico-económico de la comunidad (Sección~\ref{sec:datos}), el motor de
-decisión energético —desde las cotas de rendimiento hasta los resultados
-experimentales— (Sección~\ref{sec:motor}), la exportación del modelo a
+decisión energético (desde las cotas de rendimiento hasta los resultados
+experimentales) (Sección~\ref{sec:motor}), la exportación del modelo a
 producción (Sección~\ref{sec:onnx}) y la plataforma SaaS que lo integra
 (Sección~\ref{sec:saas}).
 
@@ -729,18 +714,25 @@ y energía descargada vendida a red $d_r$. Estos cuatro flujos están acoplados
 por las restricciones físicas del sistema.
 
 La función de recompensa $R(s,a)$ es el beneficio marginal respecto a la
-política de referencia IDLE (batería desconectada):
+política de referencia IDLE: el escenario contrafactual con la batería
+desconectada (los cuatro flujos a cero), en el que la comunidad opera solo con
+sus paneles y la red, autoconsumiendo lo que puede, comprando el déficit y
+vertiendo el excedente. Su beneficio marginal es cero por definición, de modo
+que toda cifra en €/semana de este trabajo mide el dinero que la gestión de la
+batería añade sobre ese escenario sin almacenamiento:
 \begin{equation}
   r_h = E_{\text{vend},h}\,p_v^h - E_{\text{comp},h}\,p_c^h - c_{\text{deg},h}
   \label{eq:recompensa}
 \end{equation}
 
-El factor de descuento $\gamma = 0{,}99$ establece un horizonte efectivo de
-$1/(1-\gamma) = 100$ pasos, equivalente a unos cuatro días dentro de los
-episodios semanales de 168 horas. Esto garantiza que el agente pondere las
-consecuencias de sus decisiones sobre el estado de carga más allá del horizonte
-de planificación de 24 horas, valorando el efecto de cargar o descargar la
-batería sobre las jornadas siguientes.
+El factor de descuento $\gamma = 0{,}99$, valor canónico en la práctica del RL
+profundo, establece un horizonte efectivo de $1/(1-\gamma) = 100$ pasos,
+equivalente a unos cuatro días dentro de los episodios semanales de 168 horas.
+La elección es deliberadamente mayor que las 24 horas del MPC: garantiza que
+el agente pondere las consecuencias de sus decisiones sobre el estado de carga
+más allá del horizonte de planificación, valorando el efecto de cargar o
+descargar la batería sobre las jornadas siguientes (que el LP del MPC, por
+construcción, no ve).
 
 \subsection{Familias de Algoritmos Aplicables}
 
@@ -796,6 +788,20 @@ con horizonte de 24 horas determina el perfil óptimo de carga y descarga para
 las próximas 24 horas, ejecuta la decisión de la hora actual, y recalcula con
 la información actualizada.
 
+La elección de 24 horas como horizonte no es arbitraria: es la escala natural
+del problema. Tanto el precio PVPC como la generación fotovoltaica y el
+consumo residencial tienen una periodicidad dominante diaria, de modo que una
+ventana de 24 horas contiene un ciclo completo de arbitraje (el valle y el
+pico de precio, y el día y la noche solares). Coincide además con la ventana
+de información del mercado español (REE publica el PVPC del día siguiente a
+las 20:30\,h, y el despacho diario de OMIE opera precisamente a esa escala),
+por lo que es el horizonte estándar de la planificación horaria (Nivel~3) en
+la gestión de almacenamiento. Alargarlo aportaría poco: más allá del día
+siguiente no hay nueva estructura de precios que explotar y el error de
+pronóstico crece, mientras que el efecto de las decisiones sobre jornadas
+posteriores lo captura el agente a través del factor de descuento
+($\gamma=0{,}99$, Sección~\ref{sec:fundamentos}).
+
 La principal ventaja del MPC es que puede incorporar explícitamente las
 restricciones físicas del sistema (límites de SoC, potencia máxima) y optimizar
 una función objetivo económica bien definida. Su principal limitación es que
@@ -826,7 +832,7 @@ pre-llenando el \textit{replay buffer} con demostraciones del controlador base.
 
 \begin{table}[H]
 \centering
-\caption{Stack tecnológico de la plataforma EnergyComm.}
+\caption{Stack tecnológico de la plataforma LeaLink.}
 \label{tab:stack}
 \begin{tabularx}{\textwidth}{llX}
 \toprule
@@ -841,7 +847,6 @@ Datos & Pandas / NumPy & Pipeline ETL y simulación \\
 Fuente precios & ESIOS API (REE) & Indicadores 1001 y 1739 \\
 Fuente consumo & ESIOS API (REE) & Indicador 1006 (perfil 2.0TD) \\
 Fuente generación & PVGIS API (JRC-EU) & Producción FV histórica \\
-Fuente previsión & Open-Meteo API & Irradiancia (conector de producción; emulado en el prototipo) \\
 Runtime edge & ONNX Runtime & Inferencia sin SB3 ni Gymnasium \\
 Base de datos & PostgreSQL & Perfiles, histórico, coeficientes \\
 Frontend web & Flask + SQLAlchemy & Dashboards Superadmin y Usuario \\
@@ -912,10 +917,21 @@ realista:
   \quad \varepsilon_h \sim \text{AR}(1),\; \rho=0{,}50,\; \sigma=0{,}05
   \label{eq:ar1}
 \end{equation}
+Los parámetros del ruido se fijan por argumentos de plausibilidad física, no
+por calibración contra medidas (que no existen para la comunidad modelada, al
+ser el dataset un agregado sintético; Sección~\ref{sec:limitaciones}): la
+magnitud $\sigma=0{,}05$ refleja que la agregación de quince viviendas suaviza
+la variabilidad del perfil individual pero no la elimina; la persistencia
+$\rho=0{,}50$ evita el ruido blanco hora a hora, físicamente irreal, porque
+los desvíos de consumo de una comunidad (una ola de frío, una ausencia)
+persisten durante varias horas; y el recorte a $[0{,}7,\,1{,}3]$ acota los
+desvíos extremos al rango verosímil de una demanda residencial agregada.
 Después construye la generación solar repartiendo el perfil unitario de PVGIS
 (\SI{1}{kWp}) en quince instalaciones individuales con las capacidades fijas de
 la comunidad Vilarín (que suman \SI{42}{kWp}), rendimiento propio por vivienda y
-ruido propio ($\sigma=0{,}03$). Por último convierte los precios de compra
+ruido propio ($\sigma=0{,}03$, menor que el del consumo porque la producción
+FV de instalaciones colindantes está fuertemente correlacionada y sus desvíos
+locales, como el sombreado puntual, son de menor amplitud relativa). Por último convierte los precios de compra
 (PVPC, ESIOS 1001) y de venta de excedentes (ESIOS 1739) de €/MWh a €/kWh,
 sanea el precio de excedente imponiendo
 $p_{\text{exc}} = \max(0, p_{\text{exc}})$, coherente con el RD 244/2019 (que
@@ -1017,6 +1033,16 @@ corriente alterna (consumo de las viviendas o venta a red); dividir por
 $\eta_d$ recupera la energía bruta que efectivamente se descuenta de la
 batería, de modo que la eficiencia de descarga se aplica una única vez.
 
+Los valores de estos parámetros proceden de las hojas de características de
+sistemas BESS comerciales de química LFP, igual que la vida útil empleada en
+la calibración de la degradación (Sección~\ref{sub:calibracion-degradacion}):
+la eficiencia \textit{round-trip} resultante (90,25\,\%, al aplicar
+$\eta=0{,}95$ en cada sentido) se sitúa en el rango típico del 88--95\,\% de
+un sistema estacionario completo, incluyendo las pérdidas de conversión del
+inversor; y la autodescarga de $0{,}004\,\%/\text{h}$ (en torno al 3\,\% al
+mes) corresponde al orden de magnitud característico de la química LFP, de
+autodescarga baja frente a otras químicas de litio.
+
 \subsubsection{Modelo de Degradación No Lineal}
 
 El coste de degradación por paso temporal es:
@@ -1032,7 +1058,12 @@ $f_P$ penaliza cuadráticamente los ciclos a alta corriente (efecto Joule).
 $f_{\text{SoC}}$ penaliza cuárticamente la operación en los extremos del rango,
 reproduciendo el comportamiento real de baterías LFP donde la operación
 prolongada próxima al 0\,\% o 100\,\% de SoC acelera los mecanismos de
-degradación electroquímica \citep{Vetter2005, Xu2016}.
+degradación electroquímica \citep{Vetter2005, Xu2016}. El coeficiente
+$C_{\text{base}} = 0{,}005$\,€/kWh no debe confundirse con el coste efectivo
+de degradación: una vez modulado por los factores de estrés, el coste efectivo
+medio resulta de unos $0{,}006$\,€/kWh, y es ese valor el que se calibra
+contra la amortización realista de la batería en la
+Sección~\ref{sub:calibracion-degradacion}.
 
 Esta no linealidad es intencional y tiene una consecuencia metodológica crucial:
 el MPC, que linealiza la degradación como $K = 0{,}005$\,€/kWh fijo, introduce
@@ -1045,17 +1076,17 @@ El valor $C_{\text{base}} = 0{,}005$\,€/kWh de la ecuación~\eqref{eq:degradac
 no es el coste de degradación directamente, sino el \emph{coeficiente base} que,
 una vez modulado por los factores de estrés, reproduce el coste de amortización
 realista de la batería. La calibración parte del coste marginal de reposición de
-las \emph{celdas} —el único componente que se desgasta con el ciclado, frente al
-inversor o la instalación, que son capital hundido (CAPEX)—:
+las \emph{celdas} (el único componente que se desgasta con el ciclado, frente al
+inversor o la instalación, que son capital hundido (CAPEX)):
 \begin{equation}
   c_{\text{amort}} = \frac{c_{\text{celda}}}{2\,N_{\text{ciclos}}},
   \label{eq:calibracion}
 \end{equation}
 donde el factor $2$ refleja que el coste se imputa sobre el \emph{throughput
 bidireccional} (carga más descarga, $E_{\text{movida}}$). Con un coste neto de
-celdas LFP de $c_{\text{celda}}\!\approx\!90\text{--}100$\,€/kWh —tras la
+celdas LFP de $c_{\text{celda}}\!\approx\!90\text{--}100$\,€/kWh (tras la
 subvención al almacenamiento del Real Decreto~477/2021 \citep{RD477_2021} y la
-caída sostenida del precio de celda \citep{BNEF2024,Schmidt2019}— y una vida útil
+caída sostenida del precio de celda \citep{BNEF2024,Schmidt2019}) y una vida útil
 $N_{\text{ciclos}}\!\approx\!8\,000$ ciclos completos hasta el 80\,\% de SoH,
 valor típico de las hojas de características de fabricantes de celdas LFP de
 aplicación estacionaria (batería fija de edificio o instalación, cuyo ciclado
@@ -1072,16 +1103,16 @@ $\overline{f_P\,f_{\text{SoC}}}\!\approx\!1{,}2$, de modo que el coste efectivo
 medio es $C_{\text{base}}\cdot 1{,}2\!\approx\!0{,}006$\,€/kWh, \emph{coincidente
 con el coste de amortización} $c_{\text{amort}}$ de la
 ecuación~\eqref{eq:calibracion}. En otras palabras, $C_{\text{base}}=0{,}005$ se
-fija para que el coste \emph{efectivo} —no el coeficiente— iguale la amortización
+fija para que el coste \emph{efectivo} (no el coeficiente) iguale la amortización
 realista de una batería LFP subvencionada. La ventaja de la formulación no lineal
 es que reparte ese coste medio según el estrés electroquímico real de cada
-operación —mayor a alta corriente, por efecto Joule, y en los extremos de SoC
-\citep{Vetter2005, Xu2016}— en lugar de mediante un coste plano, que es
+operación (mayor a alta corriente, por efecto Joule, y en los extremos de SoC
+\citep{Vetter2005, Xu2016}) en lugar de mediante un coste plano, que es
 precisamente la aproximación de primer orden del MPC.
 
 Conviene ser explícito sobre la dependencia de los supuestos: la igualdad anterior
-descansa en la subvención del RD~477/2021 —aplicable a la instalación
-considerada— y en una vida útil de gama estacionaria; sin subvención, el coste de
+descansa en la subvención del RD~477/2021 (aplicable a la instalación
+considerada) y en una vida útil de gama estacionaria; sin subvención, el coste de
 amortización de un \emph{pack} no subvencionado se situaría en torno a
 $0{,}013\text{--}0{,}017$\,€/kWh, y $C_{\text{base}}$ constituiría una cota
 inferior. En cualquier caso, y de forma determinante para la validez del estudio,
@@ -1089,9 +1120,9 @@ el coste de degradación se aplica de manera \emph{idéntica} a todos los
 controladores (MPC, DQN, PPO y Residual SAC) y en la métrica de evaluación. Por
 tanto, \textbf{el orden comparativo entre controladores y su significancia
 estadística son invariantes al valor absoluto de $C_{\text{base}}$}: solo el ahorro
-absoluto en €/año escala —de forma aproximadamente lineal— con dicho parámetro. La
-conclusión central de este trabajo —que la arquitectura residual supera al MPC
-realista— no depende, por tanto, de esta calibración
+absoluto en €/año escala (de forma aproximadamente lineal) con dicho parámetro. La
+conclusión central de este trabajo (que la arquitectura residual supera al MPC
+realista) no depende, por tanto, de esta calibración
 (Sección~\ref{sec:limitaciones}).
 
 \subsubsection{Modelo Económico}
@@ -1143,9 +1174,9 @@ decisiones coherentes con la finalidad de cada contexto.
 \end{itemize}
 
 \textbf{(B) Frontera del episodio (valor terminal y coste inicial).} En el
-entrenamiento la recompensa incorpora un \textbf{valor terminal} —que retribuye la
-energía que queda en la batería al final del episodio— y un \textbf{coste inicial}
-simétrico —que descuenta el valor de la energía con la que se arranca—. Sin estos
+entrenamiento la recompensa incorpora un \textbf{valor terminal} (que retribuye la
+energía que queda en la batería al final del episodio) y un \textbf{coste inicial}
+simétrico (que descuenta el valor de la energía con la que se arranca). Sin estos
 términos, un agente episódico aprendería a \emph{vaciar la batería a la red en la
 última hora}, pues la energía almacenada no reportaría recompensa dentro del
 horizonte finito; los términos de frontera eliminan ese artefacto y hacen que el
@@ -1232,6 +1263,20 @@ sin publicar, se estima con mayor incertidumbre ($\sigma=15\,\%$, $\rho=0{,}7$,
 capa 3). Es el mismo modelo de precios que ve el MPC interno del Residual SAC,
 lo que garantiza una comparación justa entre ambos.
 
+La estructura y la magnitud de este ruido se justifican por el comportamiento
+característico del error de pronóstico a día siguiente: es mínimo en la
+primera hora y crece con el horizonte, de ahí el $\sigma$ creciente del 5 al
+25\,\% en la generación FV, cuyo error (de origen meteorológico) es además el
+más persistente ($\rho=0{,}7$: un frente nuboso mal previsto afecta a horas
+consecutivas). El consumo agregado, en cambio, recibe un error de magnitud
+constante ($\sigma=15\,\%$) y menos persistente ($\rho=0{,}3$), coherente con
+una demanda residencial cuyos desvíos son más erráticos y de menor memoria que
+los meteorológicos. Los valores concretos son supuestos del escenario, no
+mediciones; su elección no es crítica para las conclusiones, porque la
+ablación F6 (Sección~\ref{sub:resultados}) barre el ruido de consumo entre el
+5 y el 25\,\% y el resultado cualitativo del trabajo se mantiene en todo el
+rango.
+
 \textbf{Resultado:} $+43{,}39$\,€/semana (IC95 $[41{,}24;\,45{,}57]$, media
 sobre diez semillas de ruido).
 
@@ -1248,7 +1293,7 @@ El proceso de selección del algoritmo de control siguió un protocolo de
 experimentación estructurado en el que se entrenaron y evaluaron más de
 veinticinco configuraciones de agentes a lo largo de tres familias
 algorítmicas. Esta sección presenta los hitos representativos de cada familia
-—aquellos que motivaron una decisión técnica concreta—, mientras que el
+(aquellos que motivaron una decisión técnica concreta), mientras que el
 historial completo de configuraciones se recoge en el
 Anexo~\ref{app:historial}. Todos los agentes se evalúan con el protocolo
 unificado (50 semanas, semilla 42, beneficio marginal respecto a IDLE) frente
@@ -1272,6 +1317,23 @@ ruido} (intervalo de confianza al 95\,\% por \textit{bootstrap} y test de Wilcox
 sobre el dimensionado definitivo. Es esta segunda fase la que sustenta las
 conclusiones del trabajo; la exploración solo justifica \emph{por qué} se valida cada
 candidato.
+
+\paragraph{Criterio de selección de los candidatos.} Los candidatos de la
+exploración no se eligen por preferencia, sino como representantes canónicos de
+las familias algorítmicas de la Sección~\ref{sec:fundamentos}: \acrshort{dqn}
+representa a los métodos basados en valor, por ser el algoritmo de referencia
+del dominio desde \citet{Mnih2015} y el más citado en las revisiones de RL
+aplicado a sistemas energéticos \citep{Perera2021, Vazquez2019};
+\acrshort{ppo} representa a los \textit{policy gradient on-policy}, por ser el
+estándar de facto de esa familia por su robustez de entrenamiento
+\citep{Schulman2017}, y se entrena sobre el mismo espacio discreto para aislar
+el efecto del mecanismo de aprendizaje del efecto del espacio de acciones. La
+tercera familia (\textit{actor-critic off-policy} continuo, cuyo representante
+es \acrshort{sac}) no se explora como agente autónomo, sino que se reserva
+para la arquitectura residual, decisión que se justifica en la
+Sección~\ref{sub:justificacion}; la suite de validación completa después esa
+familia con sus otros dos miembros estándar (TD3 y DDPG) y con el propio SAC
+puro como ablación (Sección~\ref{sub:suite}).
 
 \subsubsection{Controlador Heurístico (Suelo de Rendimiento)}
 
@@ -1371,6 +1433,31 @@ arquitectura híbrida en la que el RL no compite contra el MPC, sino que aprende
 a corregirlo. La justificación detallada se presenta en la
 Sección~\ref{sub:justificacion}.
 
+La elección de \acrshort{sac} como algoritmo de esa arquitectura residual se
+deriva de tres requisitos que la propia corrección impone: (a) espacio de
+acción \emph{continuo}, porque la razón de ser del residual son los ajustes
+finos de potencia que el espacio discreto no puede representar; (b) naturaleza
+\emph{off-policy} con \textit{replay buffer}, imprescindible para inyectar las
+demostraciones del MPC (protocolo DAWN, Sección~\ref{sub:dawn}), algo
+estructuralmente imposible en un método \textit{on-policy} como PPO; y (c)
+exploración regulada dentro de un rango acotado, que la regularización por
+entropía de SAC proporciona de forma automática \citep{Haarnoja2018}. De los
+tres \textit{actor-critic off-policy} continuos estándar (SAC, TD3, DDPG),
+SAC es el único que cumple los tres requisitos por construcción; TD3 y DDPG
+se incluyen después en la suite de validación precisamente para confirmar esa
+elección por comparación directa (Sección~\ref{sub:suite}).
+
+Cabe preguntarse por qué no se exploró antes SAC como agente autónomo, sin
+MPC base. La razón es de asignación de esfuerzo: la evidencia acumulada en la
+exploración (DQN y PPO por debajo del MPC realista) y la literatura
+\citep{Zhan2023} indicaban que ningún agente de RL puro superaría a un MPC
+bien calibrado, por lo que el esfuerzo experimental se dirigió a la
+arquitectura híbrida en lugar de a un tercer intento de RL puro. La hipótesis
+no se dio por supuesta: la suite de validación incluye SAC puro (versión F5)
+exactamente para cerrarla con datos, y su resultado ($26{,}94$\,€/semana, el
+peor agente de toda la suite; Sección~\ref{sub:resultados}) confirma a
+posteriori que explorar SAC autónomo no habría cambiado la decisión.
+
 De esta exploración nace además el registro de experimentos
 (\texttt{config/experimentos.yaml}) que define las versiones de la suite de
 validación de la Sección~\ref{sub:suite}: cada familia y cada versión validada
@@ -1423,12 +1510,17 @@ RL puro). Ningún algoritmo de RL puro ofrece ninguna de las dos propiedades.
 \textbf{Controlador} & \textbf{Esp.\ usado} & \textbf{Off-policy} &
 \textbf{Demo MPC} & \textbf{Robustez} & \textbf{Decisión} \\
 \midrule
-DQN & Discreto & Sí & Parcial & Media & Descartado \\
-PPO & Discreto & No & No & Alta & Descartado \\
+DQN & Discreto & Sí & Parcial & Media & Descartado* \\
+PPO & Discreto & No & No & Alta & Descartado* \\
 SAC puro & Continuo & Sí & Sí & Alta & Candidato \\
 \textbf{Residual SAC} & \textbf{Continuo} & \textbf{Sí} & \textbf{Sí} &
 \textbf{Alta} & \textbf{Seleccionado} \\
 \bottomrule
+\multicolumn{6}{@{}p{\dimexpr\textwidth-2\tabcolsep}@{}}{\small *Descartados
+  como controlador final tras la fase de exploración; se reentrenan no obstante
+  en la suite de validación (Sección~\ref{sub:suite}) como familias
+  comparativas, para confirmar con estadística las limitaciones aquí
+  diagnosticadas.}
 \end{tabularx}
 \end{table}
 
@@ -1618,14 +1710,14 @@ a la primera.
 \textbf{mejor modelo}, no el de rendimiento medio. El objetivo no es caracterizar
 el rendimiento típico del algoritmo, sino obtener el \emph{mejor controlador
 desplegable}: una vez fijados sus pesos, ese modelo rinde a su nivel con
-independencia de la varianza del proceso de entrenamiento —desplegar un sistema
-es desplegar un modelo concreto, no un promedio—. Su rendimiento se reporta de
+independencia de la varianza del proceso de entrenamiento (desplegar un sistema
+es desplegar un modelo concreto, no un promedio). Su rendimiento se reporta de
 forma robusta como la \textbf{media sobre diez semillas de ruido de evaluación}
 (distintas realizaciones del ruido AR(1) sobre las 50 semanas \textit{held-out}),
 de modo que la cifra no depende de una realización de ruido afortunada.
 
 \textbf{(2) ¿Qué algoritmo es mejor en promedio?} Es una pregunta diferente
-—la robustez \emph{inter-entrenamiento}— que requeriría la distribución sobre las
+(la robustez \emph{inter-entrenamiento}) que requeriría la distribución sobre las
 semillas de entrenamiento (media\,$\pm$\,desviación). Resulta relevante en un
 escenario de \emph{reentrenamiento} (p.\,ej. un ajuste fino por comunidad), donde
 la fiabilidad importa más que el pico afortunado; ahí la garantía de suelo del
@@ -2078,6 +2170,15 @@ mensual. Ambos se autentican mediante un \textit{token} Bearer y están exentos
 de la protección CSRF que aplica al resto de la aplicación, al ser consumidos
 por un cliente automático y no por un navegador.
 
+Conviene explicitar el alcance del prototipo en este punto: el dispositivo de
+borde no está conectado a APIs de datos en tiempo real, sino que se emula con
+un proceso que recorre el dataset histórico (los mismos ficheros de ESIOS y
+PVGIS con los que se entrenó y evaluó el controlador) y alimenta la plataforma
+a través de exactamente los mismos endpoints que usaría el hardware real. Los
+conectores a las fuentes en vivo están diseñados con la misma interfaz que el
+dataset histórico, pero su activación (que requiere únicamente configurar los
+tokens de acceso) queda como trabajo futuro (Capítulo~\ref{chap:futuro}).
+
 \subsection{Cálculo de Cierres y Reparto por Vivienda}
 \label{sub:cierres}
 
@@ -2109,12 +2210,12 @@ modelado, sino una consecuencia de la observabilidad real del sistema. El
 controlador, situado en el punto de generación y almacenamiento, solo mide en
 tiempo real la generación fotovoltaica, el estado de carga de la batería y el
 intercambio neto con la red en ese punto; el consumo de la comunidad no se mide
-directamente en tiempo real —cada vivienda dispone, a lo sumo, de su propio
-subcontador interno—, sino que se estima mediante previsión (perfil histórico agregado
+directamente en tiempo real (cada vivienda dispone, a lo sumo, de su propio
+subcontador interno), sino que se estima mediante previsión (perfil histórico agregado
 y pronóstico meteorológico), que es precisamente la información que el motor
 recibe en su ventana de pronóstico de 24~horas (Sección~\ref{sec:motor}). El
-motor decide la acción de cada hora a partir de ese pronóstico —la hora en curso
-es el primer paso de previsión, con la menor incertidumbre—, no del valor
+motor decide la acción de cada hora a partir de ese pronóstico (la hora en curso
+es el primer paso de previsión, con la menor incertidumbre), no del valor
 realizado, que solo interviene en la liquidación física; de este modo se evita
 cualquier anticipación de información (\textit{lookahead}) y tanto el MPC como el
 agente reciben exactamente las mismas entradas, lo que garantiza una comparación
@@ -2145,6 +2246,25 @@ proporcionarían los paneles individuales por sí solos.
 
 \subsection{Naturaleza de los Valores del Panel de Control}
 \label{sub:panel}
+
+La Figura~\ref{fig:captura_saas} muestra el panel de control de la plataforma
+en funcionamiento para una vivienda concreta: los indicadores de cabecera
+(ahorro acumulado, media mensual, porcentaje de ahorro sobre la factura y
+cierres registrados), la evolución mensual del ahorro frente a los dos
+escenarios de referencia (sin paneles y sin comunidad), la comparativa de
+gasto entre los tres escenarios, el origen de la energía consumida en el
+último mes (autoconsumo directo, batería comunitaria y red) y la posición de
+la vivienda en el ahorro medio mensual de la comunidad.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{img/captura_saas.png}
+  \caption{Captura de pantalla del panel de control de la plataforma SaaS
+  (LeaLink) para una vivienda: indicadores de ahorro, comparativa de gasto
+  entre escenarios (sin paneles, sin comunidad y con comunidad), origen de la
+  energía consumida y comparación con el resto de viviendas de la comunidad.}
+  \label{fig:captura_saas}
+\end{figure}
 
 Los valores económicos mostrados en el panel de control de la plataforma (ahorro
 mensual y acumulado por vivienda) provienen de una simulación de operación
@@ -2186,13 +2306,59 @@ controlador reside en el protocolo de evaluación reproducible.
 
 \begin{figure}[H]
   \centering
-  \figpend[0.95\textwidth]{[Figura: Diagrama de Gantt planificado vs.\ real]\\
-    \textit{Fases 0--8. Barra gris: planificado. Barra color: real.}}
-  \caption{Diagrama de Gantt del proyecto.}
+  % Eje temporal en quincenas: 22 casillas de sep 2024 a jul 2025.
+  % Por fase, dos barras: gris (planificado) y azul (real).
+  \resizebox{\textwidth}{!}{%
+  \begin{ganttchart}[
+      x unit=0.62cm,
+      y unit title=0.65cm,
+      y unit chart=0.62cm,
+      canvas/.append style={draw=gray!60},
+      title/.append style={draw=gray!60, fill=gray!10},
+      title label font=\small\bfseries,
+      vgrid={*1{draw=none}, *1{gray!25}},
+      hgrid style/.style={gray!25},
+      hgrid,
+      bar height=0.32,
+      bar label font=\small,
+      bar/.append style={rounded corners=1pt},
+      bar/.append style={draw=none}
+    ]{1}{22}
+    \gantttitle{2024}{8} \gantttitle{2025}{14} \\
+    \gantttitle{Sep}{2}\gantttitle{Oct}{2}\gantttitle{Nov}{2}%
+    \gantttitle{Dic}{2}\gantttitle{Ene}{2}\gantttitle{Feb}{2}%
+    \gantttitle{Mar}{2}\gantttitle{Abr}{2}\gantttitle{May}{2}%
+    \gantttitle{Jun}{2}\gantttitle{Jul}{2} \\
+    \ganttbar[bar/.append style={fill=ganttplan}, bar top shift=0.12]{F0 Concepción y viabilidad}{1}{3}
+    \ganttbar[bar/.append style={fill=ganttreal}, bar top shift=0.56]{}{1}{3} \\
+    \ganttbar[bar/.append style={fill=ganttplan}, bar top shift=0.12]{F1 Setup, arquitectura, YAML}{3}{6}
+    \ganttbar[bar/.append style={fill=ganttreal}, bar top shift=0.56]{}{3}{6} \\
+    \ganttbar[bar/.append style={fill=ganttplan}, bar top shift=0.12]{F2 Ingeniería de datos (ETL)}{5}{8}
+    \ganttbar[bar/.append style={fill=ganttreal}, bar top shift=0.56]{}{5}{9} \\
+    \ganttbar[bar/.append style={fill=ganttplan}, bar top shift=0.12]{F3 Simulador físico-económico}{7}{10}
+    \ganttbar[bar/.append style={fill=ganttreal}, bar top shift=0.56]{}{8}{11} \\
+    \ganttbar[bar/.append style={fill=ganttplan}, bar top shift=0.12]{F4 Controlador MPC}{9}{12}
+    \ganttbar[bar/.append style={fill=ganttreal}, bar top shift=0.56]{}{10}{13} \\
+    \ganttbar[bar/.append style={fill=ganttplan}, bar top shift=0.12]{F5 Experimentación DQN y PPO}{11}{14}
+    \ganttbar[bar/.append style={fill=ganttreal}, bar top shift=0.56]{}{12}{16} \\
+    \ganttbar[bar/.append style={fill=ganttplan}, bar top shift=0.12]{F6 Residual SAC y tuning}{13}{18}
+    \ganttbar[bar/.append style={fill=ganttreal}, bar top shift=0.56]{}{14}{20} \\
+    \ganttbar[bar/.append style={fill=ganttplan}, bar top shift=0.12]{F7 Evaluación unificada y API}{17}{20}
+    \ganttbar[bar/.append style={fill=ganttreal}, bar top shift=0.56]{}{19}{21} \\
+    \ganttbar[bar/.append style={fill=ganttplan}, bar top shift=0.12]{F8 Documentación y defensa}{19}{22}
+    \ganttbar[bar/.append style={fill=ganttreal}, bar top shift=0.56]{}{20}{22} \\
+  \end{ganttchart}}
+  \caption{Diagrama de Gantt del proyecto, con resolución quincenal: para cada
+  fase, la barra superior (gris) es la planificación inicial y la inferior
+  (azul) la ejecución real. Las mayores desviaciones se concentran en las
+  fases 5 y 6 (en torno a un mes entre ambas, por las causas de la
+  Sección~\ref{sec:desviaciones}) y se absorben comprimiendo las fases 7 y
+  8, manteniendo la entrega en julio de 2025.}
   \label{fig:gantt}
 \end{figure}
 
 \section{Desviaciones Técnicas}
+\label{sec:desviaciones}
 
 Las fases 5 y 6 acumularon la mayor desviación. La Fase~5 se alargó porque
 los experimentos con DQN y PPO requirieron análisis sistemático adicional
@@ -2242,7 +2408,7 @@ test \texttt{test\_delta\_zero\_matches\_mpc} (módulo
 
 \textbf{Aportación 4 — Plataforma abierta para comunidades rurales (OG-4).}
 Una plataforma software basada íntegramente en herramientas y fuentes de datos
-públicas (ESIOS, PVGIS, Open-Meteo), con dashboards diferenciados por rol que
+públicas (ESIOS, PVGIS), con dashboards diferenciados por rol que
 democratizan el acceso a la gestión energética inteligente para comunidades de
 pequeña escala sin conocimientos técnicos.
 
@@ -2303,9 +2469,9 @@ por los datos disponibles.
 
 \textbf{Optimización sobre el balance agregado y modelo de comunidad.} El
 controlador optimiza el beneficio económico sobre el \textbf{balance agregado} de
-la comunidad. Bajo el modelo adoptado —cooperativa con un único punto de
+la comunidad. Bajo el modelo adoptado (cooperativa con un único punto de
 suministro, en la modalidad de autoconsumo individual
-(Capítulo~\ref{chap:antecedentes})— ese balance agregado \emph{es} la única
+(Capítulo~\ref{chap:antecedentes})) ese balance agregado \emph{es} la única
 factura eléctrica oficial, por lo que la optimización del agregado se corresponde
 \textbf{exactamente} con el coste real, sin desfase entre el objetivo del control
 y la liquidación. La decisión es además coherente con la observabilidad del
@@ -2316,17 +2482,17 @@ pues el consumo individualizado solo está disponible a posteriori.
 
 La \textbf{condición de aplicabilidad} de este modelo es disponer de un único
 punto de suministro (contador frontera) sobre una \textbf{red interior privada}.
-Esto es realista en la ecocomunidad rural adoptada —parcelas colindantes de
+Esto es realista en la ecocomunidad rural adoptada (parcelas colindantes de
 titularidad privada, sin vía de dominio público interpuesta, con la cooperativa
 como titular único del suministro y subcontadores internos para el reparto del
-gasto común (Sección~\ref{sec:marco_regulatorio})—, pero no en un conjunto de
+gasto común (Sección~\ref{sec:marco_regulatorio})), pero no en un conjunto de
 viviendas independientes con CUPS propios y separadas por viario público, donde
 no es legal tender cableado privado y cada vecino conserva su comercializadora.
 Conviene además ser explícito en que esta configuración \emph{no} es una figura
 regulada estándar (las Redes de Distribución Cerradas del RD 314/2023 se
 reservan a entornos industriales): se sostiene como red interior de un
 único consumidor, lo que exige la renuncia de los vecinos al contrato individual.
-En el escenario alternativo —viviendas independientes— la comunidad operaría en
+En el escenario alternativo (viviendas independientes) la comunidad operaría en
 \textbf{autoconsumo colectivo}, con factura individual por coeficientes; entonces
 el balance agregado deja de ser la factura y queda como capa de control, y la suma
 de las facturas individuales podría diferir del óptimo agregado al no existir
@@ -2357,8 +2523,9 @@ queda como línea de trabajo futuro (Capítulo~\ref{chap:futuro}).
 
 \textbf{Alcance experimental y coste de cómputo.} El barrido de configuraciones y
 semillas no se amplió más allá de la suite presentada, por su coste computacional.
-El conjunto de entrenamientos y evaluaciones realizado equivale a unas 600 horas de
-cómputo en un ordenador de gama media, ya que las familias residuales resuelven un
+El conjunto de entrenamientos y evaluaciones realizado equivale a unas 500 horas de
+cómputo en un ordenador de gama media (Anexo~\ref{app:reproducibilidad}), ya que
+las familias residuales resuelven un
 problema de programación lineal en cada paso de simulación. Ampliar la rejilla (más
 versiones, más semillas o ablaciones de componentes internos del algoritmo, como el
 número de redes crítico) habría multiplicado ese coste sin aportar información
@@ -2388,13 +2555,13 @@ sobre la vida útil se traslada al análisis de viabilidad económica mediante e
 coste de capital amortizado (Anexo~\ref{app:viabilidad}). Asimismo, solo se
 contabiliza el envejecimiento por \emph{ciclado} (proporcional a la energía
 movida, dominante en una batería de uso diario); el envejecimiento de
-\emph{calendario} —degradación por tiempo y temperatura, independiente del uso—
+\emph{calendario} (degradación por tiempo y temperatura, independiente del uso)
 queda fuera del alcance del modelo. Además, el coste de
 degradación efectivo ($\approx0{,}006$\,€/kWh, Sección~\ref{sub:calibracion-degradacion})
 se calibra a la amortización de una batería LFP \emph{subvencionada}; bajo un
 coste no subvencionado el ahorro absoluto reportado sería algo menor. En todo
 caso, al aplicarse de forma idéntica a todos los controladores, la comparación
-entre ellos —objeto del estudio— es invariante a su valor.
+entre ellos (objeto del estudio) es invariante a su valor.
 
 \textbf{Marco regulatorio en evolución.} El tratamiento normativo del
 almacenamiento compartido se encuentra en evolución: junto al Real Decreto-ley
@@ -2409,14 +2576,14 @@ publicada la norma definitiva en el BOE.}
 
 La principal lección del trabajo es que el rigor en la construcción del entorno
 de simulación es tan importante como la sofisticación del algoritmo de RL. Un
-simulador con invariantes violados —simultaneidad de carga y descarga, data
-leakage en el split, SoC fuera de rango— invalida cualquier resultado
+simulador con invariantes violados (simultaneidad de carga y descarga, data
+leakage en el split, SoC fuera de rango) invalida cualquier resultado
 independientemente de la complejidad del agente. La suite de 76 tests
 automatizados no es documentación, es parte del resultado.
 
 La segunda lección es el valor de documentar los experimentos fallidos. El
-análisis de por qué DQN y PPO no funcionan en este dominio —identificando el
-error de cuantización y la incompatibilidad \textit{on-policy}— tiene mayor
+análisis de por qué DQN y PPO no funcionan en este dominio (identificando el
+error de cuantización y la incompatibilidad \textit{on-policy}) tiene mayor
 valor académico que simplemente presentar el resultado del algoritmo ganador.
 Un experimento con resultado negativo bien analizado justifica las decisiones
 de diseño del algoritmo final.
@@ -2466,7 +2633,7 @@ el componente aprendido hacia el componente de optimización clásica sin restar
 rendimiento al conjunto.
 
 % ── REFERENCIAS ───────────────────────────────────────────────
-\bibliography{referencias}
+\printbibliography[heading=bibintoc]
 
 % ── ANEXOS ────────────────────────────────────────────────────
 \appendix
@@ -2840,6 +3007,14 @@ td3\_residual (4) & Linux (WSL2) & 3.12.3 & 2.12.1+cpu \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\textbf{Coste de cómputo.} El entrenamiento completo de todos los modelos de
+la suite consume aproximadamente 500 horas de cómputo en un ordenador de gama
+media (CPU de escritorio, sin aceleración por GPU relevante para estos tamaños
+de red). El grueso del coste corresponde a las familias residuales, que
+resuelven un problema de programación lineal (el MPC base) en cada paso de
+simulación; la distribución entre cuatro máquinas (Cuadro~\ref{tab:entornos})
+respondió precisamente a la necesidad de paralelizar ese coste.
 
 \textbf{Evaluación determinista y comparabilidad.} El protocolo de evaluación
 es determinista: dado un modelo y una semilla de ruido, produce siempre el

@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net">
   <diagram id="arq-investigacion" name="Parte 1: I+D y Benchmarking">
-    <mxGraphModel dx="1873" dy="1020" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1550" math="0" shadow="0">
+    <mxGraphModel dx="1471" dy="801" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1550" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -14,10 +14,10 @@
           <mxGeometry height="70" width="320" x="390" y="100" as="geometry" />
         </mxCell>
         <mxCell id="l1_etl" parent="L1" style="rounded=0;html=1;fillColor=#CDE7FF;strokeColor=#3B6EA5;fontStyle=1;fontSize=16;" value="experimentos/build_dataset.py (ETL)&#xa;Escalado 15 viviendas + Ruido real&#xa;Alineación horaria" vertex="1">
-          <mxGeometry height="87.5" width="340" x="750" y="63.75" as="geometry" />
+          <mxGeometry height="87.5" width="320" x="750" y="63.75" as="geometry" />
         </mxCell>
         <mxCell id="l1_csv" parent="L1" style="shape=cylinder3;html=1;boundedLbl=1;backgroundOutline=1;size=8;fillColor=#85C1E9;strokeColor=#2E86C1;fontStyle=1;fontSize=16;strokeWidth=2;" value="dataset_final.csv&#xa;22.646 h × 5 columnas + metadata.json" vertex="1">
-          <mxGeometry height="105" width="270" x="1120" y="55" as="geometry" />
+          <mxGeometry height="105" width="310" x="1100" y="55" as="geometry" />
         </mxCell>
         <mxCell id="e1_1" edge="1" parent="L1" source="l1_raw" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=16;" target="l1_etl">
           <mxGeometry relative="1" as="geometry">
@@ -50,9 +50,9 @@
           <mxGeometry height="75" width="340" x="370" y="40" as="geometry" />
         </mxCell>
         <mxCell id="l2_fc" parent="L2" style="rounded=0;html=1;fillColor=#FFF9C4;strokeColor=#FBC02D;fontStyle=1;fontSize=16;" value="forecast.py&#xa;Pronóstico 24h AR(1) · Precios 3 capas" vertex="1">
-          <mxGeometry height="75" width="320" x="720" y="100" as="geometry" />
+          <mxGeometry height="75" width="310" x="720" y="100" as="geometry" />
         </mxCell>
-        <mxCell id="l2_obs" parent="L2" style="rounded=0;html=1;fillColor=#FAD7A0;strokeColor=#B7950B;fontStyle=1;fontSize=16;strokeWidth=2;" value="observation.py&#xa;Vector de Estado (108 var; +4 MPC en residual = 112) físicas/temp)" vertex="1">
+        <mxCell id="l2_obs" parent="L2" style="rounded=0;html=1;fillColor=#FAD7A0;strokeColor=#B7950B;fontStyle=1;fontSize=16;strokeWidth=2;" value="observation.py&lt;br&gt;Vector de Estado&amp;nbsp;&lt;div&gt;(108 var; +4 MPC en residual = 112)&amp;nbsp;&lt;/div&gt;&lt;div&gt;físicas/temp&lt;/div&gt;" vertex="1">
           <mxGeometry height="75" width="320" x="1080" y="80" as="geometry" />
         </mxCell>
         <mxCell id="e2_1" edge="1" parent="L2" source="l2_split" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;fontSize=16;" target="l2_sim">
@@ -84,13 +84,13 @@
           <mxGeometry height="67.5" width="340" x="20" y="52.5" as="geometry" />
         </mxCell>
         <mxCell id="l3_cont" parent="L3" style="rounded=0;html=1;fillColor=#D1F2EB;strokeColor=#1ABC9C;fontSize=16;" value="energy_env_continuo.py&#xa;Acción continua (4 flujos directos)" vertex="1">
-          <mxGeometry height="67.5" width="300" x="420" y="52.5" as="geometry" />
+          <mxGeometry height="57.5" width="300" x="420" y="52.5" as="geometry" />
         </mxCell>
         <mxCell id="l3_disc" parent="L3" style="rounded=0;html=1;fillColor=#D1F2EB;strokeColor=#1ABC9C;fontSize=16;" value="energy_env_discreto.py&#xa;Acción discreta (9 combinaciones)" vertex="1">
-          <mxGeometry height="67.5" width="240" x="750" y="52.5" as="geometry" />
+          <mxGeometry height="57.5" width="240" x="750" y="52.5" as="geometry" />
         </mxCell>
         <mxCell id="l3_res" parent="L3" style="rounded=0;html=1;fillColor=#A2D9CE;strokeColor=#117864;fontStyle=1;fontSize=16;" value="residual_env.py (ResidualEnv)&#xa;Acción híbrida residual (Δu sobre u_mpc)" vertex="1">
-          <mxGeometry height="67.5" width="330" x="1020" y="52.5" as="geometry" />
+          <mxGeometry height="57.5" width="330" x="1020" y="52.5" as="geometry" />
         </mxCell>
         <mxCell id="e3_1" edge="1" parent="L3" source="l3_base" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;fontSize=16;" target="l3_cont">
           <mxGeometry relative="1" as="geometry" />
@@ -248,8 +248,8 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="c_mpc_train" edge="1" parent="1" source="l5_mpc" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;strokeDasharray=4 4;strokeColor=#8E24AA;fontSize=16;" target="l4_mains" value="&lt;b style=&quot;background-color:#FFF;padding:2px;&quot;&gt;crear_mpc() para cálculo online u_mpc y Warmup DAWN (100k pasos)&lt;/b&gt;">
-          <mxGeometry relative="1" x="0.913" as="geometry">
-            <mxPoint y="-1" as="offset" />
+          <mxGeometry relative="1" x="0.8686" as="geometry">
+            <mxPoint as="offset" />
             <Array as="points">
               <mxPoint x="775" y="880" />
               <mxPoint x="555" y="880" />
