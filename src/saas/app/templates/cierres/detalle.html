@@ -71,12 +71,11 @@
     <div style="padding:1.3rem;">
       <div style="display:flex;flex-direction:column;gap:.5rem;">
         {% for label, val, unit in [
-            ('Consumo total',         cierre.consumo_total_kwh,          'kWh'),
-            ('Autoconsumo directo',   cierre.autoconsumo_directo_kwh,    'kWh'),
-            ('Autoconsumo indirecto', cierre.autoconsumo_indirecto_kwh,  'kWh'),
-            ('De batería',            cierre.energia_de_bateria_kwh,     'kWh'),
-            ('De red',                cierre.energia_de_red_kwh,         'kWh'),
-            ('Vertido a red',         cierre.vertido_a_red_kwh,          'kWh')
+            ('Consumo total', cierre.consumo_total_kwh,                                        'kWh'),
+            ('Autoconsumo',   cierre.autoconsumo_directo_kwh + cierre.autoconsumo_indirecto_kwh, 'kWh'),
+            ('De batería',    cierre.energia_de_bateria_kwh,                                   'kWh'),
+            ('De red',        cierre.energia_de_red_kwh,                                       'kWh'),
+            ('Vertido a red', cierre.vertido_a_red_kwh,                                        'kWh')
         ] %}
         <div style="display:flex;justify-content:space-between;align-items:center;
                     padding:.5rem 0;border-bottom:1px solid var(--border);">
