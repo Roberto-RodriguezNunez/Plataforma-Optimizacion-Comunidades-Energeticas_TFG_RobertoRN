@@ -421,13 +421,12 @@ def seed():
         # ------------------------------------------------------------------
         # Cierres mensuales
         # ------------------------------------------------------------------
-        print(f"\n📊 Creando cierres mensuales ({len(MESES)} meses × {len(VIVIENDAS_VILARIN)+len(VIVIENDAS_BRANAS)} viviendas)...")
+        # Vilarín (comunidad 1) la alimenta el edge en vivo, así que NO se siembran
+        # sus cierres de 2024 para no mezclarlos con los que publica el edge.
+        # Brañas mantiene los cierres de demostración de los 3 meses de 2024.
+        print(f"\n📊 Creando cierres mensuales de Brañas ({len(MESES)} meses × {len(VIVIENDAS_BRANAS)} viviendas)...")
         n_cierres = 0
         for mes in MESES:
-            for c in cierres_para_comunidad(vilarin_viv_oids, VIVIENDAS_VILARIN,
-                                            coefs_vilarin, mes):
-                save(c)
-                n_cierres += 1
             for c in cierres_para_comunidad(branas_viv_oids, VIVIENDAS_BRANAS,
                                             coefs_branas, mes, idx_offset=20):
                 save(c)
@@ -448,8 +447,8 @@ def seed():
         # Para Carmen (admin Vilarín)
         notif(1, 'general', '¡Bienvenida, administradora!',
               'Tu cuenta de administradora de Comunidade Solar de Vilarín está activa.', leida=True)
-        notif(1, 'cierre_disponible', 'Cierres de diciembre publicados',
-              'Los cierres de 2024-12 ya están disponibles para todas las viviendas de tu comunidad.')
+        notif(1, 'cierre_disponible', 'Cierres publicados',
+              'Los cierres energéticos ya están disponibles para las viviendas de tu comunidad.')
         notif(1, 'bateria_mantenimiento', 'Revisión anual de batería programada',
               'La batería BYD Battery-Box 80 kWh tiene programado su mantenimiento anual para enero de 2025.')
 
@@ -463,8 +462,8 @@ def seed():
 
         # Para usuarios normales (los primeros 6 vecinos)
         for usr_idx, nombre_corto in [(3,'Ana'), (4,'Luis'), (5,'María'), (6,'José'), (9,'Sara'), (10,'Pablo')]:
-            notif(usr_idx, 'cierre_disponible', f'Cierre de diciembre disponible',
-                  f'El cierre energético de 2024-12 de tu vivienda ya está disponible. '
+            notif(usr_idx, 'cierre_disponible', f'Cierre disponible',
+                  f'El cierre energético más reciente de tu vivienda ya está disponible. '
                   f'Consulta tu ahorro en el detalle de vivienda.')
 
         # Una no leída para demostrar el contador

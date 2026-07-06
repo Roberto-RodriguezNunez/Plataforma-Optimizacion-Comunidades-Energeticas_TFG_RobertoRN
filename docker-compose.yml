@@ -43,9 +43,9 @@ services:
     #   docker buildx build --platform linux/arm64 -f docker/Dockerfile.edge -t energycomm-edge:arm64 .
     environment:
       - FEED_MODE=simulado
-      - N_STEPS=8760        # 1 año completo (365 días × 24 h) ≈ 6-7 min
-      - START_STEP=5137     # dataset row 5137 = 2022-01-01 → estaciones alineadas
-      - START_DATE=2025-01-01  # step 0 = 2025-01-01 00:00 UTC
+      - N_STEPS=8749        # todo 2023 disponible en el dataset (acaba 2023-12-31 12:00) ≈ 6-7 min
+      - START_STEP=13897    # dataset row 13897 = 2023-01-01 00:00 (datos reales post-crisis)
+      - START_DATE=2025-01-01  # se muestra como 2025 (step 0 = 2025-01-01 00:00 UTC)
       - SAAS_API_URL=http://web:5000
       - EDGE_API_KEY=lealink-edge-secret
       - COMUNIDAD_ID=1
