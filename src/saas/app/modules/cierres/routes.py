@@ -51,6 +51,43 @@ def _distribuir(total, pesos_norm, step, vivienda_ids, sigma, salt=0):
     return [total * x / s for x in p]
 
 
+def _repartir_ahorro_sin_negativos(coefs, facturas_base, ahorro_total):
+    """Reparte `ahorro_total` entre viviendas proporcionalmente a su coeficiente
+    (kWp aportado), pero capando el ahorro de cada vivienda a su propia factura
+    base para que ninguna cuota resulte negativa: la cooperativa reduce el gasto
+    de cada socio, nunca le paga. El exceso de las viviendas cuya parte
+    proporcional supera su factura base se redistribuye entre las demás
+    (water-filling).
+
+    Devuelve la lista de ahorros con `0 <= ahorro_i <= facturas_base_i`. Como
+    `ahorro_total <= sum(facturas_base)` por construcción (ahorro = max(0,
+    Σbase − factura_común) y la factura común es ≥ 0), se cumple además
+    `sum(ahorros) == ahorro_total`, de modo que Σ cuotas == factura común. Cuando
+    ninguna vivienda se satura, `ahorro_i == coef_i * ahorro_total` exactamente.
+    """
+    n = len(coefs)
+    ahorros = [0.0] * n
+    activo = [True] * n
+    for _ in range(n + 1):
+        coef_activo = sum(coefs[i] for i in range(n) if activo[i])
+        restante = ahorro_total - sum(ahorros)
+        if restante <= 1e-12 or coef_activo <= 1e-12:
+            break
+        # ¿Alguna activa superaría su factura base con el reparto proporcional?
+        capadas = [i for i in range(n) if activo[i] and
+                   restante * coefs[i] / coef_activo > facturas_base[i] - ahorros[i]]
+        if capadas:
+            for i in capadas:  # satúralas a su tope y redistribuye en la próxima ronda
+                ahorros[i] = facturas_base[i]
+                activo[i] = False
+        else:  # nadie se satura: reparto proporcional final entre las activas
+            for i in range(n):
+                if activo[i]:
+                    ahorros[i] += restante * coefs[i] / coef_activo
+            break
+    return ahorros
+
+
 def _comprobar_acceso_o_superadmin(viv_oid):
     if current_user.es_superadmin:
         return
@@ -84,8 +121,10 @@ def _calcular_cierre_desde_operaciones(comunidad_id, mes):
       factura_base_i        = Σ max(0,c−g)×pc − max(0,g−c)×pe   (sin comunidad ni batería)
 
       ahorro_total   = max(0, Σ_i factura_base_i − factura_real_com)
-      ahorro_i       = coef_i × ahorro_total
-      cuota_real_i   = factura_base_i − ahorro_i      (Σ cuotas == factura_real_com)
+      ahorro_i       = reparto de ahorro_total ∝ coef_i, capado a factura_base_i
+                       (water-filling: el exceso se redistribuye al resto), de
+                       modo que 0 ≤ ahorro_i ≤ factura_base_i
+      cuota_real_i   = factura_base_i − ahorro_i ≥ 0  (Σ cuotas == factura_real_com)
 
     El ruido está sembrado por (vivienda_id, step): recalcular siempre da el mismo resultado.
     """
@@ -131,7 +170,7 @@ def _calcular_cierre_desde_operaciones(comunidad_id, mes):
     if not ops:
         return 0, f'Sin operaciones registradas para {mes}'
 
-    acums = [dict(consumo=0.0, autoconsumo=0.0, bat=0.0, vertido=0.0,
+    acums = [dict(consumo=0.0, autoconsumo=0.0, indirecto=0.0, bat=0.0, vertido=0.0,
                   coste_sin_paneles=0.0,
                   compra_base_cost=0.0, compensacion_base=0.0)
              for _ in viviendas]
@@ -155,40 +194,60 @@ def _calcular_cierre_desde_operaciones(comunidad_id, mes):
         consumos = _distribuir(ct, con_pesos, step, viv_ids, _SIGMA_CONSUMO, salt=0)
         gens     = _distribuir(gt, gen_pesos, step, viv_ids, _SIGMA_GEN, salt=2_000_000)
 
-        for j, viv in enumerate(viviendas):
-            c = consumos[j]
-            g = gens[j]
-            b = pd_bat * viv.coeficiente_reparto  # batería proporcional a coef
+        # Cascada horaria del origen del consumo, coherente con el neteo del CUPS
+        # único: 1) sol propio (directo), 2) sol de otras viviendas que cubre el
+        # déficit vía neteo (indirecto = compartido), 3) batería comunitaria
+        # repartida por déficit restante (nunca más de lo que falta), 4) red.
+        # Por construcción directo+indirecto+batería+red == consumo cada hora.
+        directos = [min(g, c) for g, c in zip(gens, consumos)]
+        deficits = [c - d for c, d in zip(consumos, directos)]        # = max(0, c-g)
+        surplus  = [max(0.0, g - c) for g, c in zip(gens, consumos)]
+        shared   = min(sum(surplus), sum(deficits))                   # sol compartido en la comunidad
+        sum_def  = sum(deficits)
+        indirectos = [d * shared / sum_def if sum_def > 1e-12 else 0.0 for d in deficits]
+        rem_def  = [d - ind for d, ind in zip(deficits, indirectos)]  # déficit tras el sol
+        sum_rem  = sum(rem_def)
+        bat_alloc = min(pd_bat, sum_rem)                              # batería no cubre más que el déficit
+        baterias = [r * bat_alloc / sum_rem if sum_rem > 1e-12 else 0.0 for r in rem_def]
 
-            acums[j]['consumo']     += c
-            acums[j]['autoconsumo'] += min(g, c)
-            acums[j]['bat']         += b
-            acums[j]['vertido']     += max(0.0, g - c)
+        for j in range(len(viviendas)):
+            acums[j]['consumo']     += consumos[j]
+            acums[j]['autoconsumo'] += directos[j]
+            acums[j]['indirecto']   += indirectos[j]
+            acums[j]['bat']         += baterias[j]
+            acums[j]['vertido']     += surplus[j]
             # Escenario sin paneles solares
-            acums[j]['coste_sin_paneles'] += c * pc
+            acums[j]['coste_sin_paneles'] += consumos[j] * pc
             # Escenario sin comunidad: solo sus paneles, sin batería ni reparto
-            acums[j]['compra_base_cost']  += max(0.0, c - g) * pc
-            acums[j]['compensacion_base'] += max(0.0, g - c) * pe
+            acums[j]['compra_base_cost']  += deficits[j] * pc
+            acums[j]['compensacion_base'] += surplus[j] * pe
 
     # Ahorro total de la comunidad: lo que la cooperativa (neteo + batería)
     # ahorra frente a que cada casa fuera sola con sus paneles.
     facturas_base = [max(0.0, a['compra_base_cost'] - a['compensacion_base']) for a in acums]
     ahorro_total  = max(0.0, sum(facturas_base) - factura_real_com)
 
+    # Reparto del ahorro por coeficiente, capado a la factura base de cada
+    # vivienda (water-filling) para que ninguna cuota quede negativa.
+    coefs   = [v.coeficiente_reparto for v in viviendas]
+    ahorros = _repartir_ahorro_sin_negativos(coefs, facturas_base, ahorro_total)
+
     n_creados = 0
-    for viv, acum, f_base in zip(viviendas, acums, facturas_base):
+    for viv, acum, f_base, ahorro_viv in zip(viviendas, acums, facturas_base, ahorros):
         coef = viv.coeficiente_reparto
         factura_sin_paneles = round(acum['coste_sin_paneles'], 2)
         factura_base        = round(f_base, 2)
-        # El ahorro común se resta a la factura de cada vecino según su
-        # coeficiente (kWp aportado); la suma de cuotas reproduce la factura común.
-        ahorro              = round(coef * ahorro_total, 2)
-        factura_real        = round(factura_base - ahorro, 2)
+        # El ahorro común se resta a la factura de cada vecino; el reparto va por
+        # coeficiente (kWp aportado) pero acotado a su factura base, de modo que
+        # la suma de cuotas reproduce la factura común sin cuotas negativas.
+        ahorro              = round(ahorro_viv, 2)
+        factura_real        = round(f_base - ahorro_viv, 2)
 
         existente = CierreMensual.query.filter_by(vivienda_oid=viv.id, mes=mes).first()
         if existente:
             existente.consumo_total_kwh               = round(acum['consumo'], 3)
             existente.autoconsumo_directo_kwh         = round(acum['autoconsumo'], 3)
+            existente.autoconsumo_indirecto_kwh       = round(acum['indirecto'], 3)
             existente.energia_de_bateria_kwh          = round(acum['bat'], 3)
             existente.vertido_a_red_kwh               = round(acum['vertido'], 3)
             existente.ahorro_eur                      = ahorro
@@ -202,6 +261,7 @@ def _calcular_cierre_desde_operaciones(comunidad_id, mes):
                 vivienda_oid=viv.id, mes=mes,
                 consumo_total_kwh=round(acum['consumo'], 3),
                 autoconsumo_directo_kwh=round(acum['autoconsumo'], 3),
+                autoconsumo_indirecto_kwh=round(acum['indirecto'], 3),
                 energia_de_bateria_kwh=round(acum['bat'], 3),
                 vertido_a_red_kwh=round(acum['vertido'], 3),
                 ahorro_eur=ahorro,

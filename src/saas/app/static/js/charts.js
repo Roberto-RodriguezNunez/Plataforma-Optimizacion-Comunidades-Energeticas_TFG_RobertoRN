@@ -25,7 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
     other:      'rgba(0,0,0,.1)',
     otherLine:  'rgba(0,0,0,.2)',
     // Doughnut — origen energía
-    d0: '#00C896',   // autoconsumo solar
+    d0: '#00C896',   // autoconsumo directo (sol propio)
+    d0b: '#6EE7B7',  // autoconsumo indirecto (sol compartido de la comunidad)
     d1: '#3B82F6',   // batería comunitaria
     d2: '#E53E3E',   // red eléctrica
     d3: '#aaa',      // residual
@@ -178,8 +179,8 @@ document.addEventListener('DOMContentLoaded', () => {
     /** Doughnut — mix energético (minimalista) */
     'doughnut-mix': (canvas, datos) => {
       const labels = datos.labels;
-      // Asignar colores por orden: red → batería → solar → residual
-      const palette = [C.d0, C.d1, C.d2, C.d3];
+      // Orden de segmentos: autoconsumo directo → indirecto → batería → red
+      const palette = [C.d0, C.d0b, C.d1, C.d2];
       new Chart(canvas, {
         type: 'doughnut',
         data: {

@@ -23,6 +23,9 @@ class CierreMensual(db.Model):
     mes = db.Column(db.String(7), nullable=False)  # formato 'YYYY-MM'
     consumo_total_kwh = db.Column(db.Float, default=0.0)
     autoconsumo_directo_kwh = db.Column(db.Float, default=0.0)
+    # Autoconsumo indirecto: sol de otras viviendas de la comunidad que, vía el
+    # neteo horario del CUPS único, cubre el déficit de esta (autoconsumo compartido).
+    autoconsumo_indirecto_kwh = db.Column(db.Float, default=0.0)
     energia_de_bateria_kwh = db.Column(db.Float, default=0.0)
     vertido_a_red_kwh = db.Column(db.Float, default=0.0)
     ahorro_eur = db.Column(db.Float, default=0.0)
@@ -42,11 +45,13 @@ class CierreMensual(db.Model):
                  factura_sin_paneles_eur=0.0,
                  factura_escenario_base_eur=0.0,
                  factura_escenario_real_eur=0.0,
-                 porcentaje_ahorro_global=0.0, coeficiente_reparto_aplicado=0.0):
+                 porcentaje_ahorro_global=0.0, coeficiente_reparto_aplicado=0.0,
+                 autoconsumo_indirecto_kwh=0.0):
         self.vivienda_oid = int(vivienda_oid)
         self.mes = mes  # formato 'YYYY-MM'
         self.consumo_total_kwh = float(consumo_total_kwh)
         self.autoconsumo_directo_kwh = float(autoconsumo_directo_kwh)
+        self.autoconsumo_indirecto_kwh = float(autoconsumo_indirecto_kwh)
         self.energia_de_bateria_kwh = float(energia_de_bateria_kwh)
         self.vertido_a_red_kwh = float(vertido_a_red_kwh)
         self.ahorro_eur = float(ahorro_eur)
@@ -63,9 +68,10 @@ class CierreMensual(db.Model):
 
     @property
     def energia_de_red_kwh(self) -> float:
-        """Energía consumida de la red eléctrica (resto tras autoconsumo y batería)."""
+        """Energía de la red (resto tras autoconsumo directo, indirecto y batería)."""
         return max(0.0, self.consumo_total_kwh
                    - self.autoconsumo_directo_kwh
+                   - self.autoconsumo_indirecto_kwh
                    - self.energia_de_bateria_kwh)
 
     def __repr__(self):

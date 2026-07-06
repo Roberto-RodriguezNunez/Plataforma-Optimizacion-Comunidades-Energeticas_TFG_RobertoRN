@@ -175,8 +175,10 @@ def detalle(safe_oid):
     if cierres:
         ult = cierres[-1]
         chart_mix = json.dumps({
-            'labels': ['Autoconsumo solar', 'Batería comunitaria', 'De la red'],
+            'labels': ['Autoconsumo directo', 'Autoconsumo indirecto (comunidad)',
+                       'Batería comunitaria', 'De la red'],
             'datos':  [ult.autoconsumo_directo_kwh,
+                       round(ult.autoconsumo_indirecto_kwh, 2),
                        ult.energia_de_bateria_kwh,
                        round(ult.energia_de_red_kwh, 2)],
             'mes': ult.mes

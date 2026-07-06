@@ -9,7 +9,7 @@ from app.helpers import oid_to_safe
 from app.models.cierre import CierreMensual
 from app.models.operacion import OperacionHoraria
 from app.models.vivienda import Vivienda
-from app.modules.cierres.routes import _distribuir
+from app.modules.cierres.routes import _distribuir, _repartir_ahorro_sin_negativos
 from tests.conftest import login_superadmin, login_usuario
 
 
@@ -66,6 +66,48 @@ class TestDistribuir:
             sumas[0] += r[0]
             sumas[1] += r[1]
         assert sumas[0] > sumas[1], "mayor kwp debe recibir más generación en media"
+
+
+# ---------------------------------------------------------------------------
+# Tests unitarios del reparto de ahorro (sin cuotas negativas)
+# ---------------------------------------------------------------------------
+
+class TestRepartoAhorroSinNegativos:
+    def test_sin_saturacion_es_proporcional(self):
+        """Si a nadie le toca más ahorro que su factura base, el reparto es el
+        proporcional exacto por coeficiente."""
+        coefs = [0.5, 0.3, 0.2]
+        base  = [10.0, 10.0, 10.0]
+        ahorros = _repartir_ahorro_sin_negativos(coefs, base, ahorro_total=4.0)
+        assert ahorros == pytest.approx([2.0, 1.2, 0.8])
+        assert sum(ahorros) == pytest.approx(4.0)
+
+    def test_capa_a_factura_base_y_redistribuye(self):
+        """Una vivienda con coef alto pero factura base pequeña no puede recibir
+        más ahorro que su factura: el exceso va a las demás y ninguna cuota
+        queda negativa."""
+        coefs = [0.7, 0.3]
+        base  = [1.0, 10.0]         # la 0 tiene coef alto pero base diminuta
+        ahorros = _repartir_ahorro_sin_negativos(coefs, base, ahorro_total=5.0)
+        # La 0 se capa a 1.0 (antes recibía 0.7*5=3.5 → cuota -2.5); el resto a la 1.
+        assert ahorros[0] == pytest.approx(1.0)
+        assert ahorros[1] == pytest.approx(4.0)
+        assert sum(ahorros) == pytest.approx(5.0)          # se conserva el total
+        cuotas = [b - a for b, a in zip(base, ahorros)]
+        assert all(c >= -1e-9 for c in cuotas)             # ninguna cuota negativa
+
+    def test_ahorro_nunca_supera_factura_base(self):
+        """Invariante general: 0 <= ahorro_i <= factura_base_i para cualquier reparto."""
+        coefs = [0.4, 0.4, 0.2]
+        base  = [0.5, 2.0, 8.0]
+        ahorros = _repartir_ahorro_sin_negativos(coefs, base, ahorro_total=6.0)
+        for a, b in zip(ahorros, base):
+            assert -1e-9 <= a <= b + 1e-9
+        assert sum(ahorros) == pytest.approx(6.0)
+
+    def test_ahorro_cero_no_reparte(self):
+        ahorros = _repartir_ahorro_sin_negativos([0.5, 0.5], [3.0, 4.0], ahorro_total=0.0)
+        assert ahorros == pytest.approx([0.0, 0.0])
 
 
 # ---------------------------------------------------------------------------
@@ -201,6 +243,32 @@ class TestGenerarCierreDesdeOperaciones:
         for c in cierres:
             assert abs(c.ahorro_eur - c.coeficiente_reparto_aplicado * ahorro_total) < 0.05
 
+    def test_ninguna_factura_real_negativa(self, app, client, superadmin, comunidad):
+        """Regresión: una vivienda con coef alto pero factura base pequeña (muchos
+        paneles, poco consumo neto) recibía más ahorro que su factura y su cuota
+        salía negativa. Ahora el ahorro se capa a la factura base y ninguna
+        cuota queda por debajo de 0; la suma sigue reproduciendo la factura común.
+        """
+        _vivienda_con_paneles(comunidad.__oid__, coef=0.9, kwp=20.0, cups='ES0040')  # coef alto, base ~0
+        _vivienda_con_paneles(comunidad.__oid__, coef=0.1, kwp=1.0, cups='ES0041')
+        _insertar_operaciones(comunidad.__oid__, n=24, mes='2025-01')
+
+        login_superadmin(client, superadmin)
+        safe = oid_to_safe(comunidad.__oid__)
+        client.post(f'/cierres/comunidad/{safe}/generar/2025-01', follow_redirects=True)
+
+        cierres = CierreMensual.query.all()
+        assert len(cierres) == 2
+        for c in cierres:
+            assert c.factura_escenario_real_eur >= -1e-9, \
+                f'cuota negativa en vivienda {c.vivienda_oid}: {c.factura_escenario_real_eur}'
+            # El ahorro nunca supera la factura base de la vivienda
+            assert c.ahorro_eur <= c.factura_escenario_base_eur + 1e-9
+        # Se conserva la factura común neteada (24 h × 0.90 €/h)
+        suma_cuotas = sum(c.factura_escenario_real_eur for c in cierres)
+        assert abs(suma_cuotas - 24 * 0.90) < 0.05, \
+            f'Σ cuotas {suma_cuotas:.2f} ≠ factura neteada 21.60'
+
     def test_suma_consumos_individuales_igual_total(self, app, client, superadmin, comunidad, srp):
         """La suma de consumos individuales debe ser ≈ consumo_total acumulado."""
         v1 = _vivienda_con_paneles(comunidad.__oid__, coef=0.4, kwp=3.2, cups='ES0001', orient='sur')
@@ -273,3 +341,67 @@ class TestGenerarCierreDesdeOperaciones:
 
         client.post(f'/cierres/comunidad/{safe}/generar/2025-01', follow_redirects=True)
         assert srp.num_objs(CierreMensual) == 1   # no duplica
+
+
+class TestOrigenEnergia:
+    """El doughnut 'Origen de la energía' descompone el consumo en
+    directo + indirecto (sol compartido) + batería + red, coherente con el neteo.
+    """
+
+    def _generar(self, client, superadmin, safe):
+        login_superadmin(client, superadmin)
+        client.post(f'/cierres/comunidad/{safe}/generar/2025-01', follow_redirects=True)
+        return CierreMensual.query.all()
+
+    def test_origen_suma_siempre_el_consumo(self, app, client, superadmin, comunidad):
+        """directo + indirecto + batería + red == consumo para cada vivienda."""
+        _vivienda_con_paneles(comunidad.__oid__, coef=0.5, kwp=4.0, cups='ES0050')
+        _vivienda_con_paneles(comunidad.__oid__, coef=0.3, kwp=2.4, cups='ES0051')
+        _vivienda_con_paneles(comunidad.__oid__, coef=0.2, kwp=1.6, cups='ES0052')
+        _insertar_operaciones(comunidad.__oid__, n=24, mes='2025-01')
+        cierres = self._generar(client, superadmin, oid_to_safe(comunidad.__oid__))
+        for c in cierres:
+            suma = (c.autoconsumo_directo_kwh + c.autoconsumo_indirecto_kwh
+                    + c.energia_de_bateria_kwh + c.energia_de_red_kwh)
+            assert abs(suma - c.consumo_total_kwh) < 0.01, \
+                f'origen {suma:.3f} ≠ consumo {c.consumo_total_kwh:.3f} (viv {c.vivienda_oid})'
+
+    def test_bateria_no_supera_el_consumo_ni_descuadra(self, app, client, superadmin, comunidad):
+        """Regresión del Problema A: una vivienda con coef alto y consumo bajo ya
+        no recibe más batería que su déficit; el doughnut sigue cuadrando."""
+        _vivienda_con_paneles(comunidad.__oid__, coef=0.85, kwp=12.0, cups='ES0060')
+        _vivienda_con_paneles(comunidad.__oid__, coef=0.15, kwp=2.0, cups='ES0061')
+        # Mucha descarga de batería a las casas
+        for i in range(24):
+            ts = datetime(2025, 1, 1, i, tzinfo=timezone.utc)
+            db.session.add(OperacionHoraria(
+                comunidad_oid=comunidad.__oid__, ts=ts, step=i,
+                consumo_total_kwh=10.0, gen_total_kwh=2.0, precio_compra=0.20,
+                precio_exc=0.06, soc=0.6, p_carga_solar=0.0, p_carga_red=0.0,
+                p_descarga_casa=6.0, p_descarga_red=0.0, beneficio_marginal=0.1))
+        db.session.commit()
+        cierres = self._generar(client, superadmin, oid_to_safe(comunidad.__oid__))
+        for c in cierres:
+            assert c.energia_de_bateria_kwh <= c.consumo_total_kwh + 1e-6, \
+                f'batería {c.energia_de_bateria_kwh} > consumo {c.consumo_total_kwh}'
+            suma = (c.autoconsumo_directo_kwh + c.autoconsumo_indirecto_kwh
+                    + c.energia_de_bateria_kwh + c.energia_de_red_kwh)
+            assert abs(suma - c.consumo_total_kwh) < 0.01
+
+    def test_indirecto_captura_sol_compartido(self, app, client, superadmin, comunidad):
+        """En una hora soleada, una vivienda con muchos paneles vierte excedente
+        que, vía neteo, cubre a otra deficitaria: esta registra autoconsumo indirecto."""
+        _vivienda_con_paneles(comunidad.__oid__, coef=0.5, kwp=10.0, cups='ES0070')  # excedente
+        _vivienda_con_paneles(comunidad.__oid__, coef=0.5, kwp=1.0, cups='ES0071')   # déficit
+        # Hora con generación alta y consumo moderado → hay excedente que compartir
+        for i in range(24):
+            ts = datetime(2025, 1, 1, i, tzinfo=timezone.utc)
+            db.session.add(OperacionHoraria(
+                comunidad_oid=comunidad.__oid__, ts=ts, step=i,
+                consumo_total_kwh=8.0, gen_total_kwh=10.0, precio_compra=0.20,
+                precio_exc=0.06, soc=0.6, p_carga_solar=0.0, p_carga_red=0.0,
+                p_descarga_casa=0.0, p_descarga_red=0.0, beneficio_marginal=0.1))
+        db.session.commit()
+        cierres = self._generar(client, superadmin, oid_to_safe(comunidad.__oid__))
+        total_indirecto = sum(c.autoconsumo_indirecto_kwh for c in cierres)
+        assert total_indirecto > 0.0, 'debería haber autoconsumo indirecto (sol compartido)'
