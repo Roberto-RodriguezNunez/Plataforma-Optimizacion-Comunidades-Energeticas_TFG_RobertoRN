@@ -1,0 +1,17 @@
+{
+  "familia": "G",
+  "version": "G4-idle",
+  "algo": "idle",
+  "controller": "IDLE",
+  "media_eur_sem": 0.0,
+  "std_seeds": 0.0,
+  "ic95_low": 0.0,
+  "ic95_high": 0.0,
+  "n_eval_seeds": 10,
+  "vs_mpc_realista": -43.385,
+  "wilcoxon_p": "n/a",
+  "mejor_seed": "",
+  "train_scores": "{}",
+  "hiperparametros": "{}",
+  "timestamp": "2026-06-29T02:44:33"
+}

@@ -1,0 +1,17 @@
+{
+  "familia": "G",
+  "version": "G3-heuristico",
+  "algo": "heuristico",
+  "controller": "Heuristico",
+  "media_eur_sem": 30.488,
+  "std_seeds": 0.221,
+  "ic95_low": 28.137,
+  "ic95_high": 32.905,
+  "n_eval_seeds": 10,
+  "vs_mpc_realista": -12.897,
+  "wilcoxon_p": "4.57e-75",
+  "mejor_seed": "",
+  "train_scores": "{}",
+  "hiperparametros": "{}",
+  "timestamp": "2026-06-29T02:44:33"
+}

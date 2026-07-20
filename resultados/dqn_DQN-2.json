@@ -1,0 +1,17 @@
+{
+  "familia": "dqn",
+  "version": "DQN-2",
+  "algo": "dqn",
+  "controller": "DQN",
+  "media_eur_sem": 37.239,
+  "std_seeds": 0.239,
+  "ic95_low": 35.015,
+  "ic95_high": 39.567,
+  "n_eval_seeds": 10,
+  "vs_mpc_realista": -6.146,
+  "wilcoxon_p": "5.03e-72",
+  "mejor_seed": 42,
+  "train_scores": "{\"42\": 35.898704079999995, \"1337\": 34.943641959999994, \"2024\": 35.4843997}",
+  "hiperparametros": "{\"total_timesteps\": 3000000, \"learning_rate\": 0.0001, \"buffer_size\": 500000, \"learning_starts\": 10000, \"batch_size\": 64, \"gamma\": 0.995, \"exploration_fraction\": 0.5, \"exploration_final_eps\": 0.05, \"target_update_interval\": 1500, \"train_freq\": 4, \"net_arch\": [256, 128], \"n_step\": 8, \"eval_freq\": 20000}",
+  "timestamp": "2026-06-29T07:59:08"
+}

@@ -1,0 +1,17 @@
+{
+  "familia": "ppo_continuo",
+  "version": "PPO-C2",
+  "algo": "ppo_continuo",
+  "controller": "ContinuoPPO",
+  "media_eur_sem": 33.656,
+  "std_seeds": 0.058,
+  "ic95_low": 31.53,
+  "ic95_high": 35.878,
+  "n_eval_seeds": 10,
+  "vs_mpc_realista": -9.728,
+  "wilcoxon_p": "1.50e-80",
+  "mejor_seed": 2024,
+  "train_scores": "{\"42\": 29.68750514, \"1337\": 30.1592134, \"2024\": 30.413392780000002}",
+  "hiperparametros": "{\"total_timesteps\": 4000000, \"n_steps\": 8192, \"batch_size\": 128, \"n_epochs\": 5, \"gamma\": 0.99, \"gae_lambda\": 0.95, \"clip_range\": 0.2, \"vf_coef\": 0.5, \"net_arch_pi\": [256, 256], \"net_arch_vf\": [256, 256], \"learning_rate\": {\"init\": 0.0003, \"final\": 3e-05}, \"ent_coef\": {\"init\": 0.005, \"final\": 0.0005}, \"log_std_init\": -0.7, \"eval_freq\": 20000, \"action_std_init\": 0.3}",
+  "timestamp": "2026-06-30T07:15:15"
+}

@@ -1,0 +1,17 @@
+{
+  "familia": "ppo",
+  "version": "PPO-D1",
+  "algo": "ppo",
+  "controller": "PPO",
+  "media_eur_sem": 37.494,
+  "std_seeds": 0.275,
+  "ic95_low": 35.298,
+  "ic95_high": 39.778,
+  "n_eval_seeds": 10,
+  "vs_mpc_realista": -5.891,
+  "wilcoxon_p": "5.47e-73",
+  "mejor_seed": 2024,
+  "train_scores": "{\"1337\": 37.25543046, \"2024\": 37.86434854, \"42\": 37.12098094}",
+  "hiperparametros": "{\"total_timesteps\": 4000000, \"n_steps\": 2048, \"batch_size\": 128, \"n_epochs\": 5, \"gamma\": 0.99, \"gae_lambda\": 0.95, \"clip_range\": 0.2, \"vf_coef\": 0.5, \"net_arch_pi\": [64, 64], \"net_arch_vf\": [64, 64], \"learning_rate\": 0.0003, \"ent_coef\": 0.01, \"eval_freq\": 20000}",
+  "timestamp": "2026-07-04T03:19:38"
+}

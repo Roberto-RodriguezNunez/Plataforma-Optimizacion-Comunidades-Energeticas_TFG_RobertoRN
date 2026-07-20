@@ -1,0 +1,17 @@
+{
+  "familia": "G",
+  "version": "G2-MPC-realista",
+  "algo": "mpc",
+  "controller": "MPC realista",
+  "media_eur_sem": 43.385,
+  "std_seeds": 0.198,
+  "ic95_low": 41.242,
+  "ic95_high": 45.573,
+  "n_eval_seeds": 10,
+  "vs_mpc_realista": 0.0,
+  "wilcoxon_p": "1.00e+00",
+  "mejor_seed": "",
+  "train_scores": "{}",
+  "hiperparametros": "{}",
+  "timestamp": "2026-06-29T02:44:33"
+}

@@ -1,0 +1,17 @@
+{
+  "familia": "sac_puro",
+  "version": "F5",
+  "algo": "sac_puro",
+  "controller": "ContinuoSAC",
+  "media_eur_sem": 26.943,
+  "std_seeds": 0.251,
+  "ic95_low": 25.525,
+  "ic95_high": 28.4,
+  "n_eval_seeds": 10,
+  "vs_mpc_realista": -16.442,
+  "wilcoxon_p": "1.26e-83",
+  "mejor_seed": 1337,
+  "train_scores": "{\"42\": 24.93567656, \"1337\": 25.236897960000007, \"2024\": 24.32706952}",
+  "hiperparametros": "{\"total_timesteps\": 1000000, \"learning_rate\": 0.0001, \"buffer_size\": 100000, \"batch_size\": 256, \"gamma\": 0.99, \"tau\": 0.005, \"ent_coef\": 0.01, \"target_entropy\": \"auto\", \"learning_starts\": 10000, \"net_arch\": [256, 256], \"eval_freq\": 20000}",
+  "timestamp": "2026-07-03T20:22:57"
+}

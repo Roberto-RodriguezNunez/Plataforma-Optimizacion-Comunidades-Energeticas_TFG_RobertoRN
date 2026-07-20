@@ -1,0 +1,17 @@
+{
+  "familia": "td3_residual",
+  "version": "TD3-3",
+  "algo": "td3_residual",
+  "controller": "ResidualTD3(mult,dmax=0.15)",
+  "media_eur_sem": 43.571,
+  "std_seeds": 0.124,
+  "ic95_low": 41.453,
+  "ic95_high": 45.721,
+  "n_eval_seeds": 10,
+  "vs_mpc_realista": 0.186,
+  "wilcoxon_p": "7.05e-02",
+  "mejor_seed": 1337,
+  "train_scores": "{\"42\": 40.732956439999995, \"1337\": 40.778942840000006, \"2024\": 40.7017552}",
+  "hiperparametros": "{\"total_timesteps\": 1000000, \"residual_mode\": \"mult\", \"delta_max\": 0.15, \"dawn_warmup_steps\": 100000, \"learning_rate\": 0.0003, \"buffer_size\": 100000, \"batch_size\": 256, \"gamma\": 0.99, \"tau\": 0.005, \"net_arch\": [256, 256], \"policy_delay\": 3, \"target_policy_noise\": 0.2, \"target_noise_clip\": 0.5, \"action_noise\": {\"tipo\": \"normal\", \"sigma\": 0.1}, \"eval_freq\": 20000}",
+  "timestamp": "2026-07-02T00:38:42"
+}

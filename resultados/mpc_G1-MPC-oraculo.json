@@ -1,0 +1,17 @@
+{
+  "familia": "G",
+  "version": "G1-MPC-oraculo",
+  "algo": "mpc",
+  "controller": "MPC oraculo",
+  "media_eur_sem": 51.448,
+  "std_seeds": 29.154,
+  "ic95_low": 44.066,
+  "ic95_high": 60.289,
+  "n_eval_seeds": 10,
+  "vs_mpc_realista": 8.063,
+  "wilcoxon_p": "n/a",
+  "mejor_seed": "",
+  "train_scores": "{}",
+  "hiperparametros": "{}",
+  "timestamp": "2026-06-29T02:44:33"
+}

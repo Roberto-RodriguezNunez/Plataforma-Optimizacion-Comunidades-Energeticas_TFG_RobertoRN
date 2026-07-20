@@ -1,0 +1,17 @@
+{
+  "familia": "ddpg_residual",
+  "version": "DDPG-2",
+  "algo": "ddpg_residual",
+  "controller": "ResidualDDPG(mult,dmax=0.15)",
+  "media_eur_sem": 43.358,
+  "std_seeds": 0.148,
+  "ic95_low": 41.241,
+  "ic95_high": 45.522,
+  "n_eval_seeds": 10,
+  "vs_mpc_realista": -0.027,
+  "wilcoxon_p": "2.03e-01",
+  "mejor_seed": 1337,
+  "train_scores": "{\"1337\": 40.79817812, \"2024\": 40.7473451, \"42\": 40.750401800000006}",
+  "hiperparametros": "{\"total_timesteps\": 1000000, \"residual_mode\": \"mult\", \"delta_max\": 0.15, \"dawn_warmup_steps\": 100000, \"learning_rate\": 0.0001, \"buffer_size\": 100000, \"batch_size\": 256, \"gamma\": 0.99, \"tau\": 0.005, \"net_arch\": [256, 256], \"action_noise\": {\"tipo\": \"ou\", \"sigma\": 0.15}, \"eval_freq\": 20000}",
+  "timestamp": "2026-07-04T03:17:25"
+}

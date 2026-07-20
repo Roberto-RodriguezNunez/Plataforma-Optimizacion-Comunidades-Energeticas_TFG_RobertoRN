@@ -1,0 +1,17 @@
+{
+  "familia": "residual_sac",
+  "version": "F6-s25",
+  "algo": "residual_sac",
+  "controller": "ResidualSAC(mult,dmax=0.15)",
+  "media_eur_sem": 40.015,
+  "std_seeds": 0.174,
+  "ic95_low": 38.107,
+  "ic95_high": 41.989,
+  "n_eval_seeds": 10,
+  "vs_mpc_realista": 1.422,
+  "wilcoxon_p": "8.55e-61",
+  "mejor_seed": 42,
+  "train_scores": "{\"42\": 37.26818886}",
+  "hiperparametros": "{\"total_timesteps\": 1000000, \"residual_mode\": \"mult\", \"delta_max\": 0.15, \"dawn_warmup_steps\": 100000, \"learning_rate\": 0.0001, \"buffer_size\": 100000, \"batch_size\": 256, \"gamma\": 0.99, \"tau\": 0.005, \"ent_coef\": 0.01, \"target_entropy\": \"auto\", \"net_arch\": [256, 256], \"eval_freq\": 20000, \"sigma_consumo\": 0.25, \"n_seeds\": 1}",
+  "timestamp": "2026-07-02T22:29:32"
+}
