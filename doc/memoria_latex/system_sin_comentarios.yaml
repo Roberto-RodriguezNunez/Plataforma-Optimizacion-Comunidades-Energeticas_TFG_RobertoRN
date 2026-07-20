@@ -1,0 +1,89 @@
+bateria:
+  capacidad_kwh: 80.0
+  potencia_inversor_kw: 50.0
+  eficiencia_carga: 0.95
+  eficiencia_descarga: 0.95
+  autodescarga_por_hora: 0.00004
+  soc_min: 0.10
+  soc_max: 0.90
+  soc_inicial: 0.50
+  degradacion_base: 0.005
+
+comunidad:
+  num_viviendas: 15
+  potencia_solar_total_kwp: 42.0
+  consumo_anual_vivienda_kwh: 3500.0
+
+rutas:
+  consumo_raw: data/raw/consumo_esios_2021_2023.csv
+  precios_raw: data/raw/precios_esios_2021_2023.csv
+  compensacion_raw: data/raw/compensacion_autoconsumo_esios_2021_2023.csv
+  solar_raw: data/raw/solar_pvgis_2021_2023.csv
+  dataset_final: data/processed/dataset_final.csv
+  metadata: data/processed/metadata.json
+
+split:
+  semilla_split: 42
+  n_semanas_eval: 50
+  horas_por_semana: 168
+
+etl:
+  semilla: 42
+  ruido_demanda:
+    rho: 0.50
+    sigma: 0.05
+    clip_min: 0.70
+    clip_max: 1.30
+  precio_excedente_min: 0.0
+
+pronostico:
+  rho_solar: 0.7
+  rho_consumo: 0.3
+  sigma_solar_h1: 0.05
+  sigma_solar_h24: 0.25
+  sigma_consumo: 0.15
+  precio:
+    hora_publicacion: 20.5
+    sigma_intradiario: 0.05
+    sigma_estadistico: 0.15
+    rho_intradiario: 0.5
+    rho_estadistico: 0.7
+    margen_intradiario_h: 6
+
+mpc:
+  horizonte: 24
+  duracion_episodio: 168
+  n_episodios: 500
+  valor_terminal:
+    activado: true
+    lambda: 0.0
+    modo_precio: "ultimo"
+  k_deg_lin: 0.005
+  modo_pronostico: "realista"
+
+residual_sac:
+  total_timesteps: 1_000_000
+  delta_max: 0.15
+  dawn_warmup_steps: 100_000
+  learning_rate: 1.0e-4
+  buffer_size: 100_000
+  batch_size: 256
+  gamma: 0.99
+  tau: 0.005
+  ent_coef: 0.01
+  target_entropy: "auto"
+  net_arch: [256, 256]
+  eval_freq: 20_000
+  eval_episodes: 50
+  seeds: [42, 1337, 2024]
+  norm_obs: true
+  norm_reward: false
+  clip_obs: 10.0
+
+produccion:
+  onnx_path: models/residual_sac_actor.onnx
+  npz_path:  models/vec_normalize_v5_1M.npz
+  delta_max: 0.15
+
+api:
+  feed_mode: historico

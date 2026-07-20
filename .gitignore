@@ -39,6 +39,10 @@ doc/memoria_latex/*.acr
 doc/memoria_latex/*.alg
 doc/memoria_latex/*.gls
 doc/memoria_latex/*.glg
+doc/memoria_latex/*.bcf
+doc/memoria_latex/*.run.xml
+doc/memoria_latex/*.fdb_latexmk
+doc/memoria_latex/*.fls
 texput.log
 
 # Cobertura de tests (pytest-cov)

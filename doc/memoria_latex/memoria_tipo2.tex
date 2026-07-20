@@ -6,7 +6,7 @@
 %  Alumno : Roberto Rodríguez Núñez
 %  Titora : Eva Mª Lorenzo Iglesias
 %  Cotitor: Pedro Celard Pérez
-%  Centro : ESEI — Universidade de Vigo  |  Curso 2024/2025
+%  Centro : ESEI — Universidade de Vigo  |  Curso 2025/2026
 %
 %  ESTRUCTURA: Tipo II, mapeo 1:1 con los apartados 5.7–5.17 de la
 %  guía ESEI. El núcleo técnico (punto 5.11 "Marco teórico/práctico.
@@ -36,7 +36,11 @@
 \onehalfspacing
 \usepackage{parskip}
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{6pt plus 2pt minus 1pt}
+\setlength{\parskip}{6pt plus 1pt minus 1pt}
+% Sin \flushbottom: con twoside, muchas figuras [H] y parskip elástico,
+% LaTeX estiraba el espacio vertical para cuadrar cada página y dejaba
+% huecos irregulares entre títulos y texto.
+\raggedbottom
 
 % ── Profundidad de numeración y de índice ─────────────────────
 % secnumdepth=2 -> se numera hasta subsection (X.Y.Z, tres números).
@@ -63,6 +67,12 @@
   {\normalfont\Large\bfseries}
   {\chaptertitlename\ \thechapter}{16pt}{\Huge}
 \titlespacing*{\chapter}{0pt}{-10pt}{30pt}
+% Espaciado fijo alrededor de los títulos de sección: sin esto, el
+% pegamento elástico de parskip inflaba de forma visible el hueco entre
+% el título y su texto según la página.
+\titlespacing*{\section}{0pt}{3.25ex plus 1ex minus .2ex}{1.5ex plus .2ex}
+\titlespacing*{\subsection}{0pt}{2.75ex plus .8ex minus .2ex}{1.25ex plus .2ex}
+\titlespacing*{\subsubsection}{0pt}{2.25ex plus .6ex minus .2ex}{1ex plus .2ex}
 
 \usepackage{booktabs, array, longtable, tabularx}
 \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
@@ -94,10 +104,21 @@
   numbersep=8pt, showstringspaces=false,
   xleftmargin=15pt, language=Python
 }
-
-% Caja reutilizable para huecos de figura/diagrama pendientes
-\newcommand{\figpend}[2][0.92\textwidth]{%
-  \fbox{\parbox{#1}{\centering\vspace{2.6cm}\textit{#2}\vspace{2.6cm}}}}
+% Lenguaje YAML para el apéndice de configuración. El fichero real contiene
+% caracteres Unicode (griegas, flechas, superíndices) que listings no acepta
+% con inputenc: se mapean vía literate.
+\lstdefinelanguage{yaml}{
+  keywords={true, false, null},
+  sensitive=false,
+  comment=[l]{\#},
+  morestring=[b]',
+  morestring=[b]",
+  literate={á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1
+           {ñ}{{\~n}}1 {Á}{{\'A}}1 {É}{{\'E}}1 {í}{{\'i}}1
+           {×}{{$\times$}}1 {→}{{$\to$}}1 {η}{{$\eta$}}1 {ρ}{{$\rho$}}1
+           {σ}{{$\sigma$}}1 {±}{{$\pm$}}1 {²}{{$^{2}$}}1 {⁴}{{$^{4}$}}1
+           {–}{{--}}1 {—}{{---}}1 {·}{{$\cdot$}}1 {Í}{{\'I}}1
+}
 
 % Diagrama de Gantt (planificado vs. real)
 \usepackage{pgfgantt}
@@ -134,18 +155,16 @@
 \newacronym{soc}{SoC}{Estado de Carga (\textit{State of Charge})}
 \newacronym{etl}{ETL}{Extracción, Transformación y Carga (\textit{Extract, Transform, Load})}
 \newacronym{api}{API}{Interfaz de Programación de Aplicaciones (\textit{Application Programming Interface})}
-\newacronym{ccee}{CCEE}{Comunidad Energética de Autoconsumo}
 \newacronym{fv}{FV}{Fotovoltaico}
 \newacronym{mdp}{MDP}{Proceso de Decisión de Markov (\textit{Markov Decision Process})}
 \newacronym{sb3}{SB3}{Stable-Baselines3}
 \newacronym{saas}{SaaS}{Software como Servicio (\textit{Software as a Service})}
-\newacronym{mer}{MER}{Modelo Entidad-Relación}
 \newacronym{onnx}{ONNX}{Open Neural Network Exchange}
 
 \hypersetup{
   pdftitle={Diseño y Desarrollo de una Plataforma Software para la Optimización de Comunidades Energéticas},
   pdfauthor={Roberto Rodríguez Núñez},
-  pdfsubject={TFG Tipo II — ESEI, Universidade de Vigo, 2025}
+  pdfsubject={TFG Tipo II — ESEI, Universidade de Vigo, 2026}
 }
 
 % ==============================================================
@@ -178,7 +197,7 @@ Este trabajo investiga, diseña e implementa un motor de decisión inteligente
 basado en aprendizaje por refuerzo para la optimización económica de la batería
 comunitaria en una comunidad energética de autoconsumo fotovoltaico colectivo.
 Tras un proceso documentado de exploración con las familias \acrshort{dqn},
-\acrshort{ppo}, \acrshort{td3}, DDPG y \acrshort{sac}, se diseña e implementa el
+\acrshort{ppo}, \acrshort{td3}, \acrshort{ddpg} y \acrshort{sac}, se diseña e implementa el
 controlador Residual \acrshort{sac} sobre un \acrshort{mpc} base, arquitectura
 híbrida que resuelve los problemas de arranque en frío y cuantización que
 impidieron a los candidatos anteriores superar el \textit{baseline} competitivo
@@ -585,7 +604,7 @@ de la recompensa económica.
 \section{Soluciones Actuales para la Gestión del Almacenamiento}
 
 La gestión de baterías con inteligencia artificial es ya una realidad, tanto en
-el ámbito comercial como en proyectos de investigación: existen sistemas EMS
+el ámbito comercial como en proyectos de investigación: existen sistemas \acrshort{ems}
 propietarios e incluso plataformas que abordan el almacenamiento compartido.
 Ahora bien, la mayoría de estas soluciones presentan tres limitaciones para el
 escenario de este trabajo. En primer lugar, son de carácter cerrado y
@@ -620,20 +639,33 @@ frente a un control de referencia bien calibrado.
 
 \section{Descripción General}
 
-La solución propuesta es la plataforma LeaLink, organizada en cinco capas
-funcionales. La comunidad modelada comprende quince viviendas con perfil de
-consumo residencial 2.0TD, una instalación fotovoltaica compartida de
-\SI{42}{kWp} y una batería comunitaria de tecnología \acrshort{lfp} con capacidad
-de \SI{80}{kWh} e inversor bidireccional de \SI{50}{kW}.
+La solución propuesta es la plataforma LeaLink, cuya arquitectura se organiza en
+ocho capas funcionales repartidas en dos bloques: seis capas de investigación y
+\textit{benchmarking} (Figura~\ref{fig:arquitectura}) y dos capas de producción
+(Figura~\ref{fig:arquitectura_prod}). La comunidad modelada comprende quince
+viviendas con perfil de consumo residencial 2.0TD, una instalación fotovoltaica
+compartida de \SI{42}{kWp} y una batería comunitaria de tecnología
+\acrshort{lfp} con capacidad de \SI{80}{kWh} e inversor bidireccional de
+\SI{50}{kW}.
 
-La \textbf{capa de datos} construye y mantiene el dataset de simulación a partir
-de fuentes oficiales. La \textbf{capa del simulador} implementa el gemelo digital
-físico-económico. La \textbf{capa de aprendizaje por refuerzo} contiene el
-entorno Gymnasium~\citep{Gymnasium2023} y el motor de decisión. La \textbf{capa de producción}
-gestiona el ciclo de vida del modelo entrenado y su exportación a formato ONNX
-para su despliegue en hardware de borde. La \textbf{capa SaaS} expone los
-resultados a los usuarios finales mediante una interfaz web diferenciada por
-rol, con persistencia de los perfiles e histórico de la comunidad.
+En el bloque de investigación, la \textbf{capa de datos y configuración}
+construye y mantiene el dataset de simulación a partir de fuentes oficiales y
+centraliza los parámetros del sistema; la \textbf{capa de simulación
+físico-económica} implementa el gemelo digital de la comunidad; la \textbf{capa
+de entornos de aprendizaje por refuerzo} envuelve ese simulador en interfaces
+Gymnasium~\citep{Gymnasium2023}; la \textbf{capa de entrenamiento multisemilla}
+optimiza los agentes sobre la partición de entrenamiento; la \textbf{capa de
+controladores y agentes} reúne la librería común de políticas (heurístico, MPC y
+controladores residuales) compartida entre investigación y producción; y la
+\textbf{capa de evaluación comparativa} contrasta todos los controladores sobre
+el conjunto \textit{held-out} con significancia estadística.
+
+En el bloque de producción, la \textbf{capa de producción \textit{edge}}
+gestiona el ciclo de vida del modelo entrenado y su exportación a formato
+\acrshort{onnx} para la inferencia ligera en hardware de borde, y la \textbf{capa
+SaaS} expone los resultados a los usuarios finales mediante una interfaz web
+diferenciada por rol, con persistencia de los perfiles e histórico de la
+comunidad.
 
 \begin{figure}[H]
   \centering
@@ -803,7 +835,7 @@ posteriores lo captura el agente a través del factor de descuento
 ($\gamma=0{,}99$, Sección~\ref{sec:fundamentos}).
 
 La principal ventaja del MPC es que puede incorporar explícitamente las
-restricciones físicas del sistema (límites de SoC, potencia máxima) y optimizar
+restricciones físicas del sistema (límites de \acrshort{soc}, potencia máxima) y optimizar
 una función objetivo económica bien definida. Su principal limitación es que
 su rendimiento depende de la calidad del modelo del sistema y del pronóstico
 de las variables futuras.
@@ -844,7 +876,7 @@ Deep Learning & PyTorch & Backend de SB3 \\
 Entorno RL & Gymnasium (Farama) & Interfaz estándar de entornos \\
 Optimización LP & SciPy / HiGHS & Solver del LP del MPC \\
 Datos & Pandas / NumPy & Pipeline ETL y simulación \\
-Fuente precios & ESIOS API (REE) & Indicadores 1001 y 1739 \\
+Fuente precios & ESIOS \acrshort{api} (REE) & Indicadores 1001 y 1739 \\
 Fuente consumo & ESIOS API (REE) & Indicador 1006 (perfil 2.0TD) \\
 Fuente generación & PVGIS API (JRC-EU) & Producción FV histórica \\
 Runtime edge & ONNX Runtime & Inferencia sin SB3 ni Gymnasium \\
@@ -881,7 +913,7 @@ oficiales. El \textbf{perfil de consumo 2.0TD} (\texttt{consumo\_esios\_2021\_20
 se obtiene del indicador 1006 de ESIOS~\citep{ESIOS}, que publica coeficientes
 horarios normalizados del consumo residencial elaborados a partir de medidas
 reales de contadores inteligentes de la red española. Se escala a
-$15 \times \num{3500}\,kWh/año = \num{52500}\,kWh/año$.
+$15 \times 3500$\,kWh/año $=$ 52.500\,kWh/año.
 
 La \textbf{generación fotovoltaica} (\texttt{solar\_pvgis\_2021\_2023.csv})
 procede de PVGIS (JRC-EU)~\citep{PVGIS2022}, que proporciona la producción
@@ -909,7 +941,7 @@ de venta de excedentes.
 El módulo \texttt{experimentos/build\_dataset.py} convierte los cuatro
 ficheros crudos de \texttt{data/raw/} en el dataset final de simulación.
 Primero escala el consumo: el perfil normalizado 2.0TD (ESIOS 1006) se
-multiplica por \num{3500}\,kWh/año y por las quince viviendas, y sobre la
+multiplica por 3500\,kWh/año y por las quince viviendas, y sobre la
 demanda agregada se añade un ruido AR(1) que aporta variabilidad horaria
 realista:
 \begin{equation}
@@ -960,13 +992,13 @@ entrada normalizada de la red del agente.
 \label{sub:dimensionado}
 
 La instalación fotovoltaica se dimensionó en \SI{42}{kWp} para equilibrar
-generación y consumo a nivel anual. Con un consumo medio de \num{3500}\,kWh/año
+generación y consumo a nivel anual. Con un consumo medio de 3500\,kWh/año
 por vivienda (coherente con la media eléctrica del hogar español según los
 estudios SPAHOUSEC del IDAE \citep{IDAE_SPAHOUSEC}) y quince
-viviendas, el consumo agregado asciende a \num{52500}\,kWh/año. Aplicando las
+viviendas, el consumo agregado asciende a 52.500\,kWh/año. Aplicando las
 1250 horas equivalentes de irradiancia anual en Galicia, la potencia necesaria es:
 \begin{equation}
-  P_{\text{solar}} = \frac{\num{52500}\ \text{kWh/año}}{\num{1250}\ \text{h/año}} = \SI{42}{kWp}
+  P_{\text{solar}} = \frac{\text{52.500 kWh/año}}{\text{1250 h/año}} = \SI{42}{kWp}
   \label{eq:dimensionado}
 \end{equation}
 Este dimensionado maximiza la tasa de autoconsumo bajo el régimen de
@@ -2110,16 +2142,9 @@ Figura~\ref{fig:arquitectura} con las dos capas de producción: el despliegue
 La plataforma web LeaLink expone la gestión de la comunidad energética a sus
 usuarios finales. Está construida sobre Flask con SQLAlchemy como ORM y
 PostgreSQL como base de datos, desplegada mediante Docker Compose para
-garantizar la reproducibilidad del entorno. La Figura~\ref{fig:casos_uso} recoge
-los casos de uso de los dos roles de la plataforma (Superadmin y Usuario).
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.95\textwidth]{img/casos_uso_saas.png}
-  \caption{Diagrama de casos de uso de la plataforma SaaS (roles Superadmin
-  y Usuario).}
-  \label{fig:casos_uso}
-\end{figure}
+garantizar la reproducibilidad del entorno. El acceso se organiza en dos roles
+globales (Superadmin y Usuario), cuyas funciones concretas se detallan al
+describir el modelo de datos.
 
 \subsection{Arquitectura}
 
@@ -2291,22 +2316,22 @@ controlador reside en el protocolo de evaluación reproducible.
 \toprule
 \textbf{\#} & \textbf{Fase} & \textbf{Inicio} & \textbf{Fin} \\
 \midrule
-0 & Concepción y viabilidad & Sep 2024 & Oct 2024 \\
-1 & Setup, arquitectura, YAML & Oct 2024 & Nov 2024 \\
-2 & Ingeniería de datos (ETL) & Nov 2024 & Dic 2024 \\
-3 & Simulador físico-económico & Dic 2024 & Ene 2025 \\
-4 & Controlador MPC & Ene 2025 & Feb 2025 \\
-5 & Experimentación DQN y PPO & Feb 2025 & Mar 2025 \\
-6 & Residual SAC y tuning & Mar 2025 & May 2025 \\
-7 & Evaluación unificada y API & May 2025 & Jun 2025 \\
-8 & Documentación y defensa & Jun 2025 & Jul 2025 \\
+0 & Concepción y viabilidad & Sep 2025 & Oct 2025 \\
+1 & Setup, arquitectura, YAML & Oct 2025 & Nov 2025 \\
+2 & Ingeniería de datos (ETL) & Nov 2025 & Dic 2025 \\
+3 & Simulador físico-económico & Dic 2025 & Ene 2026 \\
+4 & Controlador MPC & Ene 2026 & Feb 2026 \\
+5 & Experimentación DQN y PPO & Feb 2026 & Mar 2026 \\
+6 & Residual SAC y tuning & Mar 2026 & May 2026 \\
+7 & Evaluación unificada y API & May 2026 & Jun 2026 \\
+8 & Documentación y defensa & Jun 2026 & Jul 2026 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
 \begin{figure}[H]
   \centering
-  % Eje temporal en quincenas: 22 casillas de sep 2024 a jul 2025.
+  % Eje temporal en quincenas: 22 casillas de sep 2025 a jul 2026.
   % Por fase, dos barras: gris (planificado) y azul (real).
   \resizebox{\textwidth}{!}{%
   \begin{ganttchart}[
@@ -2324,7 +2349,7 @@ controlador reside en el protocolo de evaluación reproducible.
       bar/.append style={rounded corners=1pt},
       bar/.append style={draw=none}
     ]{1}{22}
-    \gantttitle{2024}{8} \gantttitle{2025}{14} \\
+    \gantttitle{2025}{8} \gantttitle{2026}{14} \\
     \gantttitle{Sep}{2}\gantttitle{Oct}{2}\gantttitle{Nov}{2}%
     \gantttitle{Dic}{2}\gantttitle{Ene}{2}\gantttitle{Feb}{2}%
     \gantttitle{Mar}{2}\gantttitle{Abr}{2}\gantttitle{May}{2}%
@@ -2353,7 +2378,7 @@ controlador reside en el protocolo de evaluación reproducible.
   (azul) la ejecución real. Las mayores desviaciones se concentran en las
   fases 5 y 6 (en torno a un mes entre ambas, por las causas de la
   Sección~\ref{sec:desviaciones}) y se absorben comprimiendo las fases 7 y
-  8, manteniendo la entrega en julio de 2025.}
+  8, manteniendo la entrega en julio de 2026.}
   \label{fig:gantt}
 \end{figure}
 
@@ -2569,8 +2594,7 @@ almacenamiento compartido se encuentra en evolución: junto al Real Decreto-ley
 específico sobre el almacenamiento en autoconsumo colectivo. Por su carácter de
 norma en tramitación, no se asume aquí como marco vigente; su eventual aprobación
 podría refinar el tratamiento del reparto de la energía
-almacenada.\footnote{Referencia normativa pendiente de confirmación una vez
-publicada la norma definitiva en el BOE.}
+almacenada.
 
 \section{Conclusiones Personales}
 
@@ -2641,7 +2665,7 @@ rendimiento al conjunto.
 \chapter{Capacidad Fotovoltaica por Vivienda}
 \label{app:capacidad}
 
-La Tabla~\ref{tab:capacidad} recoge la capacidad fotovoltaica instalada en cada
+El Cuadro~\ref{tab:capacidad} recoge la capacidad fotovoltaica instalada en cada
 una de las quince viviendas de la comunidad Vilarín, registrada en la plataforma
 SaaS y utilizada como base para el reparto de la generación. Cada panel tiene
 una potencia de \SI{400}{Wp} (silicio monocristalino, orientación sur,
@@ -2678,13 +2702,64 @@ O003 & Lugar de Outeiro 5 & 3{,}6 & 9 \\
 
 \chapter{Configuración Completa: system.yaml}
 \label{app:config}
-[Espacio reservado para el fichero \texttt{config/system.yaml} completo con
-todos los hiperparámetros del sistema.]
+Se reproduce a continuación el fichero \texttt{config/system.yaml}, fuente
+única de configuración del sistema: parámetros físicos de la batería y de la
+comunidad, rutas de datos, split de semanas, ruido de ETL y de pronóstico,
+MPC, hiperparámetros del Residual SAC y runtime de producción. Se omiten los
+comentarios del fichero original; la justificación de cada valor se encuentra
+en los capítulos correspondientes de esta memoria.
+
+% Copia sin comentarios generada desde config/system.yaml (solo se eliminan
+% líneas de comentario y comentarios de fin de línea; los valores son
+% idénticos). Regenerar si cambia la config del repositorio.
+\lstinputlisting[language=yaml, basicstyle=\footnotesize\ttfamily]{system_sin_comentarios.yaml}
 
 \chapter{Árbol de Directorios del Repositorio}
 \label{app:estructura}
-[Espacio reservado para el árbol completo de directorios con descripción de
-cada módulo.]
+El repositorio se organiza en nueve directorios de primer nivel. El código
+fuente vive bajo \texttt{src/}, separado en paquetes por responsabilidad
+(núcleo de simulación, entornos, controladores, entrenamiento, evaluación,
+producción y plataforma SaaS); la configuración, los datos, los artefactos de
+modelo y los resultados experimentales tienen directorios propios, de modo que
+el código nunca contiene valores del sistema ni rutas cableadas.
+
+\begin{lstlisting}[language={}, basicstyle=\scriptsize\ttfamily, numbers=none]
+TFG/
++-- config/                  Configuracion declarativa (unica fuente)
+|   +-- system.yaml            fisica, ETL, MPC y SAC (Apendice B)
+|   +-- experimentos.yaml      registry de experimentos y versiones
++-- data/
+|   +-- raw/                   4 CSV oficiales crudos (ESIOS y PVGIS)
+|   +-- processed/             dataset_final.csv + metadata.json (hashes)
++-- doc/
+|   +-- diagramas/             fuentes drawio/PlantUML de las figuras
+|   +-- memoria_latex/         esta memoria
++-- docker/                  Imagen edge ARM64 (Dockerfile.edge)
++-- experimentos/            Puntos de entrada: build_dataset.py,
+|                              entrenar.sh y eval_rapida.py
++-- models/                  Artefactos de entreno (.zip, .pkl, .onnx, .npz)
+|   +-- best/                  campeones por familia de algoritmo
++-- resultados/              resultados.csv canonico + un JSON por version
++-- src/
+|   +-- core/                  config, simulator, forecast, observation
+|   +-- envs/                  entornos Gymnasium: base, discreto,
+|   |                            continuo y residual
+|   +-- controllers/           heuristico, MPC, base continua/discreta
+|   |                            y controlador Residual SAC
+|   +-- buffers/               replay buffer n-step
+|   +-- training/              mains por algoritmo, scaffold comun,
+|   |                            multiseed, registry y callbacks
+|   +-- evaluation/            suite, evaluacion unificada, escenarios
+|   |                            y estadistica (IC95, Wilcoxon)
+|   +-- production/            export ONNX, inferencia edge, data feed
+|   |                            y bucle horario
+|   +-- saas/                  plataforma Flask LeaLink (app, modulos,
+|                                modelos, templates y tests propios)
++-- tests/                   Suite pytest transversal (Apendice D)
+\end{lstlisting}
+
+Esta separación es la que recorre, fase a fase, el diagrama de dependencias
+de la Figura~\ref{fig:flujo_dependencias}.
 
 La Figura~\ref{fig:flujo_dependencias} complementa el árbol de directorios con
 el mapa completo de componentes y dependencias del pipeline del Residual SAC,

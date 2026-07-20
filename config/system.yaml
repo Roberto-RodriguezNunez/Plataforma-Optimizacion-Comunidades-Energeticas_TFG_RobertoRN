@@ -64,7 +64,7 @@ etl:
   # captura la persistencia temporal en errores de demanda (correlación horaria
   # por condiciones meteorológicas y patrones de ocupación), y σ=0.05 da ~5%
   # de variabilidad horaria, coherente con la literatura de pronóstico de
-  # demanda residencial agregada a escala de comunidad [VERIFICAR CITA].
+  # demanda residencial agregada a escala de comunidad.
   ruido_demanda:
     rho: 0.50                 # Autocorrelación lag-1 (rango defendible: 0.4–0.6)
     sigma: 0.05               # Desviación típica del factor multiplicativo
@@ -72,7 +72,7 @@ etl:
     clip_max: 1.30            # Factor máximo: 1 + sigma × clip = 1.30
   # Política de saneamiento de precios.
   # RD 244/2019 Art.14: el productor nunca recibe remuneración negativa
-  # por excedentes bajo compensación simplificada [VERIFICAR ARTÍCULO EXACTO].
+  # por excedentes bajo compensación simplificada.
   precio_excedente_min: 0.0
 
 # --- Ruido de pronóstico AR(1) (usado por EnergyEnv y MPC realista) ---

@@ -1,67 +1,67 @@
 <mxfile host="app.diagrams.net">
   <diagram id="pipeline_etl" name="Pipeline de Datos ETL">
-    <mxGraphModel dx="1000" dy="500" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2060" pageHeight="920" math="0" shadow="0">
+    <mxGraphModel dx="1030" dy="460" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2060" pageHeight="920" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=15;fontStyle=2;fontFamily=Arial;fontColor=#707070;" value="Integración de fuentes oficiales (ESIOS / PVGIS), escalado de comunidad y normalización continua VecNormalize para RL" vertex="1">
+        <mxCell id="subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=25;fontStyle=2;fontFamily=Arial;fontColor=#707070;" value="Integración de fuentes oficiales (ESIOS / PVGIS), escalado de comunidad y normalización continua VecNormalize para RL" vertex="1">
           <mxGeometry height="60.25490196078431" width="1906.1971830985917" y="837.7450980392157" as="geometry" />
         </mxCell>
-        <mxCell id="grp_src" parent="1" style="swimlane;startSize=36;html=1;rounded=1;fillColor=#EAEAEA;strokeColor=#707070;fontStyle=1;fontSize=16;fontColor=#3C3C3C;align=center;" value="1 · FUENTES CRUDAS OFICIALES" vertex="1">
-          <mxGeometry height="817.7450980392157" width="440.98591549295776" x="34.225352112676056" as="geometry" y="20" />
+        <mxCell id="grp_src" parent="1" style="swimlane;startSize=36;html=1;rounded=1;fillColor=#EAEAEA;strokeColor=#707070;fontStyle=1;fontSize=25;fontColor=#3C3C3C;align=center;" value="1 · FUENTES CRUDAS OFICIALES" vertex="1">
+          <mxGeometry height="817.7450980392157" width="440.98591549295776" x="34.225352112676056" y="20" as="geometry" />
         </mxCell>
-        <mxCell id="s_cons" parent="grp_src" style="rounded=1;html=1;fillColor=#F5F5F5;strokeColor=#707070;fontStyle=1;fontSize=14;fontColor=#3C3C3C;" value="ESIOS 1006: Consumo 2.0TD&#10;Curvas reales de demanda horaria" vertex="1">
+        <mxCell id="s_cons" parent="grp_src" style="rounded=1;html=1;fillColor=#F5F5F5;strokeColor=#707070;fontStyle=1;fontSize=25;fontColor=#3C3C3C;" value="ESIOS 1006: Consumo 2.0TD&lt;br&gt;Curvas de demanda horaria" vertex="1">
           <mxGeometry height="139.87745098039215" width="384.08450704225356" x="28.450704225352116" y="118.3578431372549" as="geometry" />
         </mxCell>
-        <mxCell id="s_sol" parent="grp_src" style="rounded=1;html=1;fillColor=#F5F5F5;strokeColor=#707070;fontStyle=1;fontSize=14;fontColor=#3C3C3C;" value="PVGIS: Radiación Solar&#10;Curva de producción fotovoltaica" vertex="1">
+        <mxCell id="s_sol" parent="grp_src" style="rounded=1;html=1;fillColor=#F5F5F5;strokeColor=#707070;fontStyle=1;fontSize=25;fontColor=#3C3C3C;" value="PVGIS: Radiación Solar&lt;br&gt;Curva de producción&amp;nbsp;&lt;div&gt;fotovoltaica&lt;/div&gt;" vertex="1">
           <mxGeometry height="139.87745098039215" width="384.08450704225356" x="28.450704225352116" y="290.5147058823529" as="geometry" />
         </mxCell>
-        <mxCell id="s_pvpc" parent="grp_src" style="rounded=1;html=1;fillColor=#F5F5F5;strokeColor=#707070;fontStyle=1;fontSize=14;fontColor=#3C3C3C;" value="ESIOS 1001: Precio Compra&#10;Tarifa PVPC horaria (€/kWh)" vertex="1">
+        <mxCell id="s_pvpc" parent="grp_src" style="rounded=1;html=1;fillColor=#F5F5F5;strokeColor=#707070;fontStyle=1;fontSize=25;fontColor=#3C3C3C;" value="ESIOS 1001: Precio Compra&#xa;Tarifa PVPC horaria (€/kWh)" vertex="1">
           <mxGeometry height="139.87745098039215" width="384.08450704225356" x="28.450704225352116" y="462.67156862745094" as="geometry" />
         </mxCell>
-        <mxCell id="s_exc" parent="grp_src" style="rounded=1;html=1;fillColor=#F5F5F5;strokeColor=#707070;fontStyle=1;fontSize=14;fontColor=#3C3C3C;" value="ESIOS 1739: Precio Excedentes&#10;Remuneración por vertido a red" vertex="1">
+        <mxCell id="s_exc" parent="grp_src" style="rounded=1;html=1;fillColor=#F5F5F5;strokeColor=#707070;fontStyle=1;fontSize=25;fontColor=#3C3C3C;" value="ESIOS 1739: Precio Excedentes&#xa;Remuneración por vertido a red" vertex="1">
           <mxGeometry height="139.87745098039215" width="384.08450704225356" x="28.450704225352116" y="634.828431372549" as="geometry" />
         </mxCell>
-        <mxCell id="grp_etl" parent="1" style="swimlane;startSize=36;html=1;rounded=1;fillColor=#EAEAEA;strokeColor=#707070;fontStyle=1;fontSize=16;fontColor=#3C3C3C;align=center;" value="2 · PROCESO ETL Y ESCALADO" vertex="1">
-          <mxGeometry height="817.7450980392157" width="469.4366197183099" x="503.661971830986" as="geometry" y="20" />
+        <mxCell id="grp_etl" parent="1" style="swimlane;startSize=36;html=1;rounded=1;fillColor=#EAEAEA;strokeColor=#707070;fontStyle=1;fontSize=25;fontColor=#3C3C3C;align=center;" value="2 · PROCESO ETL Y ESCALADO" vertex="1">
+          <mxGeometry height="817.7450980392157" width="469.4366197183099" x="503.661971830986" y="20" as="geometry" />
         </mxCell>
-        <mxCell id="etl_proc" parent="grp_etl" style="rounded=1;html=1;fillColor=#F5F5F5;strokeColor=#707070;fontStyle=1;fontSize=15;fontColor=#3C3C3C;strokeWidth=2;" value="experimentos/build_dataset.py&#10;&lt;b&gt;Escalado Comunitario:&lt;/b&gt;&lt;br/&gt;&amp;#8226; 15 Viviendas (Consumo agregado)&lt;br/&gt;&amp;#8226; Planta Solar 42 kWp&lt;br/&gt;&amp;#8226; Limpieza de NAs y alineación UTC" vertex="1">
+        <mxCell id="etl_proc" parent="grp_etl" style="rounded=1;html=1;fillColor=#F5F5F5;strokeColor=#707070;fontStyle=1;fontSize=25;fontColor=#3C3C3C;strokeWidth=2;" value="experimentos/build_dataset.py&#xa;&lt;b&gt;Escalado Comunitario:&lt;/b&gt;&lt;br&gt;• 15 Viviendas (Consumo agregado)&lt;br&gt;• Planta Solar 42 kWp&lt;br&gt;• Limpieza de NAs y alineación UTC" vertex="1">
           <mxGeometry height="290.5147058823529" width="412.5352112676057" x="28.450704225352116" y="150.63725490196077" as="geometry" />
         </mxCell>
-        <mxCell id="etl_csv" parent="grp_etl" style="shape=cylinder3;html=1;boundedLbl=1;backgroundOutline=1;size=8;fillColor=#D6D6D6;strokeColor=#3C3C3C;fontStyle=1;fontSize=16;fontColor=#1A1A1A;strokeWidth=2;" value="dataset_final.csv&#10;(22.646 horas continuas)" vertex="1">
+        <mxCell id="etl_csv" parent="grp_etl" style="shape=cylinder3;html=1;boundedLbl=1;backgroundOutline=1;size=8;fillColor=#D6D6D6;strokeColor=#3C3C3C;fontStyle=1;fontSize=25;fontColor=#1A1A1A;strokeWidth=2;" value="dataset_final.csv&#xa;(22.646 horas continuas)" vertex="1">
           <mxGeometry height="204.43627450980392" width="412.5352112676057" x="28.450704225352116" y="527.2303921568628" as="geometry" />
         </mxCell>
         <mxCell id="e_etl1" edge="1" parent="grp_etl" source="etl_proc" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#707070;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="etl_csv" />
-        <mxCell id="0j88wzNkjBhaCDTt6EN5-1" edge="1" parent="grp_etl" source="etl_proc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" target="etl_csv">
+        <mxCell id="0j88wzNkjBhaCDTt6EN5-1" edge="1" parent="grp_etl" source="etl_proc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;fontSize=25;" target="etl_csv">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="grp_obs" parent="1" style="swimlane;startSize=48;html=1;rounded=1;fillColor=#EAEAEA;strokeColor=#707070;fontStyle=1;fontSize=16;fontColor=#3C3C3C;align=center;" value="3 · ENTORNO DE SIMULACIÓN (Gymnasium)&#10;genera la observación en cada paso" vertex="1">
-          <mxGeometry height="817.7450980392157" width="497.887323943662" x="1001.5492957746479" as="geometry" y="20" />
+        <mxCell id="grp_obs" parent="1" style="swimlane;startSize=36;html=1;rounded=1;fillColor=#EAEAEA;strokeColor=#707070;fontStyle=1;fontSize=25;fontColor=#3C3C3C;align=center;" value="3 · ENTORNO DE SIMULACIÓN" vertex="1">
+          <mxGeometry height="817.7450980392157" width="497.887323943662" x="1001.5492957746479" y="20" as="geometry" />
         </mxCell>
-        <mxCell id="0j88wzNkjBhaCDTt6EN5-2" edge="1" parent="grp_obs" source="obs_ar1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="obs_vec">
+        <mxCell id="0j88wzNkjBhaCDTt6EN5-2" edge="1" parent="grp_obs" source="obs_ar1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;fontSize=25;" target="obs_vec">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="obs_ar1" parent="grp_obs" style="rounded=1;html=1;fillColor=#F5F5F5;strokeColor=#707070;fontStyle=1;fontSize=15;fontColor=#3C3C3C;" value="Constructor de Observación&lt;br&gt;&lt;b&gt;Pronóstico AR(1) a 24h vista&lt;/b&gt;&lt;br&gt;Inyección de ruido realista para&amp;nbsp;&lt;div&gt;robustez en generalización&lt;/div&gt;" vertex="1">
+        <mxCell id="obs_ar1" parent="grp_obs" style="rounded=1;html=1;fillColor=#F5F5F5;strokeColor=#707070;fontStyle=1;fontSize=25;fontColor=#3C3C3C;" value="Constructor de Observación&lt;br&gt;&lt;b&gt;Pronóstico AR(1) a 24h vista&lt;/b&gt;&lt;br&gt;Inyección de ruido realista para&amp;nbsp;&lt;div&gt;robustez en generalización&lt;/div&gt;" vertex="1">
           <mxGeometry height="215.19607843137254" width="412.5352112676057" x="28.450704225352116" y="150.63725490196077" as="geometry" />
         </mxCell>
-        <mxCell id="obs_vec" parent="grp_obs" style="rounded=1;html=1;fillColor=#D6D6D6;strokeColor=#3C3C3C;fontStyle=1;fontSize=15;fontColor=#1A1A1A;strokeWidth=2;" value="Vector Bruto de Estado (S_t)&lt;br&gt;&lt;b&gt;108D (base) · 112D (residual)&lt;/b&gt;&lt;br&gt;SoC, precios h..h+24, excedente;&lt;div&gt;&amp;nbsp;+4 features u_mpc (solo residual)&lt;/div&gt;" vertex="1">
+        <mxCell id="obs_vec" parent="grp_obs" style="rounded=1;html=1;fillColor=#D6D6D6;strokeColor=#3C3C3C;fontStyle=1;fontSize=25;fontColor=#1A1A1A;strokeWidth=2;" value="Vector Bruto de Estado (S_t)&lt;br&gt;&lt;b&gt;108D (base) · 112D (residual)&lt;/b&gt;&lt;br&gt;SoC, precios h..h+24, excedente;&lt;div&gt;&amp;nbsp;+4 features u_mpc (solo residual)&lt;/div&gt;" vertex="1">
           <mxGeometry height="236.7156862745098" width="412.5352112676057" x="28.450704225352116" y="494.95098039215685" as="geometry" />
         </mxCell>
         <mxCell id="e_obs1" edge="1" parent="grp_obs" source="obs_ar1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#707070;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="obs_vec" />
-        <mxCell id="grp_norm" parent="1" style="swimlane;startSize=48;html=1;rounded=1;fillColor=#EAEAEA;strokeColor=#707070;fontStyle=1;fontSize=16;fontColor=#3C3C3C;align=center;" value="4 · NORMALIZACIÓN Y RED&#10;entreno y producción" vertex="1">
-          <mxGeometry height="817.7450980392157" width="512.112676056338" x="1527.887323943662" as="geometry" y="20" />
+        <mxCell id="grp_norm" parent="1" style="swimlane;startSize=36;html=1;rounded=1;fillColor=#EAEAEA;strokeColor=#707070;fontStyle=1;fontSize=25;fontColor=#3C3C3C;align=center;" value="4 · NORMALIZACIÓN Y RED" vertex="1">
+          <mxGeometry height="817.7450980392157" width="512.112676056338" x="1527.887323943662" y="20" as="geometry" />
         </mxCell>
-        <mxCell id="0j88wzNkjBhaCDTt6EN5-3" edge="1" parent="grp_norm" source="n_vecnorm" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="n_net">
+        <mxCell id="0j88wzNkjBhaCDTt6EN5-3" edge="1" parent="grp_norm" source="n_vecnorm" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=25;" target="n_net">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="n_vecnorm" parent="grp_norm" style="rounded=1;html=1;fillColor=#F5F5F5;strokeColor=#707070;fontStyle=1;fontSize=15;fontColor=#3C3C3C;strokeWidth=2;" value="VecNormalize (SB3)&lt;br&gt;Normalización Estadística en Línea&lt;br&gt;&lt;code&gt;x_norm = (x - μ) / (σ + ε)&lt;/code&gt;&lt;br&gt;Entreno: aprende μ, σ&amp;nbsp;&lt;div&gt;&amp;nbsp;Eval/Producción: congelados (pkl → ONNX)&lt;/div&gt;" vertex="1">
+        <mxCell id="n_vecnorm" parent="grp_norm" style="rounded=1;html=1;fillColor=#F5F5F5;strokeColor=#707070;fontStyle=1;fontSize=25;fontColor=#3C3C3C;strokeWidth=2;" value="VecNormalize (SB3)&lt;br&gt;Normalización Estadística en Línea&lt;br&gt;&lt;code&gt;x_norm = (x - μ) / (σ + ε)&lt;/code&gt;&lt;br&gt;Entreno: aprende μ, σ&amp;nbsp;&lt;div&gt;&amp;nbsp;Eval/Producción:&amp;nbsp;&lt;/div&gt;&lt;div&gt;congelados (pkl → ONNX)&lt;/div&gt;" vertex="1">
           <mxGeometry height="236.7156862745098" width="455.21126760563385" x="28.450704225352116" y="139.87745098039215" as="geometry" />
         </mxCell>
-        <mxCell id="n_net" parent="grp_norm" style="rounded=1;html=1;fillColor=#3C3C3C;strokeColor=#1A1A1A;fontStyle=1;fontSize=16;fontColor=#FFFFFF;strokeWidth=3;" value="Entrada a la Red del Agente RL&lt;br&gt;&lt;span style=&quot;font-size:13px;font-weight:normal;&quot;&gt;DQN · PPO · SAC · TD3 · DDPG&lt;/span&gt;&lt;br&gt;&lt;span style=&quot;font-size:14px;font-weight:normal;&quot;&gt;Decide en espacio normalizado&amp;nbsp;&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;font-size:14px;font-weight:normal;&quot;&gt;(&lt;/span&gt;&lt;span style=&quot;font-size: 14px; font-weight: normal; background-color: transparent; color: light-dark(rgb(255, 255, 255), rgb(18, 18, 18));&quot;&gt;media ~0, desv ~1)&lt;/span&gt;&lt;/div&gt;" vertex="1">
+        <mxCell id="n_net" parent="grp_norm" style="rounded=1;html=1;fillColor=#3C3C3C;strokeColor=#1A1A1A;fontStyle=1;fontSize=25;fontColor=#FFFFFF;strokeWidth=3;" value="Entrada a la Red del Agente RL&lt;br&gt;&lt;span style=&quot;font-weight: normal;&quot;&gt;DQN · PPO · SAC · TD3 · DDPG&lt;/span&gt;&lt;br&gt;&lt;span style=&quot;font-weight: normal;&quot;&gt;Decide en espacio normalizado&amp;nbsp;&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;font-weight: normal;&quot;&gt;(&lt;/span&gt;&lt;span style=&quot;font-weight: normal; background-color: transparent; color: light-dark(rgb(255, 255, 255), rgb(18, 18, 18));&quot;&gt;media ~0, desv ~1)&lt;/span&gt;&lt;/div&gt;" vertex="1">
           <mxGeometry height="236.7156862745098" width="455.21126760563385" x="28.450704225352116" y="494.95098039215685" as="geometry" />
         </mxCell>
         <mxCell id="e_n1" edge="1" parent="grp_norm" source="n_vecnorm" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#707070;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="n_net" />
-        <mxCell id="c_s_etl" edge="1" parent="1" source="grp_src" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#707070;" target="etl_proc">
+        <mxCell id="c_s_etl" edge="1" parent="1" source="grp_src" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#707070;fontSize=25;" target="etl_proc">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="489.4366197183099" y="428.87254901960785" />
@@ -69,7 +69,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c_etl_obs" edge="1" parent="1" source="etl_csv" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#707070;" target="obs_ar1">
+        <mxCell id="c_etl_obs" edge="1" parent="1" source="etl_csv" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#707070;fontSize=25;" target="obs_ar1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="987.323943661972" y="648.3725490196078" />
@@ -77,7 +77,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c_obs_norm" edge="1" parent="1" source="obs_vec" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#707070;" target="n_vecnorm">
+        <mxCell id="c_obs_norm" edge="1" parent="1" source="obs_vec" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#707070;fontSize=25;" target="n_vecnorm">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1513.661971830986" y="633.3088235294117" />
