@@ -1,289 +1,214 @@
-# Diseño y Desarrollo de una Plataforma Software para la Optimización de Comunidades Energéticas
+# LeaLink — Optimización de Comunidades Energéticas con RL
 
-**Trabajo de Fin de Grado (TFG)** para el Grado en Enxeñaría Informática de la Universidade de Vigo (ESEI).
+**TFG** — Grado en Enxeñaría Informática, ESEI (Universidade de Vigo), 2025/2026.
+**Autor:** Roberto Rodríguez Núñez · **Tutora:** Eva Mª Lorenzo Iglesias · **Co-tutor:** Pedro Celard Pérez
+**Memoria:** [`doc/memoria_latex/memoria_tipo2.pdf`](doc/memoria_latex/memoria_tipo2.pdf)
 
-- **Autor:** Roberto Rodríguez Núñez
-- **Tutora:** Eva Mª Lorenzo Iglesias
-- **Co-tutor:** Pedro Celard Pérez
+Plataforma que optimiza la batería compartida (80 kWh) de una comunidad de autoconsumo
+fotovoltaico colectivo (15 viviendas, 42 kWp), con dos partes:
+
+- **Investigación:** gemelo digital con 22.646 h de datos reales (ESIOS + PVGIS, 2021-2023);
+  comparación rigurosa de RL (DQN, PPO, SAC, TD3, DDPG) contra un MPC como línea base.
+- **Producción:** el mejor modelo (**Residual SAC**: correcciones ±15 % sobre el MPC) exportado
+  a ONNX en un runtime edge (compatible Raspberry Pi, sin PyTorch) + plataforma web SaaS
+  (Flask + PostgreSQL), todo orquestado con Docker Compose.
+
+**Resultado central:** el Residual SAC supera al MPC realista en **+0,66 €/semana**
+(Wilcoxon p = 1,45×10⁻²³) con garantía de suelo (en el peor caso actúa como el MPC).
+Ningún RL puro superó al MPC.
+
+| Controlador | €/semana | Δ vs MPC realista |
+|---|---:|---:|
+| MPC oráculo (cota superior) | 51,45 | +8,06 |
+| **Residual SAC (SAC-C)** ← desplegado | **44,05** | **+0,66** |
+| MPC realista (línea base) | 43,39 | 0,00 |
+| Mejor DQN / mejor PPO | 39,36 / 39,35 | ≈ −4 |
+| Heurístico / SAC puro | 30,49 / 26,94 | −12,90 / −16,44 |
+
+Barrido completo (31 configuraciones): [`resultados/resultados.csv`](resultados/resultados.csv).
+Diagramas de arquitectura: [`doc/diagramas/`](doc/diagramas/)
+([investigación](doc/diagramas/arquitectura_1_investigacion.drawio.png) ·
+[producción](doc/diagramas/arquitectura_2_produccion.drawio.png)).
 
 ---
 
-## Instalación
+## Estructura del proyecto
 
-El proyecto se ejecuta con el **Python de Windows desde PowerShell**. Las dependencias ya están instaladas en el Python de Windows. Si necesitas instalarlas en un equipo nuevo:
+```
+├── config/                # system.yaml (física, MPC, ruido) + experimentos.yaml (registry de experimentos)
+├── data/                  # raw/ (ESIOS+PVGIS) y processed/dataset_final.csv  [INCLUIDOS]
+├── src/
+│   ├── core/              # Simulador, pronósticos, config
+│   ├── envs/              # Entornos Gymnasium (discreto, continuo, residual)
+│   ├── controllers/       # MPC (LP HiGHS), heurístico, RL, residuales
+│   ├── training/          # mains/ (7 algoritmos), multiseed, registry
+│   ├── evaluation/        # suite.py, unified.py, estadística (bootstrap, Wilcoxon)
+│   ├── production/        # edge_loop, export_onnx, inferencia ONNX
+│   └── saas/              # App Flask completa (con sus propios tests y requirements)
+├── experimentos/          # build_dataset.py, entrenar.sh, eval_rapida.py, manifiesto.md
+├── models/                # Modelos entrenados + ONNX de producción  [INCLUIDOS]
+├── resultados/            # resultados.csv + 35 JSON del barrido  [INCLUIDOS]
+├── tests/                 # Suite pytest (física, MPC, entornos, ONNX, regresión)
+├── docker/                # Dockerfile.edge
+├── docker-compose.yml     # postgres + web (SaaS) + edge
+└── doc/                   # Memoria (PDF + LaTeX) y 11 diagramas
+```
 
-```powershell
+Dataset, modelos entrenados y resultados **van incluidos**: todo es ejecutable sin re-entrenar.
+Se generan al usar el proyecto (no incluidos): `logs/`, `models/_runs/`, `.env`, `.venv/`.
+
+---
+
+## Requisitos e instalación
+
+- **Docker + Docker Compose** — para la puesta en producción (Paso 2). Sirve cualquier
+  sistema: Windows, macOS o Linux.
+- **Python 3.10–3.12** (solo CPU) en **Linux o WSL** — solo para el entrenamiento (Paso 1).
+
+Para el entrenamiento, prepara el entorno de Python **en Linux/WSL**, desde la raíz del proyecto.
+Los comandos `apt` son para **Debian/Ubuntu** (en otra distro usa su gestor de paquetes):
+
+```bash
+sudo apt update && sudo apt install -y python3-venv python3-pip   # venv y pip (no vienen de serie)
+
+python3 -m venv .venv && source .venv/bin/activate
+pip install torch --index-url https://download.pytorch.org/whl/cpu   # torch CPU (evita bajar CUDA)
 pip install -r requirements.txt
 ```
 
-> **Nota:** `stable-baselines3` depende de PyTorch. Para instalar la versión CPU
-> (más ligera, sin CUDA), usa:
-> ```powershell
-> pip install torch --index-url https://download.pytorch.org/whl/cpu
-> pip install stable-baselines3 gymnasium tensorboard pandas numpy matplotlib
+> Los modelos y los resultados **ya vienen incluidos**. Si solo quieres ver la plataforma
+> funcionando, salta directamente al **Paso 2** (producción); el Paso 1 solo hace falta para
+> reproducir el entrenamiento desde cero.
+
+---
+
+## Paso 1 · Entrenar y evaluar
+
+`entrenar.sh` entrena una familia (3 semillas), consolida el mejor modelo **y lo evalúa**
+(50 semanas × 10 semillas de ruido, IC95 bootstrap, Wilcoxon vs MPC realista), escribiendo
+`resultados/resultados.csv`. Entrenamiento y evaluación en un solo comando.
+
+```bash
+chmod +x experimentos/entrenar.sh
+
+# 1º los baselines: calculan las referencias (MPC, heurístico, IDLE) que usan las demás
+./experimentos/entrenar.sh G
+
+# 2º las familias de RL, una a una (las residuales son lentas, ~9 h/semilla)
+./experimentos/entrenar.sh dqn
+./experimentos/entrenar.sh ppo
+./experimentos/entrenar.sh ppo_continuo
+./experimentos/entrenar.sh td3_residual
+./experimentos/entrenar.sh ddpg_residual
+./experimentos/entrenar.sh sac_puro
+./experimentos/entrenar.sh residual_sac
+```
+
+- **Reanudable:** si se interrumpe, relanza el mismo comando y continúa donde iba.
+- Curvas de entrenamiento: `tensorboard --logdir logs/`.
+- Protocolo completo del barrido: [`experimentos/manifiesto.md`](experimentos/manifiesto.md).
+
+> ⚠️ **Para reproducir desde cero, primero vacía los artefactos incluidos.** `entrenar.sh`
+> es reanudable: **salta toda versión que ya tenga fila en `resultados.csv`**, y la entrega
+> incluye ese CSV y los modelos ya calculados, así que sin vaciarlos el comando no reentrena
+> nada (marca cada versión como `[HECHA]`). Antes de reproducir:
+>
+> ```bash
+> mv resultados/resultados.csv resultados/resultados.csv.orig   # o bórralo
+> mv models/best models/best.orig                               # o bórralo
 > ```
+>
+> Reentrenar regenera (sobrescribe) esos mismos `models/best/` y `resultados/resultados.csv`.
 
 ---
 
-## Entrenamiento del agente DQN
+## Paso 2 · Pasar a producción y cargar el SaaS
 
-### Requisitos previos
-
-- **PowerShell** (no WSL)
-- Dependencias instaladas en el Python de Windows
-- Dataset en `data/processed/dataset_final.csv` (incluido en el repo)
-- Ejecutar siempre desde la raíz del proyecto (`TFG/`)
-
----
-
-### Prueba rápida (~1 minuto)
-
-Antes de lanzar el entrenamiento completo, verifica que todo funciona editando
-las dos primeras constantes de `src/main.py`:
-
-```python
-TOTAL_TIMESTEPS = 10_000   # cambia de 1_000_000 a 10_000
-LEARNING_STARTS = 2_000    # cambia de 20_000 a 2_000
-```
-
-Ejecuta:
+El controlador se lleva a producción exportándolo al formato ligero **ONNX** (sin PyTorch), que
+ejecuta el edge. La plataforma completa (PostgreSQL + web SaaS + edge) se levanta con Docker.
 
 ```bash
-python src/main.py
-```
-
-Si ves `Entorno OK` y los logs del entrenamiento sin errores, todo está correcto.
-Restaura los valores originales antes de entrenar de verdad.
-
----
-
-### Entrenamiento completo (~45-60 minutos)
-
-Con los valores por defecto de `src/main.py` (`TOTAL_TIMESTEPS = 1_000_000`):
-
-```bash
-python src/main.py
-```
-
-Durante el entrenamiento verás logs periódicos con estas métricas clave:
-
-| Métrica | Qué indica |
-|---|---|
-| `ep_rew_mean` | Recompensa media por episodio — debe subir progresivamente |
-| `exploration_rate` | Baja de 1.0 a 0.05 según el agente gana confianza |
-| `loss` | Pérdida de la red Q — oscila pero tiende a bajar |
-
-Cada 10.000 pasos el `EvalCallback` evalúa el modelo y guarda automáticamente
-el mejor en `models/best_model.zip`:
-
-```
-Eval num_timesteps=10000, episode_reward=-38.5 +/- 23.0
-New best mean reward!
-```
-
----
-
-### Archivos generados
-
-```
-TFG/
-├── models/
-│   ├── best_model.zip      <- mejor política encontrada durante el entrenamiento
-│   ├── dqn_sgec.zip        <- modelo del último paso
-│   └── vec_normalize.pkl   <- estadísticas de normalización (imprescindible para inferencia)
-└── logs/
-    ├── train.monitor.csv   <- recompensa de cada episodio de entrenamiento
-    ├── eval.monitor.csv    <- recompensas de los episodios de evaluación
-    └── evaluations.npz     <- histórico de evaluaciones en formato numpy
-```
-
-Usa siempre `best_model.zip` + `vec_normalize.pkl` para análisis y despliegue.
-
----
-
-### Visualización con TensorBoard
-
-Abre una **segunda ventana de PowerShell** mientras entrena (o después) y ejecuta:
-
-```powershell
-cd C:\Users\nicor\OneDrive\Documents\TFGyDocumentosTFG\TFG
-tensorboard --logdir logs
-```
-
-Abre el navegador en **`http://localhost:6006`**.
-
-> **Aviso normal:** TensorBoard mostrará `TensorFlow installation not found - running with reduced feature set.`
-> Es esperado — TensorBoard funciona perfectamente sin TensorFlow para este proyecto.
-
----
-
-#### Qué mirar en TensorBoard
-
-TensorBoard muestra muchos paneles. Estos son los únicos que importan, en orden de importancia:
-
-**1. `rollout/ep_rew_mean` — LA curva principal**
-La recompensa media por episodio. Es el indicador de que el agente está aprendiendo.
-- Al principio estará en torno a -100 (el agente no sabe nada)
-- Debe subir progresivamente hacia 0 o positivo
-- Si sube = el agente aprende. Si se queda plana = problema con hiperparámetros
-
-**2. `eval/mean_reward` — Recompensa de evaluación**
-Igual que la anterior pero medida en episodios de test separados (más fiable).
-Cada vez que aparece un punto nuevo aquí y es el mejor hasta ahora, se guarda `best_model.zip`.
-
-**3. `rollout/exploration_rate` — Decaimiento de epsilon**
-Baja de 1.0 a 0.05 a lo largo del entrenamiento.
-- Al principio (ε=1.0): el agente elige acciones al azar, explorando
-- Al final (ε=0.05): el agente usa casi siempre su red neuronal
-
-**4. `train/loss` — Pérdida de la red Q**
-Mide cuánto se equivoca la red al predecir los Q-values.
-- Oscila bastante, es normal
-- No debe dispararse a valores muy altos ni quedarse en 0
-
-**5. `custom/soc_medio` — Estado de carga de la batería**
-SoC medio de la batería por paso. Debería estabilizarse en 0.3-0.7.
-Si se queda en 0 o en 1 constantemente, el agente está haciendo algo mal.
-
-**6. `custom/comprado_medio` — Energía comprada a red**
-Si baja con el tiempo, el agente está aprendiendo a usar mejor la batería (comprando menos a red).
-
-> El resto de paneles que aparecen (`time/`, `train/n_updates`, etc.) son métricas
-> internas de SB3 que no necesitas monitorizar.
-
----
-
-### Hiperparámetros configurables
-
-Todos los hiperparámetros están al principio de `src/main.py` como constantes:
-
-| Constante | Valor v2 | v1 | Descripción |
-|---|---|---|---|
-| `TOTAL_TIMESTEPS` | 1.000.000 | 300k | Pasos totales de entrenamiento |
-| `LEARNING_RATE` | 5e-5 | 1e-4 | Tasa de aprendizaje de la red Q |
-| `BUFFER_SIZE` | 200.000 | 100k | Tamaño del replay buffer |
-| `LEARNING_STARTS` | 20.000 | 10k | Pasos de exploración pura antes de entrenar |
-| `BATCH_SIZE` | 128 | 64 | Muestras por actualización de gradiente |
-| `GAMMA` | 0.99 | 0.99 | Factor de descuento (horizonte largo) |
-| `EXPLORATION_FRAC` | 0.5 | 0.4 | Fracción del entrenamiento con epsilon decreciente |
-| `EXPLORATION_FINAL` | 0.05 | 0.05 | Epsilon mínimo al final |
-| `NET_ARCH` | [256, 256] | [64, 64] | Capas ocultas de la red neuronal |
-| `EVAL_FREQ` | 20.000 | 10k | Cada cuántos pasos evaluar y guardar el mejor modelo |
-
----
-
-## Entrenamiento del agente Residual SAC
-
-El Residual SAC aprende correcciones ±15% sobre las decisiones del MPC. Se ejecuta desde **WSL** (no PowerShell) porque usa HiGHS LP en cada paso y es más estable en Linux.
-
-### Requisitos previos
-
-- **WSL** con el entorno virtual activado (`.venv/`)
-- Ejecutar siempre desde la raíz del proyecto (`TFG/`)
-- Para que el entreno sobreviva a cerrar el terminal, deshabilitar la suspensión automática de Windows:
-  Panel de control → Opciones de energía → Elegir el comportamiento al cerrar la tapa → **No hacer nada**
-
-### Entrenamiento completo (~8-9 horas, CPU)
-
-```bash
-source .venv/bin/activate
-nohup python src/training/mains/main_residual_sac.py --version 80kwh --seeds 42 1337 2024 > logs/train_sac.log 2>&1 &
-echo $! > logs/train_sac.pid
-```
-
-Seguir el progreso:
-
-```bash
-tail -f logs/train_sac.log
-```
-
-Ver paso actual:
-
-```bash
-python3 -c "import numpy as np; d=np.load('logs/evaluations.npz'); print(d['timesteps'][-1], '/ 1,000,000')"
-```
-
-### Archivos generados
-
-```
-TFG/
-├── models/
-│   ├── best_model.zip                    ← mejor checkpoint (criterio: reward medio eval)
-│   ├── best_vecnormalize.pkl             ← stats VecNormalize del mejor checkpoint
-│   ├── residual_sac_seed42.zip           ← checkpoint final (paso 1M)
-│   └── residual_sac_vec_normalize_seed42.pkl
-└── logs/
-    ├── train_sac.log                     ← stdout del entrenamiento
-    ├── evaluations.npz                   ← curva de eval (timesteps, rewards)
-    └── ResidualSAC_seed42_1/             ← eventos TensorBoard
-```
-
-> `best_model.zip` + `best_vecnormalize.pkl` son siempre el par a usar. Se actualizan
-> automáticamente durante el entreno cada vez que el modelo mejora su reward medio.
-
-### Visualización con TensorBoard
-
-```bash
-tensorboard --logdir logs/
-```
-
-Métricas relevantes: `eval/mean_reward`, `custom/soc_medio`, `custom/delta_l1_medio`.
-
----
-
-## Evaluación del modelo
-
-Compara el Residual SAC contra MPC oráculo, MPC realista e IDLE sobre las 50 semanas hold-out:
-
-```bash
-python src/eval_unificada.py \
-  --sac-model models/best_model.zip \
-  --sac-norm  models/best_vecnormalize.pkl
-```
-
-Para evaluar con varias semillas de ruido (recomendado para la memoria):
-
-```bash
-python src/evaluation/scenarios.py   # próximamente
-```
-
----
-
-## Exportación a ONNX (despliegue en producción)
-
-Una vez terminado el entreno y elegido el modelo a desplegar, exportar el actor a ONNX:
-
-```bash
-# Exportar best_model.zip (por defecto)
-python -m src.production.export_onnx
-
-# O especificar otro modelo explícitamente
+# (Solo si reentrenaste en el Paso 1) regenerar el ONNX desde el nuevo campeón:
 python -m src.production.export_onnx \
-  --model    models/residual_sac_seed42.zip \
-  --vec-norm models/residual_sac_vec_normalize_seed42.pkl \
-  --onnx-out models/residual_sac_actor.onnx \
-  --npz-out  models/vec_normalize_v5_1M.npz
+  --model    models/best/residual_sac_SAC-C.zip \
+  --vec-norm models/best/residual_sac_SAC-C_vecnorm.pkl
+
+# Levantar la plataforma (el ONNX de producción ya viene incluido):
+cp .env.example .env
+docker compose up -d --build
 ```
 
-Genera dos artefactos en `models/`:
+El edge decide cada hora con el modelo y publica en el SaaS; la web se siembra sola con datos
+de ejemplo (simula un año en ~6-7 min).
 
-| Archivo | Tamaño | Descripción |
-|---|---|---|
-| `residual_sac_actor.onnx` | ~376 KB | Actor determinista, entrada `obs[batch,112]` → `delta[batch,4]` |
-| `vec_normalize_v5_1M.npz` | ~2 KB | Estadísticas de normalización (mean, var, clip_obs) |
+- **Web:** <http://localhost:5001>
 
-Verificar que el ONNX da los mismos resultados que el modelo SB3:
+  | Rol | Email | Contraseña |
+  |---|---|---|
+  | Superadmin | `roberto@lealink.es` | `roberto1234` |
+  | Admin de comunidad | `carmen.vidal@vecinos.es` | `carmen1234` |
+  | Vecino | `ana.garcia@vecinos.es` | `ana1234` |
+
+  Incluye 2 comunidades de ejemplo (27 viviendas, 40 usuarios): baterías con SoC en vivo,
+  operaciones horarias, cierres mensuales con ahorro por vivienda, notificaciones, incidencias.
+
+- **Decisiones del edge en vivo:** `docker compose logs -f edge` (un JSON por hora)
+- **Parar:** `docker compose down` (añade `-v` para borrar también la base de datos)
+
+> Raspberry Pi 4/5 (edge ARM64): `docker buildx build --platform linux/arm64 -f docker/Dockerfile.edge -t energycomm-edge:arm64 .`
+
+---
+
+## Ayuda (opcional)
+
+Comprobaciones y utilidades que no forman parte del hilo principal.
+
+### Tests
 
 ```bash
-python src/eval_unificada.py \
-  --sac-model  models/best_model.zip \
-  --sac-norm   models/best_vecnormalize.pkl \
-  --onnx-model models/residual_sac_actor.onnx \
-  --onnx-npz   models/vec_normalize_v5_1M.npz \
-  --skip-baselines
+pytest tests/ -v                          # núcleo: física, MPC, entornos, ONNX, golden (~10 min)
+
+pip install -r src/saas/requirements.txt
+pytest src/saas/tests/ -v                 # SaaS: 212 tests (SQLite en memoria, ~1-2 min)
 ```
 
-Los dos controladores deben dar el mismo reward (diferencia < 0.01 EUR/sem).
+### Otras formas de evaluar (sin reentrenar)
 
-Una vez verificado, el sistema de producción carga automáticamente el ONNX desde las rutas
-configuradas en `config/system.yaml` (sección `produccion:`). No hay ningún paso adicional.
+`entrenar.sh` ya evalúa, pero también puedes evaluar los modelos incluidos por separado:
+
+```bash
+# Rápida, sin escribir nada (reproduce el resultado central ~44 €/sem):
+python experimentos/eval_rapida.py --familia residual_sac --version SAC-C
+
+# Formal, escribe en resultados/resultados.csv (⚠️ añade filas al CSV incluido):
+python src/evaluation/suite.py --baselines      # baselines G1-G4
+python src/evaluation/suite.py --todas          # las 31 versiones + baselines
+```
+
+### Regenerar el dataset
+
+```bash
+python experimentos/build_dataset.py --semilla 42   # raw ESIOS/PVGIS → dataset_final.csv (reproducible)
+```
+
+---
+
+## Configuración
+
+- [`config/system.yaml`](config/system.yaml) — batería (80 kWh, η=0,95, SoC 10-90 %),
+  comunidad, split train/eval (semilla 42, 50 semanas), ruido de pronóstico, MPC
+  (horizonte 24 h), hiperparámetros del residual, rutas ONNX de producción.
+- [`config/experimentos.yaml`](config/experimentos.yaml) — registry de las familias RL
+  (`dqn`, `ppo`, `ppo_continuo`, `td3_residual`, `ddpg_residual`, `residual_sac`, `sac_puro`)
+  más los baselines `G`; cada versión declara solo sus *overrides*.
+- [`.env.example`](.env.example) — plantilla del `.env` (`SECRET_KEY`). La `DATABASE_URL`
+  la fija `docker-compose.yml` automáticamente.
+
+## Solución de problemas
+
+| Problema | Solución |
+|---|---|
+| `docker compose up`: "env file .env not found" | `cp .env.example .env` |
+| Puerto 5001 ocupado | Cambiar `5001:5000` en `docker-compose.yml` |
+| `Permission denied` con `entrenar.sh` | `chmod +x experimentos/entrenar.sh` |
+| `ModuleNotFoundError: src` | Ejecutar siempre desde la raíz del proyecto |

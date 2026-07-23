@@ -10,3 +10,4 @@ torch
 tensorboard
 onnx>=1.16
 onnxruntime>=1.17
+pytest
