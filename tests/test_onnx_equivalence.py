@@ -32,9 +32,12 @@ from src.controllers.mpc import (
 
 ONNX_PATH = os.path.join(ROOT, 'models', 'residual_sac_actor.onnx')
 NPZ_PATH  = os.path.join(ROOT, 'models', 'vec_normalize_v5_1M.npz')
-MODEL_ZIP = os.path.join(ROOT, 'models', 'best_model_v5_1M.zip')
-VEC_NORM  = os.path.join(ROOT, 'models', 'vec_normalize_v5_1M.pkl')
-DELTA_MAX = 0.15   # valor v5
+# Modelo campeón desplegado (SAC-C, semilla 1337): la MISMA fuente desde la que
+# se exporta el ONNX (export_onnx.py), de modo que el test compara el ONNX de
+# producción contra su .zip de origen. Ambos van incluidos en la entrega.
+MODEL_ZIP = os.path.join(ROOT, 'models', 'best', 'residual_sac_SAC-C.zip')
+VEC_NORM  = os.path.join(ROOT, 'models', 'best', 'residual_sac_SAC-C_vecnorm.pkl')
+DELTA_MAX = 0.15   # delta_max de SAC-C (config/system.yaml: residual_sac.delta_max)
 
 _onnx_available = os.path.exists(ONNX_PATH) and os.path.exists(NPZ_PATH)
 _sb3_available  = os.path.exists(MODEL_ZIP) and os.path.exists(VEC_NORM)

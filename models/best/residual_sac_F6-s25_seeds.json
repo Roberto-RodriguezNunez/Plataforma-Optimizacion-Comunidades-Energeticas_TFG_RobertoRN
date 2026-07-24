@@ -1,0 +1,8 @@
+{
+  "algo": "residual_sac",
+  "version": "F6-s25",
+  "best_seed": 42,
+  "scores": {
+    "42": 37.26818886
+  }
+}

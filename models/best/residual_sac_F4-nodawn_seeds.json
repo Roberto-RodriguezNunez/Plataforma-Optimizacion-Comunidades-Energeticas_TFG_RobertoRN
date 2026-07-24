@@ -1,0 +1,8 @@
+{
+  "algo": "residual_sac",
+  "version": "F4-nodawn",
+  "best_seed": 42,
+  "scores": {
+    "42": 41.14156747999999
+  }
+}
