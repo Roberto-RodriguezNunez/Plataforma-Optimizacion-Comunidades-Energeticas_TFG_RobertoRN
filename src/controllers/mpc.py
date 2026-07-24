@@ -358,8 +358,8 @@ class LinearMPC(BaseController):
             # Modo "b": media de precio de compra en el horizonte.
             return float(precio_c[:H].mean())
         elif self._tv_mode == 'mediana_historica':
-            # Modo "c": mediana global (se debería calcular offline sobre train).
-            # Placeholder: usa la mediana del horizonte actual.
+            # Modo "c": aproxima la mediana histórica con la mediana del
+            # horizonte actual (modo alternativo; la config usa "ultimo").
             return float(np.median(precio_c[:H]))
         else:
             raise ValueError(f"modo_precio desconocido: {self._tv_mode}")

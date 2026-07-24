@@ -15,11 +15,12 @@ from src.core.forecast import avanzar_ar1
 
 
 class EnergyEnvDiscreto(EnergyEnvBase):
-    """Entorno con accion discreta de 9 estrategias (ver justificacion_9_acciones.md)."""
+    """Entorno con accion discreta de 9 estrategias (mapa y justificacion de los
+    niveles en ComunidadSimulador.ACCION_MAP, fuente unica)."""
 
     def __init__(self, forecast_noise: bool = True, mode: str = 'all', rng=None):
         super().__init__(forecast_noise=forecast_noise, mode=mode, rng=rng)
-        # --- ACCIONES: 9 (ver justificacion_9_acciones.md) ---
+        # --- ACCIONES: 9 (ver ComunidadSimulador.ACCION_MAP, fuente unica) ---
         self.action_space = spaces.Discrete(9)
 
     def step(self, action):

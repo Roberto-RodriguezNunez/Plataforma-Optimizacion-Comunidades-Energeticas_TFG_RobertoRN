@@ -20,9 +20,11 @@ def build_obs(state: dict, forecast: np.ndarray, sim) -> np.ndarray:
     OnnxResidualController), de modo que entreno == evaluación == producción.
 
     Opera SOBRE LA VENTANA recibida (`forecast`), que ya viene de la fuente única
-    `forecast.ventana_observada` con la convención: forecast[0] = presente EXACTO
-    (neto medido en el CUPS único), forecast[k>=1] con ruido. Así el presente es
-    exacto para TODOS los controladores y el futuro lleva el mismo ruido.
+    `forecast.ventana_observada`: forecast[0] es la hora actual (PRIMER paso de
+    pronóstico, con ruido — NO un dato exacto, para no incurrir en lookahead) y
+    forecast[k>=1] el resto del horizonte. Todos los controladores reciben la MISMA
+    ventana con el mismo ruido; la física y la recompensa usan aparte el valor real
+    de la hora (lo lee el simulador, no esta observación).
 
     Estructura:
       [0:5]    Estado y precios actuales   (5 dims) — derivado de forecast[0]

@@ -20,7 +20,7 @@ acto seguido la evalúa con 10 semillas de ruido y añade su fila a
 ## Entrenar desde WSL / Linux
 
 ```bash
-cd /mnt/c/Users/rober/TFG
+cd /ruta/al/proyecto                                             # raíz del repositorio
 ./experimentos/entrenar.sh dqn                                   # familia entera (entrena + evalúa)
 .venv/bin/python src/training/mains/main_dqn.py --version DQN-2  # entrenar UNA versión (sin evaluar)
 .venv/bin/python src/evaluation/suite.py --familia dqn --version DQN-2   # evaluar UNA versión
