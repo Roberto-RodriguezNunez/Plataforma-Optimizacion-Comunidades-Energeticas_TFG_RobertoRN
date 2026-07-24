@@ -14,11 +14,15 @@ class CierreForm(FlaskForm):
                                    validators=[InputRequired(), NumberRange(min=0)])
     autoconsumo_directo_kwh = FloatField('Autoconsumo directo (kWh)',
                                          validators=[InputRequired(), NumberRange(min=0)])
+    autoconsumo_indirecto_kwh = FloatField('Autoconsumo indirecto (kWh)',
+                                           validators=[InputRequired(), NumberRange(min=0)])
     energia_de_bateria_kwh = FloatField('Energía de batería (kWh)',
                                         validators=[InputRequired(), NumberRange(min=0)])
     vertido_a_red_kwh = FloatField('Vertido a red (kWh)',
                                    validators=[InputRequired(), NumberRange(min=0)])
     ahorro_eur = FloatField('Ahorro (€)', validators=[InputRequired(), NumberRange(min=0)])
+    factura_sin_paneles_eur = FloatField('Factura sin paneles (€)',
+                                         validators=[InputRequired(), NumberRange(min=0)])
     factura_escenario_base_eur = FloatField('Factura sin comunidad (€)',
                                             validators=[InputRequired(), NumberRange(min=0)])
     factura_escenario_real_eur = FloatField('Factura con comunidad (€)',

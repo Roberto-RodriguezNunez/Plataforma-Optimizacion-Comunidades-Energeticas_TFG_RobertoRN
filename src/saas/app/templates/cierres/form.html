@@ -41,8 +41,9 @@
       </div>
       <div style="padding:1.4rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
         {% for field in [form.consumo_total_kwh, form.autoconsumo_directo_kwh,
+                         form.autoconsumo_indirecto_kwh,
                          form.energia_de_bateria_kwh, form.vertido_a_red_kwh] %}
-        <div>
+        <div{% if loop.last %} style="grid-column:1/-1;"{% endif %}>
           <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
                         display:block;margin-bottom:.4rem;">{{ field.label.text }}</label>
           {{ field() }}
@@ -60,8 +61,9 @@
                   display:flex;align-items:center;gap:.6rem;">
         <h3 style="margin:0;font-size:.95rem;">Datos económicos (€)</h3>
       </div>
-      <div style="padding:1.4rem;display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
-        {% for field in [form.factura_escenario_base_eur, form.factura_escenario_real_eur, form.ahorro_eur] %}
+      <div style="padding:1.4rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        {% for field in [form.factura_sin_paneles_eur, form.factura_escenario_base_eur,
+                         form.factura_escenario_real_eur, form.ahorro_eur] %}
         <div>
           <label style="font-size:.83rem;font-weight:600;color:var(--text-soft);
                         display:block;margin-bottom:.4rem;">{{ field.label.text }}</label>

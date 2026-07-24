@@ -30,7 +30,6 @@ class ComunidadSimulador:
     # --- DEFINICIÓN DE ACCIONES (9 acciones) — FUENTE ÚNICA ---
     # Diseño v2 (2026-05-17): eliminados los niveles de potencia de CARGAR_SOLAR
     # y DESCARGAR_CASA por degeneración estructural.
-    # Justificación: anotaciones_para_mi/justificacion_9_acciones.md
     #   0     : IDLE
     #   1     : CARGAR_SOLAR   (nivel único — limita exc_disp, no el inversor)
     #   2,3,4 : CARGAR_MIXTA   33/66/100%  (inversor = cuello de botella)
@@ -156,8 +155,10 @@ class ComunidadSimulador:
 
     def calcular_degradacion_no_lineal(self, energia_kwh, soc_actual):
         if energia_kwh == 0: return 0.0
-        potencia = energia_kwh 
-        
+        # Con paso horario (Δt=1h) la energía movida en kWh coincide numéricamente
+        # con la potencia media en kW, de ahí que sirva para el ratio con el inversor.
+        potencia = energia_kwh
+
         # Factor Potencia (I^2)
         ratio_potencia = (potencia / self.POTENCIA_INVERSOR)
         factor_stress_potencia = 1.0 + (ratio_potencia ** 2)
