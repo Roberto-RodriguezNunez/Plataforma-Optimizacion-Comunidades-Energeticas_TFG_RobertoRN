@@ -12,8 +12,15 @@ venv/
 source/
 .env
 
-# Modelos entrenados y logs (generados al entrenar, no versionar)
-/models/
+# Modelos entrenados: se versionan SOLO los consolidados (best/ + artefactos ONNX
+# de produccion) para que el proyecto sea ejecutable sin re-entrenar.
+# Se excluyen runs intermedios, archivos de trabajo y backups.
+/models/*
+!/models/best/
+!/models/residual_sac_actor.onnx
+!/models/vec_normalize_v5_1M.npz
+!/models/best_model.zip
+!/models/best_vecnormalize.pkl
 logs/
 .DS_Store
 
@@ -49,6 +56,9 @@ texput.log
 .coverage
 **/.coverage
 
+# Base de datos SQLite del SaaS en modo local (se regenera con seed.py)
+*.db
+
 # Modelos importados de otros PC (fuente de extraccion, pesan cientos de MB)
 modelos_entrenados_otrosPC/
 
@@ -57,3 +67,7 @@ resultados/*.bak
 resultados/*.pre_reeval*
 resultados/*.pre_paso*
 resultados/log_sac_puro
+
+# Artefactos de la prueba de instalacion en VM/WSL y ZIP de entrega (no se versionan)
+*.zip
+lealink/
